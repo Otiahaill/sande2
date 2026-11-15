@@ -1,0 +1,50 @@
+<resources>
+    <!-- iOS Design Language Color Palette -->
+    <!-- Backgrounds -->
+    <color name="ios_background">#F2F2F7</color>
+    <color name="ios_background_secondary">#FFFFFF</color>
+    <color name="ios_background_tertiary">#E5E5EA</color>
+
+    <!-- Primary / Brand -->
+    <color name="ios_blue">#0A84FF</color>
+    <color name="ios_blue_light">#E3F2FD</color>
+    <color name="ios_blue_dark">#0066CC</color>
+
+    <!-- Semantic -->
+    <color name="ios_green">#34C759</color>
+    <color name="ios_red">#FF3B30</color>
+    <color name="ios_orange">#FF9500</color>
+    <color name="ios_yellow">#FFCC00</color>
+    <color name="ios_pink">#FF2D55</color>
+<color name="ios_teal">#5AC8FA</color>
+
+    <!-- Grayscale -->
+    <color name="ios_label_primary">#1C1C1E</color>
+    <color name="ios_label_secondary">#8E8E93</color>
+    <color name="ios_label_tertiary">#C7C7CC</color>
+    <color name="ios_quaternary_label">#C7C7CC80</color>
+    <color name="ios_separator">#C6C6C8</color>
+    <color name="ios_opaque_separator">#C6C6C8</color>
+
+    <!-- Surface -->
+    <color name="ios_system_background">#FFFFFF</color>
+    <color name="ios_secondary_system_background">#F2F2F7</color>
+    <color name="ios_tertiary_system_background">#F2F2F7</color>
+    <color name="ios_system_grouped_background">#F2F2F7</color>
+    <color name="ios_secondary_system_grouped_background">#FFFFFF</color>
+    <color name="ios_tertiary_system_grouped_background">#FFFFFF</color>
+
+    <!-- Fill -->
+    <color name="ios_fill_blue">#E3F2FD</color>
+    <color name="ios_fill_green">#E9F7EF</color>
+    <color name="ios_fill_red">#FEE4E2</color>
+    <color name="ios_fill_orange">#FFF0E0</color>
+    <color name="ios_fill_gray">#F2F2F7</color>
+
+    <!-- Dividers -->
+    <color name="ios_divider_light">#C6C6C8</color>
+    <color name="ios_divider_dark">#1C1C1E</color>
+
+    <!-- Legacy splash color (kept for compatibility) -->
+    <color name="splash_bg">#0A84FF</color>
+</resources>

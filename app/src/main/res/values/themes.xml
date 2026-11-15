@@ -1,0 +1,8 @@
+<resources>
+    <!-- Framework theme (API 21+). No extra library needed. The Compose UI draws its own Material 3 look. -->
+    <style name="Theme.Sande" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <style name="Theme.Sande.Splash" parent="Theme.Sande">
+        <item name="android:windowBackground">@drawable/splash_background</item>
+    </style>
+</resources>

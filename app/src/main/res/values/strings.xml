@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">sande</string>
+    <string name="tab_dashboard">Dashboard</string>
+    <string name="tab_catalogue">Catalogue</string>
+    <string name="tab_stock">Stock</string>
+    <string name="tab_sales">Sales</string>
+    <string name="tab_settings">Settings</string>
+</resources>
