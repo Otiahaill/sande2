@@ -1,6 +1,7 @@
 package com.example.sande.data.entities
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 @Entity(
