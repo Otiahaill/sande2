@@ -1,6 +1,5 @@
 package com.example.sande.ui.screens
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -14,11 +13,18 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Inventory
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -32,8 +38,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.sande.data.entities.MovementType
 import com.example.sande.di.SandeApplication
-import com.example.sande.ui.EmptyStateCard
 import com.example.sande.ui.formatKes
 import com.example.sande.ui.formatSaleDate
 import com.example.sande.ui.theme.SandeShape
@@ -41,9 +47,11 @@ import com.example.sande.ui.theme.SandeTheme
 import com.example.sande.ui.viewModelFactoryOf
 import com.example.sande.ui.viewmodel.AuditViewerViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AuditViewerScreen(modifier: Modifier = Modifier) {
+fun AuditViewerScreen(
+    modifier: Modifier = Modifier,
+    onOpenDrawer: () -> Unit = {}
+) {
     val context = LocalContext.current
     val app = context.applicationContext as SandeApplication
     val vm: AuditViewerViewModel = viewModel(
@@ -56,6 +64,14 @@ fun AuditViewerScreen(modifier: Modifier = Modifier) {
             topBar = {
                 TopAppBar(
                     title = { Text(text = "Audit Viewer") },
+                    navigationIcon = {
+                        IconButton(onClick = onOpenDrawer) {
+                            Icon(
+                                imageVector = Icons.Default.Menu,
+                                contentDescription = "Open menu"
+                            )
+                        }
+                    },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.surface,
                         titleContentColor = MaterialTheme.colorScheme.onSurface
@@ -72,61 +88,57 @@ fun AuditViewerScreen(modifier: Modifier = Modifier) {
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(16.dp))
+
                 if (movements.isEmpty()) {
-                    EmptyStateCard(
-                        title = "No movements yet",
-                        subtitle = "Inventory movements will appear here"
+                    Text(
+                        text = "No movements yet",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 } else {
                     LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.fillMaxWidth(),
                         contentPadding = PaddingValues(top = 8.dp)
                     ) {
                         items(movements, key = { it.id }) { m ->
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = SandeShape.card,
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surface
-                                ),
-                                border = BorderStroke(
-                                    0.5.dp,
-                                    MaterialTheme.colorScheme.outlineVariant
-                                )
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                             ) {
                                 Row(
                                     modifier = Modifier.padding(16.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Inventory,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(16.dp))
+                                    BadgedBox(
+                                        badge = { Badge(containerColor = MaterialTheme.colorScheme.primary) }
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Info,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
-                                            text = m.type.toString(),
+                                            text = "${m.type.name} • ${formatSaleDate(m.createdAt)}",
                                             style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurface,
-                                            maxLines = 1
+                                            color = MaterialTheme.colorScheme.onSurface
                                         )
                                         Text(
-                                            text = "Product: ${m.productId.take(8)} • Qty: ${m.quantity} • ${formatSaleDate(m.createdAt)}",
+                                            text = "Product: ${m.productId.take(8)}... • Qty: ${m.quantity}",
                                             style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            maxLines = 1
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
                                     Spacer(modifier = Modifier.width(16.dp))
-                                    Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-                                        Text(
-                                            text = formatKes(m.unitPriceCents ?: 0L),
-                                            style = MaterialTheme.typography.titleMedium,
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
-                                    }
+                                    Text(
+                                        text = formatKes(m.unitPriceCents ?: 0L),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
                                 }
                             }
                         }
