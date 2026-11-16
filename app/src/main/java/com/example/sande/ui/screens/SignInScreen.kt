@@ -31,6 +31,8 @@ import com.example.sande.ui.ScreenHeader
 import com.example.sande.ui.theme.SandeTheme
 import com.example.sande.ui.viewModelFactoryOf
 import com.example.sande.ui.viewmodel.SettingsViewModel
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,6 +42,7 @@ fun SignInScreen(onSignedIn: () -> Unit) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var error by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
 
     SandeTheme {
         Column(
@@ -85,19 +88,23 @@ fun SignInScreen(onSignedIn: () -> Unit) {
             Spacer(modifier = Modifier.height(24.dp))
             Button(
                 onClick = {
-                    app.authRepository.signIn(email, password)
-                    onSignedIn()
+                    scope.launch {
+                        app.authRepository.signIn(email, password)
+                        onSignedIn()
+                    }
                 },
                 modifier = Modifier.fillMaxWidth().width(320.dp),
                 shape = RoundedCornerShape(10.dp)
             ) {
                 Text(text = "Sign in")
             }
-            Spacer(modifier = modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(12.dp))
             TextButton(
                 onClick = {
-                    app.authRepository.signIn("demo@sande.app", "demo")
-                    onSignedIn()
+                    scope.launch {
+                        app.authRepository.signIn("demo@sande.app", "demo")
+                        onSignedIn()
+                    }
                 },
                 modifier = Modifier.padding(top = 8.dp)
             ) {
