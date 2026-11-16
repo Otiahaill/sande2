@@ -169,7 +169,7 @@ fun DashboardScreen(
                                 badge = {
                                     Badge(
                                         containerColor = if (row.balance <= 0L) MaterialTheme.colorScheme.error
-                                        else if (row.balance <= 5L) MaterialTheme.colorScheme.warning
+                                        else if (row.balance <= 5L) MaterialTheme.colorScheme.tertiary
                                         else MaterialTheme.colorScheme.secondary
                                     )
                                 }
