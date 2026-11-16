@@ -27,9 +27,11 @@ fun ProductFormScreen(
     modifier: Modifier = Modifier,
     productId: String? = null,
     onOpenDrawer: () -> Unit = {},
-    onProductSaved: () = Unit = {},
-    onCancel: () = Unit = {}
+    onProductSaved: () = Unit,
+    onCancel: () = Unit
 ) {
+    if (onProductSaved === null) onProductSaved = {}
+    if (onCancel === null) onCancel = {}
     val context = LocalContext.current
     val app = context.applicationContext as SandeApplication
     val vm: ProductFormViewModel = viewModel(
