@@ -59,8 +59,11 @@ class ProductFormViewModel(
                 businessId = businessId,
                 name = _name.value,
                 sku = _sku.value.takeIf { it.isNotBlank() },
+                categoryId = null,
                 category = _category.value.takeIf { it.isNotBlank() },
                 priceCents = priceCents,
+                unitOfMeasure = null,
+                conversionRatio = null,
                 isActive = true,
                 createdAt = productToEdit?.createdAt ?: System.currentTimeMillis(),
                 updatedAt = System.currentTimeMillis()

@@ -1,6 +1,7 @@
 package com.example.sande.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.example.sande.data.repository.AuthRepository
 import com.example.sande.domain.PermissionPolicy
 import kotlinx.coroutines.flow.MutableStateFlow

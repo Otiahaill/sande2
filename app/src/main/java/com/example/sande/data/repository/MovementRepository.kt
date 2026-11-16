@@ -3,6 +3,7 @@ package com.example.sande.data.repository
 import androidx.room.Transaction
 import com.example.sande.data.db.AppDatabase
 import com.example.sande.data.daos.MovementDao
+import com.example.sande.data.daos.OutboxDao
 import com.example.sande.data.daos.SaleHeaderDao
 import com.example.sande.data.entities.Movement
 import com.example.sande.data.entities.MovementType

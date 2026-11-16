@@ -1,7 +1,11 @@
 package com.example.sande.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -10,42 +14,53 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PrivacyTip
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.sande.di.SandeApplication
+import com.example.sande.domain.PermissionPolicy
 import com.example.sande.ui.theme.SandeShape
+import com.example.sande.ui.theme.SandeTheme
 import com.example.sande.ui.viewModelFactoryOf
 import com.example.sande.ui.viewmodel.SettingsViewModel
-import androidx.compose.ui.platform.LocalContext
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(modifier: Modifier = Modifier) {
+fun SettingsScreen(
+    onSignedOut: () -> Unit = {},
+    modifier: Modifier = Modifier
+) {
     val context = LocalContext.current
     val app = context.applicationContext as SandeApplication
     val vm: SettingsViewModel = viewModel(
-        factory = viewModelFactoryOf { SettingsViewModel(app.authRepository) }
+        factory = viewModelFactoryOf { SettingsViewModel(app.authRepository, PermissionPolicy) }
     )
     val negativeStockPolicy by vm.negativeStockPolicy.collectAsState()
 
     SandeTheme {
         Scaffold(
             topBar = {
-                androidx.compose.material3.TopAppBar(
+                TopAppBar(
                     title = { Text(text = "Settings") },
-                    colors = androidx.compose.material3.TopAppBarDefaults.topAppBarColors(
+                    colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.surface,
                         titleContentColor = MaterialTheme.colorScheme.onSurface
                     )
@@ -53,7 +68,7 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
             }
         ) { innerPadding ->
             Column(
-                modifier = modifier.fillMaxSize().padding(innerPadding)
+                modifier = modifier.fillMaxSize().padding(innerPadding).padding(16.dp)
             ) {
                 Text(
                     text = "Settings",
@@ -65,10 +80,10 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = SandeShape.card,
-                    colors = androidx.compose.material3.CardDefaults.cardColors(
+                    colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surface
                     ),
-                    border = androidx.compose.foundation.BorderStroke(
+                    border = BorderStroke(
                         0.5.dp,
                         MaterialTheme.colorScheme.outlineVariant
                     )
@@ -81,11 +96,11 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         ListItem(
-                            headlineText = { Text(text = "Signed in as") },
-                            supportingText = { Text(text = vm.currentUser ?: "Unknown") },
+                            headlineContent = { Text(text = "Signed in as") },
+                            supportingContent = { Text(text = vm.currentUser ?: "Unknown") },
                             leadingContent = {
                                 Icon(
-                                    icon = Icons.Default.Person,
+                                    imageVector = Icons.Default.Person,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary
                                 )
@@ -99,10 +114,10 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = SandeShape.card,
-                    colors = androidx.compose.material3.CardDefaults.cardColors(
+                    colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surface
                     ),
-                    border = androidx.compose.foundation.BorderStroke(
+                    border = BorderStroke(
                         0.5.dp,
                         MaterialTheme.colorScheme.outlineVariant
                     )
@@ -115,33 +130,33 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         ListItem(
-                            headlineText = { Text(text = "Version") },
-                            supportingText = { Text(text = "1.0.0") },
+                            headlineContent = { Text(text = "Version") },
+                            supportingContent = { Text(text = "1.0.0") },
                             leadingContent = {
                                 Icon(
-                                    icon = Icons.Default.Info,
+                                    imageVector = Icons.Default.Info,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         )
-                        DividerItem()
+                        HorizontalDivider()
                         ListItem(
-                            headlineText = { Text(text = "Terms of Service") },
+                            headlineContent = { Text(text = "Terms of Service") },
                             leadingContent = {
                                 Icon(
-                                    icon = Icons.Default.Description,
+                                    imageVector = Icons.Default.Description,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         )
-                        DividerItem()
+                        HorizontalDivider()
                         ListItem(
-                            headlineText = { Text(text = "Privacy Policy") },
+                            headlineContent = { Text(text = "Privacy Policy") },
                             leadingContent = {
                                 Icon(
-                                    icon = Icons.Default.PrivacyTip,
+                                    imageVector = Icons.Default.PrivacyTip,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -155,10 +170,10 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = SandeShape.card,
-                    colors = androidx.compose.material3.CardDefaults.cardColors(
+                    colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surface
                     ),
-                    border = androidx.compose.foundation.BorderStroke(
+                    border = BorderStroke(
                         0.5.dp,
                         MaterialTheme.colorScheme.outlineVariant
                     )
@@ -178,43 +193,43 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         ListItem(
-                            headlineText = { Text(text = "WARN") },
-                            supportingText = { Text(text = "Allow sale with a warning alert") },
+                            headlineContent = { Text(text = "WARN") },
+                            supportingContent = { Text(text = "Allow sale with a warning alert") },
                             trailingContent = {
                                 RadioButton(
                                     selected = negativeStockPolicy == "WARN",
                                     onClick = { vm.setNegativeStockPolicy("WARN") },
-                                    colors = androidx.compose.material3.RadioButtonDefaults.colors(
+                                    colors = RadioButtonDefaults.colors(
                                         selectedColor = MaterialTheme.colorScheme.primary,
                                         unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 )
                             }
                         )
-                        DividerItem()
+                        HorizontalDivider()
                         ListItem(
-                            headlineText = { Text(text = "BLOCK") },
-                            supportingText = { Text(text = "Prevent sale if stock would go negative") },
+                            headlineContent = { Text(text = "BLOCK") },
+                            supportingContent = { Text(text = "Prevent sale if stock would go negative") },
                             trailingContent = {
                                 RadioButton(
                                     selected = negativeStockPolicy == "BLOCK",
                                     onClick = { vm.setNegativeStockPolicy("BLOCK") },
-                                    colors = androidx.compose.material3.RadioButtonDefaults.colors(
+                                    colors = RadioButtonDefaults.colors(
                                         selectedColor = MaterialTheme.colorScheme.primary,
                                         unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 )
                             }
                         )
-                        DividerItem()
+                        HorizontalDivider()
                         ListItem(
-                            headlineText = { Text(text = "ALLOW") },
-                            supportingText = { Text(text = "Allow sale without any warning") },
+                            headlineContent = { Text(text = "ALLOW") },
+                            supportingContent = { Text(text = "Allow sale without any warning") },
                             trailingContent = {
                                 RadioButton(
                                     selected = negativeStockPolicy == "ALLOW",
                                     onClick = { vm.setNegativeStockPolicy("ALLOW") },
-                                    colors = androidx.compose.material3.RadioButtonDefaults.colors(
+                                    colors = RadioButtonDefaults.colors(
                                         selectedColor = MaterialTheme.colorScheme.primary,
                                         unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -229,10 +244,11 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                 Button(
                     onClick = {
                         vm.signOut()
+                        onSignedOut()
                     },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
-                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                    colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error,
                         contentColor = MaterialTheme.colorScheme.onError
                     )
@@ -242,12 +258,4 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
             }
         }
     }
-}
-
-/**
- * Simple Spacer wrapper
- */
-@Composable
-private fun Spacer(modifier: Modifier = Modifier) {
-    androidx.compose.foundation.layout.Spacer(modifier = modifier)
 }

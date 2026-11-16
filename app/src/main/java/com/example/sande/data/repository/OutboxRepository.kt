@@ -25,7 +25,7 @@ class OutboxRepository constructor(
         return id
     }
 
-    fun getUnsynced(): Flow<List<Outbox>> = dao.getUnsynced()
+    fun getUnsynced(limit: Int = 100): Flow<List<Outbox>> = dao.getUnsynced(limit)
 
     suspend fun markSynced(ids: List<String>) = dao.markSynced(ids)
 

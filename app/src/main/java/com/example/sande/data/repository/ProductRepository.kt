@@ -32,11 +32,11 @@ class ProductRepository constructor(
         val existing = dao.getById("prod-sample-1")
         if (existing != null) return
         insertAll(listOf(
-            Product(id = "prod-sample-1", name = "Maize Flour 2kg", sku = "MF-001", category = "Grains", priceCents = 22000, isActive = true),
-            Product(id = "prod-sample-2", name = "Rice 5kg", sku = "RC-002", category = "Grains", priceCents = 65000, isActive = true),
-            Product(id = "prod-sample-3", name = "Cooking Oil 2L", sku = "OIL-003", category = "Oils", priceCents = 85000, isActive = true),
-            Product(id = "prod-sample-4", name = "Sugar 2kg", sku = "SUG-004", category = "Staples", priceCents = 32000, isActive = true),
-            Product(id = "prod-sample-5", name = "Salt 1kg", sku = "SAL-005", category = "Staples", priceCents = 15000, isActive = true)
+            Product(id = "prod-sample-1", businessId = "seed", name = "Maize Flour 2kg", sku = "MF-001", categoryId = null, category = "Grains", priceCents = 22000, unitOfMeasure = null, conversionRatio = null, isActive = true),
+            Product(id = "prod-sample-2", businessId = "seed", name = "Rice 5kg", sku = "RC-002", categoryId = null, category = "Grains", priceCents = 65000, unitOfMeasure = null, conversionRatio = null, isActive = true),
+            Product(id = "prod-sample-3", businessId = "seed", name = "Cooking Oil 2L", sku = "OIL-003", categoryId = null, category = "Oils", priceCents = 85000, unitOfMeasure = null, conversionRatio = null, isActive = true),
+            Product(id = "prod-sample-4", businessId = "seed", name = "Sugar 2kg", sku = "SUG-004", categoryId = null, category = "Staples", priceCents = 32000, unitOfMeasure = null, conversionRatio = null, isActive = true),
+            Product(id = "prod-sample-5", businessId = "seed", name = "Salt 1kg", sku = "SAL-005", categoryId = null, category = "Staples", priceCents = 15000, unitOfMeasure = null, conversionRatio = null, isActive = true)
         ))
     }
 }

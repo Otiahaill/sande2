@@ -1,11 +1,18 @@
 package com.example.sande.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -15,21 +22,22 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.sande.data.entities.Product
 import com.example.sande.di.SandeApplication
 import com.example.sande.ui.theme.SandeShape
+import com.example.sande.ui.theme.SandeTheme
 import com.example.sande.ui.viewModelFactoryOf
 import com.example.sande.ui.viewmodel.ProductFormViewModel
-import androidx.compose.ui.platform.LocalContext
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductFormScreen(
     modifier: Modifier = Modifier,
-    productToEdit: com.example.sande.data.entities.Product? = null,
+    productToEdit: Product? = null,
     businessId: String = "default-business",
     onProductSaved: () -> Unit = {}
 ) {
@@ -47,9 +55,9 @@ fun ProductFormScreen(
     SandeTheme {
         Scaffold(
             topBar = {
-                androidx.compose.material3.TopAppBar(
+                TopAppBar(
                     title = { Text(text = if (productToEdit == null) "Add Product" else "Edit Product") },
-                    colors = androidx.compose.material3.TopAppBarDefaults.topAppBarColors(
+                    colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.surface,
                         titleContentColor = MaterialTheme.colorScheme.onSurface
                     )
@@ -57,7 +65,7 @@ fun ProductFormScreen(
             }
         ) { innerPadding ->
             Column(
-                modifier = modifier.fillMaxSize().padding(innerPadding)
+                modifier = modifier.fillMaxSize().padding(innerPadding).padding(16.dp)
             ) {
                 Text(
                     text = if (productToEdit == null) "Add New Product" else "Edit Product",
@@ -69,10 +77,10 @@ fun ProductFormScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = SandeShape.card,
-                    colors = androidx.compose.material3.CardDefaults.cardColors(
+                    colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surface
                     ),
-                    border = androidx.compose.foundation.BorderStroke(
+                    border = BorderStroke(
                         0.5.dp,
                         MaterialTheme.colorScheme.outlineVariant
                     )
@@ -122,7 +130,7 @@ fun ProductFormScreen(
                     enabled = vm.isFormValid,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
-                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                    colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary
                     )
@@ -132,12 +140,4 @@ fun ProductFormScreen(
             }
         }
     }
-}
-
-/**
- * Simple Spacer wrapper
- */
-@Composable
-private fun Spacer(modifier: Modifier = Modifier) {
-    androidx.compose.foundation.layout.Spacer(modifier = modifier)
 }
