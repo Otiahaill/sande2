@@ -5,9 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.sande.data.entities.Product
 import com.example.sande.data.repository.ProductRepository
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import java.util.UUID
 
@@ -36,14 +35,15 @@ class ProductFormViewModel(
     val isEditMode: Boolean get() = productId != null
 
     init {
-        val id = productId ?: return
-        viewModelScope.launch {
-            val product = productRepository.getById(id) ?: return@launch
-            loaded = product
-            _name.value = product.name
-            _sku.value = product.sku ?: ""
-            _category.value = product.category ?: ""
-            _priceCentsStr.value = product.priceCents.toString()
+        productId?.let { id ->
+            viewModelScope.launch {
+                val product = productRepository.getById(id) ?: return@launch
+                loaded = product
+                _name.value = product.name
+                _sku.value = product.sku ?: ""
+                _category.value = product.category ?: ""
+                _priceCentsStr.value = product.priceCents.toString()
+            }
         }
     }
 
@@ -64,7 +64,9 @@ class ProductFormViewModel(
     }
 
     val isFormValid: Boolean
-        get() = _name.value.isNotBlank() && _priceCentsStr.value.isNotBlank() && _priceCentsStr.value.toLongOrNull() != null
+        get() = _name.value.isNotBlank() &&
+            _priceCentsStr.value.isNotBlank() &&
+            _priceCentsStr.value.toLongOrNull() != null
 
     /**
      * Writes the product. The caller watches [saved] and only navigates away

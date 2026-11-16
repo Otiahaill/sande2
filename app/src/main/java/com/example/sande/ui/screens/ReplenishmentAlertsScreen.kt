@@ -32,14 +32,17 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.sande.di.SandeApplication
-import com.example.sande.ui.EmptyStateCard
+import com.example.sande.ui.ScreenHeader
 import com.example.sande.ui.theme.SandeShape
 import com.example.sande.ui.theme.SandeTheme
 import com.example.sande.ui.viewModelFactoryOf
 import com.example.sande.ui.viewmodel.ReplenishmentAlertsViewModel
 
 @Composable
-fun ReplenishmentAlertsScreen(modifier: Modifier = Modifier) {
+fun ReplenishmentAlertsScreen(
+    modifier: Modifier = Modifier,
+    onOpenDrawer: () -> Unit = {}
+) {
     val context = LocalContext.current
     val app = context.applicationContext as SandeApplication
     val vm: ReplenishmentAlertsViewModel = viewModel(
@@ -51,16 +54,14 @@ fun ReplenishmentAlertsScreen(modifier: Modifier = Modifier) {
         Column(
             modifier = modifier.fillMaxSize().padding(16.dp)
         ) {
-            Text(
-                text = "Low Stock Alerts",
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onSurface
-            )
+            ScreenHeader(title = "Low Stock Alerts", onOpenDrawer = onOpenDrawer)
             Spacer(modifier = Modifier.height(16.dp))
+
             if (alerts.isEmpty()) {
-                EmptyStateCard(
-                    title = "All stock levels are healthy",
-                    subtitle = "No products need replenishment"
+                Text(
+                    text = "All stock levels are healthy",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             } else {
                 Text(
@@ -68,9 +69,9 @@ fun ReplenishmentAlertsScreen(modifier: Modifier = Modifier) {
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.error
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxWidth(),
                     contentPadding = PaddingValues(top = 8.dp)
                 ) {
                     items(alerts, key = { it.product.id }) { row ->

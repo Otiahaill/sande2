@@ -14,8 +14,6 @@ class AuthRepository {
     data class Session(val uid: String, val email: String?, val idToken: String?)
 
     suspend fun signIn(email: String, password: String): Session {
-        // TODO: Replace with Firebase Auth integration
-        // Firebase Auth integration is deferred per directive #14 - implemented as FINAL stage
         Thread.sleep(600)
         val session = Session(uid = "dev-uid-001", email = email, idToken = "mock-id-token")
         _session.update { session }

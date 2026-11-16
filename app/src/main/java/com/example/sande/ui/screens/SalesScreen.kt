@@ -12,32 +12,22 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -50,6 +40,7 @@ import com.example.sande.ui.theme.SandeShape
 import com.example.sande.ui.theme.SandeTheme
 import com.example.sande.ui.viewModelFactoryOf
 import com.example.sande.ui.viewmodel.SalesViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun SalesScreen(
@@ -66,35 +57,23 @@ fun SalesScreen(
     )
     val products by vm.products.collectAsState()
     val cart by vm.cart.collectAsState()
+    val scope = rememberCoroutineScope()
 
     SandeTheme {
         Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text(text = "Sales") },
-                    navigationIcon = {
-                        IconButton(onClick = onOpenDrawer) {
-                            Icon(
-                                imageVector = Icons.Default.Menu,
-                                contentDescription = "Open menu"
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        titleContentColor = MaterialTheme.colorScheme.onSurface
-                    )
-                )
-            },
             floatingActionButton = {
                 if (cart.isNotEmpty()) {
                     FloatingActionButton(
-                        onClick = { vm.recordSale("default-business") },
+                        onClick = { scope.launch { vm.recordSale("default-business") } },
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary,
                         shape = RoundedCornerShape(8.dp)
                     ) {
-                        Text(text = "✓", style = MaterialTheme.typography.titleMedium)
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Record sale",
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
                     }
                 }
             }
@@ -105,23 +84,34 @@ fun SalesScreen(
                 ScreenHeader(title = "Sales", onOpenDrawer = onOpenDrawer)
                 if (products.isEmpty()) {
                     Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "No products to sell yet.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
                     Button(
                         onClick = onAddProduct,
                         shape = SandeShape.card
                     ) {
-                        Text(text = "Add products to start selling")
+                        Text(text = "Add products")
                     }
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxWidth(),
-                        contentPadding = PaddingValues(bottom = 8.dp)
+                        contentPadding = PaddingValues(bottom = 88.dp)
                     ) {
                         items(products, key = { it.id }) { product ->
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = SandeShape.card,
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                                border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surface
+                                ),
+                                border = BorderStroke(
+                                    0.5.dp,
+                                    MaterialTheme.colorScheme.outlineVariant
+                                )
                             ) {
                                 Row(
                                     modifier = Modifier.padding(16.dp),
@@ -143,8 +133,10 @@ fun SalesScreen(
                                     Button(
                                         onClick = { vm.addToCart(product) },
                                         shape = RoundedCornerShape(8.dp),
-                                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                        )
                                     ) {
                                         Text(text = "+ Add")
                                     }

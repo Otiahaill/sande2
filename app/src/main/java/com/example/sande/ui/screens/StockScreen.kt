@@ -1,8 +1,6 @@
 package com.example.sande.ui.screens
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -19,10 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Inventory
-import androidx.compose.material.icons.filled.Storage
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.Badge
+import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -34,8 +29,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -58,7 +51,6 @@ fun StockScreen(
         factory = viewModelFactoryOf { StockViewModel(app.movementRepository, app.productRepository) }
     )
     val rows by vm.rows.collectAsState()
-    val products by vm.products.collectAsState()
 
     SandeTheme {
         Scaffold(
@@ -88,13 +80,6 @@ fun StockScreen(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Button(
-                        onClick = { /* no-op */ },
-                        shape = SandeShape.card
-                    ) {
-                        Text(text = "Load sample products")
-                    }
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxWidth(),
@@ -116,20 +101,12 @@ fun StockScreen(
                                     modifier = Modifier.padding(16.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    BadgedBox(
-                                        badge = {
-                                            Badge(
-                                                containerColor = if (row.balance <= 0L) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.secondary
-                                            )
-                                        }
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Inventory,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.size(24.dp)
-                                        )
-                                    }
+                                    Icon(
+                                        imageVector = Icons.Default.Inventory,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(24.dp)
+                                    )
                                     Spacer(modifier = Modifier.width(16.dp))
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
@@ -153,14 +130,18 @@ fun StockScreen(
                                         Text(
                                             text = row.balance.toString(),
                                             style = MaterialTheme.typography.titleMedium,
-                                            color = if (row.balance <= 0L) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+                                            color = if (row.balance <= 0L) {
+                                                MaterialTheme.colorScheme.error
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurface
+                                            },
                                             maxLines = 1
                                         )
-                                        if (row.balance <= 5L && row.balance > 0L) {
+                                        if (row.balance in 1L..5L) {
                                             Text(
                                                 text = "LOW STOCK",
                                                 style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.warning
+                                                color = MaterialTheme.colorScheme.tertiary
                                             )
                                         }
                                     }

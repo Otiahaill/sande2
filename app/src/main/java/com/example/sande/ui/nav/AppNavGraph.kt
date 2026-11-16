@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Dashboard
-import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.People
@@ -25,7 +24,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
-import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
@@ -53,15 +51,14 @@ import com.example.sande.ui.screens.ReportsScreen
 import com.example.sande.ui.screens.SaleHistoryScreen
 import com.example.sande.ui.screens.SalesScreen
 import com.example.sande.ui.screens.SettingsScreen
-import com.example.sande.ui.screens.SignInScreen
 import com.example.sande.ui.screens.SplashScreen
 import com.example.sande.ui.screens.StockScreen
+import com.example.sande.ui.theme.SandeTheme
 import kotlinx.coroutines.launch
 
 /** Every screen in the app has a route so the drawer can reach all of them. */
 object Routes {
     const val SPLASH = "splash"
-    const val SIGN_IN = "sign_in"
     const val DASHBOARD = "dashboard"
     const val CATALOGUE = "catalogue"
     const val STOCK = "stock"
@@ -91,7 +88,7 @@ private data class DrawerEntry(
 private data class DrawerSection(val title: String, val entries: List<DrawerEntry>)
 
 /**
- * The drawer is grouped by domain, and pages that are models of other pages
+ * The drawer is grouped by domain. Pages that are models of other pages
  * (Catalogue, Sales) own the views derived from them as nested children.
  */
 private val drawerSections = listOf(
@@ -168,74 +165,58 @@ fun AppNavGraph() {
     val scope = rememberCoroutineScope()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
-    val drawerAvailable = currentRoute != null &&
-        currentRoute != Routes.SPLASH &&
-        currentRoute != Routes.SIGN_IN
+    val drawerAvailable = currentRoute != null && currentRoute != Routes.SPLASH
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        gesturesEnabled = drawerAvailable,
-        drawerContent = {
-            ModalDrawerSheet {
-                Spacer(modifier = Modifier.height(24.dp))
-                Text(
-                    text = "sande",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(start = 28.dp, end = 28.dp, bottom = 12.dp)
-                )
-                HorizontalDivider()
-                drawerSections.forEach { section ->
-                    Text(
-                        text = section.title.uppercase(),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 28.dp, top = 16.dp, bottom = 4.dp)
-                    )
-                    section.entries.forEach { entry ->
-                        DrawerItem(
-                            entry = entry,
-                            currentRoute = currentRoute,
-                            onSelect = { route ->
-                                scope.launch { drawerState.close() }
-                                if (currentRoute != route) {
-                                    navController.navigate(route) { launchSingleTop = true }
-                                }
-                            }
-                        )
-                    }
-                }
-                HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
-                DrawerItem(
-                    entry = DrawerEntry(
-                        Routes.SETTINGS, "Settings", Icons.Default.Settings,
-                        caption = "Account and app preferences"
-                    ),
-                    currentRoute = currentRoute,
-                    onSelect = { route ->
-                        scope.launch { drawerState.close() }
-                        if (currentRoute != route) {
-                            navController.navigate(route) { launchSingleTop = true }
-                        }
-                    }
-                )
-                NavigationDrawerItem(
-                    icon = { Icon(Icons.Default.ExitToApp, contentDescription = null) },
-                    label = { Text("Sign out") },
-                    selected = false,
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        navController.navigate(Routes.SIGN_IN) {
-                            popUpTo(Routes.DASHBOARD) { inclusive = true }
-                            launchSingleTop = true
-                        }
-                    },
-                    modifier = Modifier.padding(start = 16.dp, end = 12.dp)
-                )
-            }
+    fun openDrawer() {
+        scope.launch { drawerState.open() }
+    }
+
+    fun goTo(route: String) {
+        scope.launch { drawerState.close() }
+        if (currentRoute != route) {
+            navController.navigate(route) { launchSingleTop = true }
         }
-    ) {
-        AppNavHost(navController = navController, onOpenDrawer = { scope.launch { drawerState.open() } })
+    }
+
+    SandeTheme {
+        ModalNavigationDrawer(
+            drawerState = drawerState,
+            gesturesEnabled = drawerAvailable,
+            drawerContent = {
+                ModalDrawerSheet {
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Text(
+                        text = "sande",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(start = 28.dp, end = 28.dp, bottom = 12.dp)
+                    )
+                    HorizontalDivider()
+                    drawerSections.forEach { section ->
+                        Text(
+                            text = section.title.uppercase(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(start = 28.dp, top = 16.dp, bottom = 4.dp)
+                        )
+                        section.entries.forEach { entry ->
+                            DrawerItem(entry = entry, currentRoute = currentRoute, onSelect = ::goTo)
+                        }
+                    }
+                    HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
+                    DrawerItem(
+                        entry = DrawerEntry(
+                            Routes.SETTINGS, "Settings", Icons.Default.Settings,
+                            caption = "Account and app preferences"
+                        ),
+                        currentRoute = currentRoute,
+                        onSelect = ::goTo
+                    )
+                }
+            }
+        ) {
+            AppNavHost(navController = navController, onOpenDrawer = ::openDrawer)
+        }
     }
 }
 
@@ -297,17 +278,8 @@ private fun AppNavHost(navController: NavHostController, onOpenDrawer: () -> Uni
         composable(Routes.SPLASH) {
             SplashScreen(
                 onFinished = {
-                    navController.navigate(Routes.SIGN_IN) {
-                        popUpTo(Routes.SPLASH) { inclusive = true }
-                    }
-                }
-            )
-        }
-        composable(Routes.SIGN_IN) {
-            SignInScreen(
-                onSignedIn = {
                     navController.navigate(Routes.DASHBOARD) {
-                        popUpTo(Routes.SIGN_IN) { inclusive = true }
+                        popUpTo(Routes.SPLASH) { inclusive = true }
                     }
                 }
             )
@@ -329,7 +301,10 @@ private fun AppNavHost(navController: NavHostController, onOpenDrawer: () -> Uni
             )
         }
         composable(Routes.SALES) {
-            SalesScreen(onOpenDrawer = onOpenDrawer)
+            SalesScreen(
+                onOpenDrawer = onOpenDrawer,
+                onAddProduct = { navController.navigate(Routes.PRODUCT_NEW) }
+            )
         }
         composable(Routes.SALE_HISTORY) {
             SaleHistoryScreen(onOpenDrawer = onOpenDrawer)
@@ -350,15 +325,7 @@ private fun AppNavHost(navController: NavHostController, onOpenDrawer: () -> Uni
             BackupRestoreScreen(onOpenDrawer = onOpenDrawer)
         }
         composable(Routes.SETTINGS) {
-            SettingsScreen(
-                onOpenDrawer = onOpenDrawer,
-                onSignedOut = {
-                    navController.navigate(Routes.SIGN_IN) {
-                        popUpTo(Routes.DASHBOARD) { inclusive = true }
-                        launchSingleTop = true
-                    }
-                }
-            )
+            SettingsScreen(onOpenDrawer = onOpenDrawer)
         }
         composable(Routes.PRODUCT_NEW) {
             ProductFormScreen(

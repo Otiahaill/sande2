@@ -23,16 +23,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.example.sande.di.SandeApplication
+import com.example.sande.ui.ScreenHeader
 import com.example.sande.ui.theme.SandeTheme
+import com.example.sande.ui.viewModelFactoryOf
+import com.example.sande.ui.viewmodel.SettingsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SignInScreen(onSignedIn: () -> Unit) {
+    val context = LocalContext.current
+    val app = context.applicationContext as SandeApplication
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf("") }
 
     SandeTheme {
         Column(
@@ -57,6 +64,7 @@ fun SignInScreen(onSignedIn: () -> Unit) {
                 value = email,
                 onValueChange = { email = it },
                 label = { Text(text = "Email") },
+                singleLine = true,
                 modifier = Modifier.fillMaxWidth().width(320.dp),
                 shape = RoundedCornerShape(10.dp)
             )
@@ -66,23 +74,34 @@ fun SignInScreen(onSignedIn: () -> Unit) {
                 onValueChange = { password = it },
                 label = { Text(text = "Password") },
                 visualTransformation = PasswordVisualTransformation(),
+                singleLine = true,
                 modifier = Modifier.fillMaxWidth().width(320.dp),
                 shape = RoundedCornerShape(10.dp)
             )
+            if (error.isNotBlank()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(text = error, color = MaterialTheme.colorScheme.error)
+            }
             Spacer(modifier = Modifier.height(24.dp))
             Button(
-                onClick = { onSignedIn() },
+                onClick = {
+                    app.authRepository.signIn(email, password)
+                    onSignedIn()
+                },
                 modifier = Modifier.fillMaxWidth().width(320.dp),
                 shape = RoundedCornerShape(10.dp)
             ) {
                 Text(text = "Sign in")
             }
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = modifier.height(12.dp))
             TextButton(
-                onClick = {},
+                onClick = {
+                    app.authRepository.signIn("demo@sande.app", "demo")
+                    onSignedIn()
+                },
                 modifier = Modifier.padding(top = 8.dp)
             ) {
-                Text(text = "Forgot password?")
+                Text(text = "Use demo account")
             }
         }
     }

@@ -3,11 +3,9 @@ package com.example.sande.data.repository
 import androidx.room.Transaction
 import com.example.sande.data.db.AppDatabase
 import com.example.sande.data.daos.MovementDao
-import com.example.sande.data.daos.OutboxDao
 import com.example.sande.data.daos.SaleHeaderDao
 import com.example.sande.data.entities.Movement
 import com.example.sande.data.entities.MovementType
-import com.example.sande.data.entities.Outbox
 import com.example.sande.data.entities.SaleHeader
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
@@ -25,11 +23,10 @@ data class SaleLineItem(
 class MovementRepository constructor(
     private val database: AppDatabase,
     private val productRepository: ProductRepository,
-    private val outboxRepository: OutboxRepository
+    private val saleHeaderRepository: SaleHeaderRepository
 ) {
     private val movementDao: MovementDao = database.movementDao()
     private val saleHeaderDao: SaleHeaderDao = database.saleHeaderDao()
-    private val outboxDao: OutboxDao = database.outboxDao()
 
     val getAll: Flow<List<Movement>> = movementDao.getAll()
 
@@ -59,7 +56,6 @@ class MovementRepository constructor(
      * Atomically records a complete sale in one Room transaction:
      * 1. Creates a SaleHeader with receipt number
      * 2. Inserts all SALE movements with shared referenceId
-     * 3. Creates an Outbox entry for sync
      */
     @Transaction
     suspend fun recordSaleAtomic(
@@ -78,7 +74,7 @@ class MovementRepository constructor(
             deviceId = deviceId,
             synced = false
         )
-        saleHeaderDao.insert(saleHeader)
+        saleHeaderRepository.insert(saleHeader)
 
         val referenceId = saleHeaderId
         items.forEach { line ->
@@ -96,19 +92,6 @@ class MovementRepository constructor(
                 )
             )
         }
-
-        // Create outbox entry for sync
-        val outboxPayload = """
-            {
-                "type": "SALE",
-                "saleHeaderId": "$saleHeaderId",
-                "receiptNumber": "$receiptNumber",
-                "totalCents": $totalCents,
-                "deviceId": "$deviceId",
-                "items": ${items.map { """{"productId":"${it.productId}","quantity":${it.quantity},"unitPriceCents":${it.unitPriceCents}}""" }.joinToString(",")}
-            }
-        """.trimIndent()
-        outboxRepository.insert("SALE", saleHeaderId, "CREATE", outboxPayload)
 
         return saleHeaderId
     }

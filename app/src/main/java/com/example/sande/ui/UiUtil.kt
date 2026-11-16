@@ -65,18 +65,23 @@ fun formatSaleDate(timestamp: Long): String {
 
 /**
  * Page header with a drawer button on the left, used by screens that do not
- * have their own top app bar.
+ * have their own top app bar. Pass [onBack] to show a back arrow instead.
  */
 @Composable
-fun ScreenHeader(title: String, onOpenDrawer: () -> Unit, modifier: Modifier = Modifier) {
+fun ScreenHeader(
+    title: String,
+    onOpenDrawer: () -> Unit,
+    modifier: Modifier = Modifier,
+    onBack: (() -> Unit)? = null
+) {
     Row(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        IconButton(onClick = onOpenDrawer) {
+        IconButton(onClick = { if (onBack != null) onBack() else onOpenDrawer() }) {
             Icon(
-                imageVector = Icons.Default.Menu,
-                contentDescription = "Open navigation menu",
+                imageVector = if (onBack != null) Icons.Default.ArrowBack else Icons.Default.Menu,
+                contentDescription = if (onBack != null) "Back" else "Open navigation menu",
                 tint = MaterialTheme.colorScheme.onSurface
             )
         }
