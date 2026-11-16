@@ -27,11 +27,11 @@ fun ProductFormScreen(
     modifier: Modifier = Modifier,
     productId: String? = null,
     onOpenDrawer: () -> Unit = {},
-    onProductSaved: () = Unit,
-    onCancel: () = Unit
+    onProductSaved: (() -> Unit)? = null,
+    onCancel: (() -> Unit)? = null
 ) {
-    if (onProductSaved === null) onProductSaved = {}
-    if (onCancel === null) onCancel = {}
+    if (productId == null && onProductSaved == null) return // Nothing to see here
+
     val context = LocalContext.current
     val app = context.applicationContext as SandeApplication
     val vm: ProductFormViewModel = viewModel(
@@ -47,7 +47,7 @@ fun ProductFormScreen(
 
     LaunchedEffect(saved, onProductSaved) {
         if (saved) {
-            onProductSaved()
+            onProductSaved?.invoke()
         }
     }
 
@@ -57,7 +57,7 @@ fun ProductFormScreen(
                 TopAppBar(
                     title = { Text(text = if (isEditMode) "Edit Product" else "Add Product") },
                     navigationIcon = {
-                        IconButton(onClick = { onCancel() }) {
+                        IconButton(onClick = { onCancel?.invoke() }) {
                             Icon(
                                 imageVector = Icons.Default.Menu,
                                 contentDescription = "Close"
