@@ -48,7 +48,7 @@ fun StockScreen(
     val context = LocalContext.current
     val app = context.applicationContext as SandeApplication
     val vm: StockViewModel = viewModel(
-        factory = viewModelFactoryOf { StockViewModel(app.movementRepository, app.productRepository) }
+        factory = viewModelFactoryOf { StockViewModel(app.movementRepository, app.productRepository, app.stockAdjustmentRepository) }
     )
     val rows by vm.rows.collectAsState()
 
@@ -130,11 +130,7 @@ fun StockScreen(
                                         Text(
                                             text = row.balance.toString(),
                                             style = MaterialTheme.typography.titleMedium,
-                                            color = if (row.balance <= 0L) {
-                                                MaterialTheme.colorScheme.error
-                                            } else {
-                                                MaterialTheme.colorScheme.onSurface
-                                            },
+                                            color = if (row.balance <= 0L) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
                                             maxLines = 1
                                         )
                                         if (row.balance in 1L..5L) {

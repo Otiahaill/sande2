@@ -2,6 +2,7 @@ package com.example.sande.ui.nav
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -39,6 +40,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.sande.data.repository.AuthRepository
+import com.example.sande.domain.PermissionPolicy
 import com.example.sande.ui.screens.AuditViewerScreen
 import com.example.sande.ui.screens.BackupRestoreScreen
 import com.example.sande.ui.screens.CatalogueScreen
@@ -51,6 +54,7 @@ import com.example.sande.ui.screens.ReportsScreen
 import com.example.sande.ui.screens.SaleHistoryScreen
 import com.example.sande.ui.screens.SalesScreen
 import com.example.sande.ui.screens.SettingsScreen
+import com.example.sande.ui.screens.SignInScreen
 import com.example.sande.ui.screens.SplashScreen
 import com.example.sande.ui.screens.StockScreen
 import com.example.sande.ui.theme.SandeTheme
@@ -59,6 +63,7 @@ import kotlinx.coroutines.launch
 /** Every screen in the app has a route so the drawer can reach all of them. */
 object Routes {
     const val SPLASH = "splash"
+    const val SIGN_IN = "sign_in"
     const val DASHBOARD = "dashboard"
     const val CATALOGUE = "catalogue"
     const val STOCK = "stock"
@@ -82,7 +87,8 @@ private data class DrawerEntry(
     val label: String,
     val icon: ImageVector,
     val caption: String? = null,
-    val children: List<DrawerEntry> = emptyList()
+    val children: List<DrawerEntry> = emptyList(),
+    val requiresOwner: Boolean = false
 )
 
 private data class DrawerSection(val title: String, val entries: List<DrawerEntry>)
@@ -91,7 +97,7 @@ private data class DrawerSection(val title: String, val entries: List<DrawerEntr
  * The drawer is grouped by domain. Pages that are models of other pages
  * (Catalogue, Sales) own the views derived from them as nested children.
  */
-private val drawerSections = listOf(
+private val ownerDrawerSections = listOf(
     DrawerSection(
         title = "Overview",
         entries = listOf(
@@ -148,11 +154,42 @@ private val drawerSections = listOf(
         entries = listOf(
             DrawerEntry(
                 Routes.MEMBERS, "Members", Icons.Default.People,
-                caption = "Who can use the app"
+                caption = "Manage team members",
+                requiresOwner = true
             ),
             DrawerEntry(
                 Routes.BACKUP, "Backup & Restore", Icons.Default.SettingsBackupRestore,
-                caption = "Export and import the database"
+                caption = "Export and import the database",
+                requiresOwner = true
+            )
+        )
+    )
+)
+
+private val salespersonDrawerSections = listOf(
+    DrawerSection(
+        title = "Sales",
+        entries = listOf(
+            DrawerEntry(
+                Routes.SALES, "New Sale", Icons.Default.ShoppingCart,
+                caption = "Record a sale"
+            ),
+            DrawerEntry(
+                Routes.SALE_HISTORY, "My Sales", Icons.Default.ReceiptLong,
+                caption = "Your sales history"
+            )
+        )
+    ),
+    DrawerSection(
+        title = "Inventory",
+        entries = listOf(
+            DrawerEntry(
+                Routes.CATALOGUE, "Product Catalogue", Icons.Default.Inventory2,
+                caption = "Browse products"
+            ),
+            DrawerEntry(
+                Routes.STOCK, "Stock Levels", Icons.Default.Storage,
+                caption = "View stock levels"
             )
         )
     )
@@ -165,110 +202,26 @@ fun AppNavGraph() {
     val scope = rememberCoroutineScope()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
-    val drawerAvailable = currentRoute != null && currentRoute != Routes.SPLASH
+    val drawerAvailable = currentRoute != null && currentRoute != Routes.SPLASH && currentRoute != Routes.SIGN_IN
 
-    fun openDrawer() {
-        scope.launch { drawerState.open() }
-    }
-
-    fun goTo(route: String) {
-        scope.launch { drawerState.close() }
-        if (currentRoute != route) {
-            navController.navigate(route) { launchSingleTop = true }
-        }
-    }
-
-    SandeTheme {
-        ModalNavigationDrawer(
-            drawerState = drawerState,
-            gesturesEnabled = drawerAvailable,
-            drawerContent = {
-                ModalDrawerSheet {
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Text(
-                        text = "sande",
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(start = 28.dp, end = 28.dp, bottom = 12.dp)
-                    )
-                    HorizontalDivider()
-                    drawerSections.forEach { section ->
-                        Text(
-                            text = section.title.uppercase(),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(start = 28.dp, top = 16.dp, bottom = 4.dp)
-                        )
-                        section.entries.forEach { entry ->
-                            DrawerItem(entry = entry, currentRoute = currentRoute, onSelect = ::goTo)
-                        }
-                    }
-                    HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
-                    DrawerItem(
-                        entry = DrawerEntry(
-                            Routes.SETTINGS, "Settings", Icons.Default.Settings,
-                            caption = "Account and app preferences"
-                        ),
-                        currentRoute = currentRoute,
-                        onSelect = ::goTo
-                    )
-                }
-            }
-        ) {
-            AppNavHost(navController = navController, onOpenDrawer = ::openDrawer)
-        }
-    }
-}
-
-@Composable
-private fun DrawerItem(
-    entry: DrawerEntry,
-    currentRoute: String?,
-    onSelect: (String) -> Unit
-) {
-    NavigationDrawerItem(
-        icon = { Icon(entry.icon, contentDescription = null) },
-        label = {
-            Column {
-                Text(entry.label)
-                if (entry.caption != null) {
-                    Text(
-                        text = entry.caption,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        },
-        selected = currentRoute == entry.route,
-        onClick = { onSelect(entry.route) },
-        modifier = Modifier.padding(start = 16.dp, end = 12.dp)
-    )
-    entry.children.forEach { child ->
-        NavigationDrawerItem(
-            icon = {
-                Icon(
-                    imageVector = child.icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        gesturesEnabled = drawerAvailable,
+        drawerContent = {
+            ModalDrawerSheet {
+                Spacer(modifier = Modifier.height(24.dp))
+                Text(
+                    text = "sande",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = 28.dp, end = 28.dp, bottom = 12.dp)
                 )
-            },
-            label = {
-                Column {
-                    Text(child.label)
-                    if (child.caption != null) {
-                        Text(
-                            text = child.caption,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            },
-            selected = currentRoute == child.route,
-            onClick = { onSelect(child.route) },
-            modifier = Modifier.padding(start = 52.dp, end = 12.dp)
-        )
+                HorizontalDivider()
+                // Sections will be rendered based on role
+            }
+        }
+    ) {
+        AppNavHost(navController = navController, onOpenDrawer = { scope.launch { drawerState.open() } })
     }
 }
 
@@ -278,8 +231,17 @@ private fun AppNavHost(navController: NavHostController, onOpenDrawer: () -> Uni
         composable(Routes.SPLASH) {
             SplashScreen(
                 onFinished = {
-                    navController.navigate(Routes.DASHBOARD) {
+                    navController.navigate(Routes.SIGN_IN) {
                         popUpTo(Routes.SPLASH) { inclusive = true }
+                    }
+                }
+            )
+        }
+        composable(Routes.SIGN_IN) {
+            SignInScreen(
+                onSignedIn = {
+                    navController.navigate(Routes.DASHBOARD) {
+                        popUpTo(Routes.SIGN_IN) { inclusive = true }
                     }
                 }
             )
@@ -301,10 +263,7 @@ private fun AppNavHost(navController: NavHostController, onOpenDrawer: () -> Uni
             )
         }
         composable(Routes.SALES) {
-            SalesScreen(
-                onOpenDrawer = onOpenDrawer,
-                onAddProduct = { navController.navigate(Routes.PRODUCT_NEW) }
-            )
+            SalesScreen(onOpenDrawer = onOpenDrawer, onAddProduct = { navController.navigate(Routes.PRODUCT_NEW) })
         }
         composable(Routes.SALE_HISTORY) {
             SaleHistoryScreen(onOpenDrawer = onOpenDrawer)

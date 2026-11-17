@@ -1,6 +1,7 @@
 package com.example.sande.ui.screens
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -53,15 +54,25 @@ fun DashboardScreen(
         factory = viewModelFactoryOf { CatalogueViewModel(app.productRepository) }
     )
     val stockViewModel: StockViewModel = viewModel(
-        factory = viewModelFactoryOf { StockViewModel(app.movementRepository, app.productRepository) }
+        factory = viewModelFactoryOf { StockViewModel(app.movementRepository, app.productRepository, app.stockAdjustmentRepository) }
     )
     val products by catalogueViewModel.products.collectAsState()
     val stockRows by stockViewModel.rows.collectAsState()
     val stockByProduct = stockRows.associate { it.product.id to it.balance }
 
-    val totalValueCents = products.sumOf { p -> (stockByProduct[p.id] ?: 0L) * p.priceCents }
-    val lowStockCount = products.count { p -> (stockByProduct[p.id] ?: 0L) <= 5L }
-    val totalStock = products.sumOf { p -> stockByProduct[p.id] ?: 0L }
+    val totalValueCents = products.sumOf { p ->
+        val stock = stockByProduct[p.id] ?: 0L
+        stock * p.priceCents
+    }
+
+    val lowStockCount = products.count { p ->
+        val stock = stockByProduct[p.id] ?: 0L
+        stock <= 5L
+    }
+
+    val totalStock = products.sumOf { p ->
+        stockByProduct[p.id] ?: 0L
+    }
 
     SandeTheme {
         Column(
@@ -120,13 +131,8 @@ fun DashboardScreen(
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = SandeShape.card,
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surface
-                        ),
-                        border = BorderStroke(
-                            0.5.dp,
-                            MaterialTheme.colorScheme.outlineVariant
-                        )
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
                     ) {
                         Row(
                             modifier = Modifier.padding(16.dp),
@@ -143,25 +149,19 @@ fun DashboardScreen(
                                 Text(
                                     text = row.product.name,
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    maxLines = 1
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
                                     text = row.product.category ?: "General",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                             Spacer(modifier = Modifier.width(16.dp))
                             Text(
                                 text = row.balance.toString(),
                                 style = MaterialTheme.typography.titleMedium,
-                                color = if (row.balance <= 0L) {
-                                    MaterialTheme.colorScheme.error
-                                } else {
-                                    MaterialTheme.colorScheme.onSurface
-                                }
+                                color = if (row.balance <= 0L) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
                             )
                         }
                     }

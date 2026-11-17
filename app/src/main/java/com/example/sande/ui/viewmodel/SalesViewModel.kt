@@ -30,7 +30,7 @@ class SalesViewModel(
     )
 
     val products: StateFlow<List<Product>> =
-        productRepository.getAllActive.stateIn(
+        productRepository.getAllActiveByBusiness("default-business").stateIn(
             viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList()
         )
 
@@ -69,7 +69,7 @@ class SalesViewModel(
      * Atomically records a complete sale: creates SaleHeader + all SALE movements
      * in one Room transaction. Clears the cart on success.
      */
-    suspend fun recordSale(businessId: String) {
+    suspend fun recordSale(businessId: String, salespersonId: String, salespersonRole: String) {
         val items = _cart.value
         if (items.isEmpty()) return
 
@@ -81,7 +81,7 @@ class SalesViewModel(
                 unitPriceCents = line.unitPriceCents
             )
         }
-        movementRepository.recordSaleAtomic(saleLineItems, receiptNumber, businessId, "local")
+        movementRepository.recordSaleAtomic(saleLineItems, receiptNumber, businessId, "local", salespersonId, salespersonRole)
 
         _cart.value = emptyList()
     }

@@ -1,5 +1,6 @@
 package com.example.sande.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -54,7 +55,6 @@ fun SaleHistoryScreen(
         ) {
             ScreenHeader(title = "Sale History", onOpenDrawer = onOpenDrawer)
             Spacer(modifier = Modifier.height(16.dp))
-
             if (sales.isEmpty()) {
                 Text(
                     text = "No sales yet",
@@ -79,7 +79,7 @@ fun SaleHistoryScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.ReceiptLong,
+                                    imageVector = androidx.compose.material.icons.Icons.Default.ReceiptLong,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(20.dp)

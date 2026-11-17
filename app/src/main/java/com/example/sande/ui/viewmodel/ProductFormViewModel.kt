@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.example.sande.data.entities.Product
 import com.example.sande.data.repository.ProductRepository
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -28,7 +27,7 @@ class ProductFormViewModel(
     val priceCentsStr = _priceCentsStr.asStateFlow()
 
     private val _saved = MutableStateFlow(false)
-    val saved: StateFlow<Boolean> = _saved.asStateFlow()
+    val saved = _saved.asStateFlow()
 
     private var loaded: Product? = null
 
@@ -64,9 +63,7 @@ class ProductFormViewModel(
     }
 
     val isFormValid: Boolean
-        get() = _name.value.isNotBlank() &&
-            _priceCentsStr.value.isNotBlank() &&
-            _priceCentsStr.value.toLongOrNull() != null
+        get() = _name.value.isNotBlank() && _priceCentsStr.value.isNotBlank() && _priceCentsStr.value.toLongOrNull() != null
 
     /**
      * Writes the product. The caller watches [saved] and only navigates away
@@ -90,6 +87,7 @@ class ProductFormViewModel(
                 unitOfMeasure = existing?.unitOfMeasure,
                 conversionRatio = existing?.conversionRatio,
                 isActive = existing?.isActive ?: true,
+                originalPriceCents = existing?.originalPriceCents ?: priceCents,
                 createdAt = existing?.createdAt ?: System.currentTimeMillis(),
                 updatedAt = System.currentTimeMillis()
             )

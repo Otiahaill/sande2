@@ -15,7 +15,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FloatingActionButton
@@ -57,43 +56,23 @@ fun CatalogueScreen(
         Scaffold(
             floatingActionButton = {
                 FloatingActionButton(
-                    onClick = onAddProduct,
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
+                    onClick = onAddProduct
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Add product",
-                        tint = MaterialTheme.colorScheme.onPrimary
-                    )
+                    Icon(Icons.Default.Add, contentDescription = "Add product")
                 }
             }
         ) { innerPadding ->
             Column(
-                modifier = modifier.fillMaxSize().padding(innerPadding).padding(horizontal = 16.dp)
+                modifier = modifier.fillMaxSize().padding(innerPadding).padding(16.dp)
             ) {
                 ScreenHeader(title = "Catalogue", onOpenDrawer = onOpenDrawer)
+                Spacer(modifier = Modifier.height(16.dp))
                 if (products.isEmpty()) {
-                    Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = "No products yet",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Button(
-                        onClick = onAddProduct,
-                        shape = SandeShape.card
-                    ) {
-                        Text(text = "Add your first product")
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Button(
-                        onClick = { vm.seed() },
-                        shape = SandeShape.card
-                    ) {
-                        Text(text = "Load sample products")
-                    }
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),

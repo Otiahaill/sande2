@@ -1,6 +1,6 @@
 package com.example.sande.data.repository
 
-import androidx.room.Transaction
+import androidx.room.withTransaction
 import com.example.sande.data.db.AppDatabase
 import com.example.sande.data.daos.MovementDao
 import com.example.sande.data.daos.SaleHeaderDao
@@ -57,13 +57,14 @@ class MovementRepository constructor(
      * 1. Creates a SaleHeader with receipt number
      * 2. Inserts all SALE movements with shared referenceId
      */
-    @Transaction
     suspend fun recordSaleAtomic(
         items: List<SaleLineItem>,
         receiptNumber: String,
         businessId: String,
-        deviceId: String
-    ): String {
+        deviceId: String,
+        salespersonId: String,
+        salespersonRole: String
+    ): String = database.withTransaction {
         val totalCents = items.sumOf { it.quantity * it.unitPriceCents }
         val saleHeaderId = UUID.randomUUID().toString()
         val saleHeader = SaleHeader(
@@ -72,9 +73,12 @@ class MovementRepository constructor(
             receiptNumber = receiptNumber,
             totalCents = totalCents,
             deviceId = deviceId,
-            synced = false
+            synced = false,
+            salespersonId = salespersonId,
+            salespersonRole = salespersonRole,
+            status = "completed"
         )
-        saleHeaderRepository.insert(saleHeader)
+        saleHeaderDao.insert(saleHeader)
 
         val referenceId = saleHeaderId
         items.forEach { line ->
@@ -93,7 +97,7 @@ class MovementRepository constructor(
             )
         }
 
-        return saleHeaderId
+        saleHeaderId
     }
 
     suspend fun recordReceive(productId: String, quantity: Long, unitPriceCents: Long?, referenceId: String?, deviceId: String): String {

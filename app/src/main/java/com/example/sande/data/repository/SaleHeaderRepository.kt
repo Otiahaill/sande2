@@ -18,11 +18,27 @@ class SaleHeaderRepository constructor(
 
     fun getAll(): Flow<List<SaleHeader>> = dao.getAll()
 
+    fun getByBusiness(businessId: String): Flow<List<SaleHeader>> = dao.getByBusiness(businessId)
+
+    fun getByBusinessAndStatus(businessId: String, status: String): Flow<List<SaleHeader>> = dao.getByBusinessAndStatus(businessId, status)
+
+    fun getBySalesperson(salespersonId: String): Flow<List<SaleHeader>> = dao.getBySalesperson(salespersonId)
+
+    fun getByBusinessAndSalesperson(businessId: String, salespersonId: String): Flow<List<SaleHeader>> = dao.getByBusinessAndSalesperson(businessId, salespersonId)
+
     suspend fun getById(id: String): SaleHeader? = dao.getById(id)
 
-    fun getUnsynced(limit: Int): Flow<List<SaleHeader>> = dao.getUnsynced(limit)
+    suspend fun countAll(): Int = dao.countAll()
+
+    suspend fun countByBusiness(businessId: String): Int = dao.countByBusiness(businessId)
+
+    fun getByDateRange(startDate: Long, endDate: Long): Flow<List<SaleHeader>> = dao.getByDateRange(startDate, endDate)
+
+    fun getByBusinessAndDateRange(businessId: String, startDate: Long, endDate: Long): Flow<List<SaleHeader>> = dao.getByBusinessAndDateRange(businessId, startDate, endDate)
 
     suspend fun markSynced(ids: List<String>) = dao.markSynced(ids)
+
+    suspend fun updateStatus(id: String, status: String) = dao.updateStatus(id, status)
 
     /**
      * Generates a receipt number in the format {prefix}-{deviceShort}-{counter}.

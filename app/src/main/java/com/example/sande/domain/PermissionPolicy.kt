@@ -1,35 +1,43 @@
 package com.example.sande.domain
 
 import com.example.sande.data.entities.Member
+import com.example.sande.data.repository.AuthRepository
 
 object PermissionPolicy {
-    fun canReadProducts(member: Member?): Boolean =
-        member?.status == "ACTIVE" && member?.role in listOf("OWNER", "MANAGER", "SALESPERSON")
+    fun canReadProducts(session: AuthRepository.Session?): Boolean =
+        session != null
 
-    fun canCreateProduct(member: Member?): Boolean =
-        member?.status == "ACTIVE" && member?.role in listOf("OWNER", "MANAGER")
+    fun canCreateProduct(session: AuthRepository.Session?): Boolean =
+        session?.role == "OWNER"
 
-    fun canEditProduct(member: Member?): Boolean =
-        member?.status == "ACTIVE" && member?.role in listOf("OWNER", "MANAGER")
+    fun canEditProduct(session: AuthRepository.Session?): Boolean =
+        session?.role == "OWNER"
 
-    fun canDeleteProduct(member: Member?): Boolean =
-        member?.status == "ACTIVE" && member?.role == "OWNER"
+    fun canDeleteProduct(session: AuthRepository.Session?): Boolean =
+        session?.role == "OWNER"
 
-    fun canAdjustStock(member: Member?): Boolean =
-        member?.status == "ACTIVE" && member?.role in listOf("OWNER", "MANAGER")
+    fun canAdjustStock(session: AuthRepository.Session?): Boolean =
+        session?.role == "OWNER"
 
-    fun canVoidSale(member: Member?): Boolean =
-        member?.status == "ACTIVE" && member?.role in listOf("OWNER", "MANAGER")
+    fun canReceiveStock(session: AuthRepository.Session?): Boolean =
+        session?.role == "OWNER"
 
-    fun canRecordSale(member: Member?): Boolean =
-        member?.status == "ACTIVE" && member?.role in listOf("OWNER", "MANAGER", "SALESPERSON")
+    fun canVoidSale(session: AuthRepository.Session?): Boolean =
+        session?.role == "OWNER"
 
-    fun canReadReports(member: Member?): Boolean =
-        member?.status == "ACTIVE" && member?.role in listOf("OWNER", "MANAGER")
+    fun canRecordSale(session: AuthRepository.Session?): Boolean =
+        session != null
 
-    fun canManageMembers(member: Member?): Boolean =
-        member?.status == "ACTIVE" && member?.role == "OWNER"
+    fun canReadAllSales(session: AuthRepository.Session?): Boolean =
+        session?.role == "OWNER"
 
-    fun isOwner(member: Member?): Boolean = member?.role == "OWNER"
-    fun isActive(member: Member?): Boolean = member?.status == "ACTIVE"
+    fun canReadOwnSales(session: AuthRepository.Session?): Boolean =
+        session != null
+
+    fun canManageMembers(session: AuthRepository.Session?): Boolean =
+        session?.role == "OWNER"
+
+    fun isOwner(session: AuthRepository.Session?): Boolean = session?.role == "OWNER"
+    fun isSalesperson(session: AuthRepository.Session?): Boolean = session?.role == "SALESPERSON"
+    fun isSignedIn(session: AuthRepository.Session?): Boolean = session != null
 }

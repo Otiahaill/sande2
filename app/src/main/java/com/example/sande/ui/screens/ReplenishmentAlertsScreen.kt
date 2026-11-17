@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -56,7 +57,6 @@ fun ReplenishmentAlertsScreen(
         ) {
             ScreenHeader(title = "Low Stock Alerts", onOpenDrawer = onOpenDrawer)
             Spacer(modifier = Modifier.height(16.dp))
-
             if (alerts.isEmpty()) {
                 Text(
                     text = "All stock levels are healthy",

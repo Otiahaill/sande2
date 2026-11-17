@@ -16,10 +16,9 @@ class SettingsViewModel(
     private val permissionPolicy: PermissionPolicy
 ) : ViewModel() {
 
-    val currentUser: kotlinx.coroutines.flow.StateFlow<String?> = authRepository.session
-        .map { it?.email }
-        .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, null)
-
+    val currentUser: StateFlow<String?> = authRepository.session.map { it?.uid }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, null)
+    val currentUserEmail: StateFlow<String?> = authRepository.session.map { it?.email }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, null)
+    val currentUserRole: StateFlow<String?> = authRepository.session.map { it?.role }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, null)
     val isSignedIn: Boolean get() = authRepository.isSignedIn
 
     private val _negativeStockPolicy = MutableStateFlow("WARN")

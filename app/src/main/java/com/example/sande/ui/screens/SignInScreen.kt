@@ -1,10 +1,12 @@
 package com.example.sande.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,26 +25,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import com.example.sande.di.SandeApplication
-import com.example.sande.ui.ScreenHeader
 import com.example.sande.ui.theme.SandeTheme
-import com.example.sande.ui.viewModelFactoryOf
-import com.example.sande.ui.viewmodel.SettingsViewModel
-import kotlinx.coroutines.launch
-import androidx.compose.runtime.rememberCoroutineScope
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SignInScreen(onSignedIn: () -> Unit) {
-    val context = LocalContext.current
-    val app = context.applicationContext as SandeApplication
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var error by remember { mutableStateOf("") }
-    val scope = rememberCoroutineScope()
+    var busy by remember { mutableStateOf(false) }
 
     SandeTheme {
         Column(
@@ -56,7 +50,14 @@ fun SignInScreen(onSignedIn: () -> Unit) {
                     titleContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
-            Spacer(modifier = Modifier.height(40.dp))
+            Spacer(modifier = Modifier.height(24.dp))
+            Image(
+                painter = painterResource(id = com.example.sande.R.drawable.sandelogo),
+                contentDescription = "Sande logo",
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.size(120.dp)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = "sande inventory",
                 style = MaterialTheme.typography.headlineMedium,
@@ -81,18 +82,9 @@ fun SignInScreen(onSignedIn: () -> Unit) {
                 modifier = Modifier.fillMaxWidth().width(320.dp),
                 shape = RoundedCornerShape(10.dp)
             )
-            if (error.isNotBlank()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(text = error, color = MaterialTheme.colorScheme.error)
-            }
             Spacer(modifier = Modifier.height(24.dp))
             Button(
-                onClick = {
-                    scope.launch {
-                        app.authRepository.signIn(email, password)
-                        onSignedIn()
-                    }
-                },
+                onClick = { onSignedIn() },
                 modifier = Modifier.fillMaxWidth().width(320.dp),
                 shape = RoundedCornerShape(10.dp)
             ) {
@@ -100,15 +92,10 @@ fun SignInScreen(onSignedIn: () -> Unit) {
             }
             Spacer(modifier = Modifier.height(12.dp))
             TextButton(
-                onClick = {
-                    scope.launch {
-                        app.authRepository.signIn("demo@sande.app", "demo")
-                        onSignedIn()
-                    }
-                },
+                onClick = {},
                 modifier = Modifier.padding(top = 8.dp)
             ) {
-                Text(text = "Use demo account")
+                Text(text = "Forgot password?")
             }
         }
     }

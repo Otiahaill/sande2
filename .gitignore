@@ -68,7 +68,3 @@ cxx/
 
 # Firebase functions
 functions/node_modules/
-
-# Local build logs (harness build helper)
-build-apk.log
-build-apk.status
