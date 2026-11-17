@@ -56,7 +56,7 @@ fun SettingsScreen(
     val context = LocalContext.current
     val app = context.applicationContext as SandeApplication
     val vm: SettingsViewModel = viewModel(
-        factory = viewModelFactoryOf { SettingsViewModel(app.authRepository, PermissionPolicy) }
+        factory = viewModelFactoryOf { SettingsViewModel(app.authRepository, PermissionPolicy, app.settings) }
     )
     val negativeStockPolicy by vm.negativeStockPolicy.collectAsState()
     val currentUser by vm.currentUserEmail.collectAsState()

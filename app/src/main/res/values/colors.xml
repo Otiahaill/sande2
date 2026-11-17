@@ -46,5 +46,6 @@
     <color name="ios_divider_dark">#1C1C1E</color>
 
     <!-- Legacy splash color (kept for compatibility) -->
-    <color name="splash_bg">#0A84FF</color>
+    <color name="splash_bg">#FFFFFF</color>
+    <color name="ic_launcher_background">#FFFFFF</color>
 </resources>

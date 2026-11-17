@@ -1,6 +1,8 @@
 package com.example.sande.ui.nav
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -28,12 +30,13 @@ import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -42,6 +45,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.sande.data.repository.AuthRepository
+import com.example.sande.di.SandeApplication
 import com.example.sande.domain.PermissionPolicy
 import com.example.sande.ui.screens.AuditViewerScreen
 import com.example.sande.ui.screens.BackupRestoreScreen
@@ -58,18 +62,16 @@ import com.example.sande.ui.screens.SettingsScreen
 import com.example.sande.ui.screens.SignInScreen
 import com.example.sande.ui.screens.SplashScreen
 import com.example.sande.ui.screens.StockScreen
-import com.example.sande.ui.screens.StockAdjustmentScreen
 import com.example.sande.ui.theme.SandeTheme
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.collectAsState
 
+/** Every screen in the app has a route so the drawer can reach all of them. */
 object Routes {
     const val SPLASH = "splash"
     const val SIGN_IN = "sign_in"
     const val DASHBOARD = "dashboard"
     const val CATALOGUE = "catalogue"
     const val STOCK = "stock"
-    const val STOCK_ADJUSTMENT = "stock/adjust"
     const val SALES = "sales"
     const val SALE_HISTORY = "sale_history"
     const val REPORTS = "reports"
@@ -86,38 +88,49 @@ object Routes {
 }
 
 private data class DrawerEntry(
-    val title: String,
-    val icon: ImageVector,
     val route: String,
+    val label: String,
+    val icon: ImageVector,
     val caption: String? = null,
     val children: List<DrawerEntry> = emptyList(),
     val requiresOwner: Boolean = false
 )
 
-private data class DrawerSection(
-    val title: String,
-    val entries: List<DrawerEntry>
-)
+private data class DrawerSection(val title: String, val entries: List<DrawerEntry>)
 
+/**
+ * The drawer is grouped by domain. Pages that are models of other pages
+ * (Catalogue, Sales) own the views derived from them as nested children.
+ */
 private val ownerDrawerSections = listOf(
     DrawerSection(
         title = "Overview",
         entries = listOf(
-            DrawerEntry("Dashboard", Icons.Default.Dashboard, Routes.DASHBOARD, "Totals and recent activity"),
-            DrawerEntry("Reports", Icons.Default.BarChart, Routes.REPORTS, "Sales and stock summaries")
+            DrawerEntry(
+                Routes.DASHBOARD, "Dashboard", Icons.Default.Dashboard,
+                caption = "Totals and recent activity"
+            ),
+            DrawerEntry(
+                Routes.REPORTS, "Reports", Icons.Default.BarChart,
+                caption = "Sales and stock summaries"
+            )
         )
     ),
     DrawerSection(
         title = "Inventory",
         entries = listOf(
             DrawerEntry(
-                "Catalogue", Icons.Default.Inventory2, Routes.CATALOGUE,
-                "Product master data",
+                Routes.CATALOGUE, "Catalogue", Icons.Default.Inventory2,
+                caption = "Product master data",
                 children = listOf(
-                    DrawerEntry("Stock", Icons.Default.Storage, Routes.STOCK, "Levels per product"),
-                    DrawerEntry("Receive Stock", Icons.Default.ShoppingCart, Routes.RECEIVE_STOCK, "Receive items"),
-                    DrawerEntry("Adjust Stock", Icons.Default.Storage, Routes.STOCK_ADJUSTMENT, "Adjust stock"),
-                    DrawerEntry("Low Stock Alerts", Icons.Default.Warning, Routes.ALERTS, "Replenishment alerts")
+                    DrawerEntry(
+                        Routes.STOCK, "Stock", Icons.Default.Storage,
+                        caption = "Levels per catalogue product"
+                    ),
+                    DrawerEntry(
+                        Routes.ALERTS, "Low Stock Alerts", Icons.Default.Warning,
+                        caption = "Replenishment for catalogue items"
+                    )
                 )
             )
         )
@@ -126,11 +139,17 @@ private val ownerDrawerSections = listOf(
         title = "Sales",
         entries = listOf(
             DrawerEntry(
-                "Sales", Icons.Default.ShoppingCart, Routes.SALES,
-                "Record a sale",
+                Routes.SALES, "Sales", Icons.Default.ShoppingCart,
+                caption = "Record a sale",
                 children = listOf(
-                    DrawerEntry("Sale History", Icons.Default.ReceiptLong, Routes.SALE_HISTORY, "Sales already recorded"),
-                    DrawerEntry("Audit Viewer", Icons.Default.History, Routes.AUDIT, "Stock movement trail")
+                    DrawerEntry(
+                        Routes.SALE_HISTORY, "Sale History", Icons.Default.ReceiptLong,
+                        caption = "Sales already recorded"
+                    ),
+                    DrawerEntry(
+                        Routes.AUDIT, "Audit Viewer", Icons.Default.History,
+                        caption = "Every stock movement trail"
+                    )
                 )
             )
         )
@@ -138,9 +157,20 @@ private val ownerDrawerSections = listOf(
     DrawerSection(
         title = "Administration",
         entries = listOf(
-            DrawerEntry("Members", Icons.Default.People, Routes.MEMBERS, "Manage team members", requiresOwner = true),
-            DrawerEntry("Backup & Restore", Icons.Default.SettingsBackupRestore, Routes.BACKUP, "Export/import DB", requiresOwner = true),
-            DrawerEntry("Settings", Icons.Default.Settings, Routes.SETTINGS, "App settings")
+            DrawerEntry(
+                Routes.MEMBERS, "Members", Icons.Default.People,
+                caption = "Manage team members",
+                requiresOwner = true
+            ),
+            DrawerEntry(
+                Routes.BACKUP, "Backup & Restore", Icons.Default.SettingsBackupRestore,
+                caption = "Export and import the database",
+                requiresOwner = true
+            ),
+            DrawerEntry(
+                Routes.SETTINGS, "Settings", Icons.Default.Settings,
+                caption = "Account and preferences"
+            )
         )
     )
 )
@@ -149,48 +179,67 @@ private val salespersonDrawerSections = listOf(
     DrawerSection(
         title = "Sales",
         entries = listOf(
-            DrawerEntry("New Sale", Icons.Default.ShoppingCart, Routes.SALES, "Record a sale"),
-            DrawerEntry("My Sales", Icons.Default.ReceiptLong, Routes.SALE_HISTORY, "Your sales history")
+            DrawerEntry(
+                Routes.SALES, "New Sale", Icons.Default.ShoppingCart,
+                caption = "Record a sale"
+            ),
+            DrawerEntry(
+                Routes.SALE_HISTORY, "My Sales", Icons.Default.ReceiptLong,
+                caption = "Your sales history"
+            )
         )
     ),
     DrawerSection(
         title = "Inventory",
         entries = listOf(
-            DrawerEntry("Product Catalogue", Icons.Default.Inventory2, Routes.CATALOGUE, "Browse products"),
-            DrawerEntry("Stock Levels", Icons.Default.Storage, Routes.STOCK, "View stock levels")
+            DrawerEntry(
+                Routes.CATALOGUE, "Product Catalogue", Icons.Default.Inventory2,
+                caption = "Browse products"
+            ),
+            DrawerEntry(
+                Routes.STOCK, "Stock Levels", Icons.Default.Storage,
+                caption = "View stock levels"
+            )
+        )
+    ),
+    DrawerSection(
+        title = "Account",
+        entries = listOf(
+            DrawerEntry(
+                Routes.SETTINGS, "Settings", Icons.Default.Settings,
+                caption = "Account and preferences"
+            )
         )
     )
 )
 
 @Composable
-fun AppNavGraph(authRepository: AuthRepository) {
+fun AppNavGraph() {
     val navController = rememberNavController()
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = backStackEntry?.destination?.route
+    val drawerAvailable = currentRoute != null && currentRoute != Routes.SPLASH && currentRoute != Routes.SIGN_IN
 
-    val session by authRepository.session.collectAsState()
-    val isOwner = session?.role == "OWNER"
-    val isSignedIn = session != null
+    val app = LocalContext.current.applicationContext as SandeApplication
+    val session by app.authRepository.session.collectAsState()
+    // Sign-in is not wired to AuthRepository yet, so a missing session shows the owner menu.
+    val sections = if (session?.role == "SALESPERSON") salespersonDrawerSections else ownerDrawerSections
 
-    val currentRoute by navController.currentBackStackEntryAsState()
-    val currentRouteStr = currentRoute?.destination?.route
-    val drawerAvailable = currentRouteStr != null &&
-        currentRouteStr != Routes.SPLASH &&
-        currentRouteStr != Routes.SIGN_IN
-
-    // Choose which drawer sections based on role
-    val sections = when {
-        isOwner -> ownerDrawerSections
-        isSignedIn && !isOwner -> salespersonDrawerSections
-        else -> emptyList()
+    val goTo: (String) -> Unit = { route ->
+        scope.launch { drawerState.close() }
+        if (route != currentRoute) {
+            navController.navigate(route) { launchSingleTop = true }
+        }
     }
 
-    SandeTheme {
-        ModalNavigationDrawer(
-            drawerState = drawerState,
-            gesturesEnabled = drawerAvailable,
-            drawerContent = {
-                ModalDrawerSheet {
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        gesturesEnabled = drawerAvailable,
+        drawerContent = {
+            ModalDrawerSheet {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                     Spacer(modifier = Modifier.height(24.dp))
                     Text(
                         text = "sande",
@@ -200,206 +249,129 @@ fun AppNavGraph(authRepository: AuthRepository) {
                     )
                     HorizontalDivider()
                     sections.forEach { section ->
-                        Column(modifier = Modifier.padding(start = 28.dp, end = 28.dp)) {
-                            Text(
-                                text = section.title,
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            section.entries.forEach { entry ->
-                                DrawerSectionItem(entry, navController, onOpenDrawer = {
-                                    scope.launch { drawerState.open() }
-                                })
+                        Text(
+                            text = section.title,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(start = 28.dp, top = 16.dp, bottom = 4.dp)
+                        )
+                        section.entries.forEach { entry ->
+                            DrawerItem(entry, currentRoute, indent = 0.dp, onClick = goTo)
+                            entry.children.forEach { child ->
+                                DrawerItem(child, currentRoute, indent = 16.dp, onClick = goTo)
                             }
                         }
                     }
-                }
-            }
-        ) {
-            NavHost(navController = navController, startDestination = Routes.SPLASH) {
-                composable(Routes.SPLASH) {
-                    SplashScreen(
-                        onFinished = {
-                            navController.navigate(Routes.SIGN_IN) {
-                                popUpTo(Routes.SPLASH) { inclusive = true }
-                            }
-                        }
-                    )
-                }
-                composable(Routes.SIGN_IN) {
-                    SignInScreen(
-                        authRepository = authRepository,
-                        onSignedIn = {
-                            navController.navigate(Routes.DASHBOARD) {
-                                popUpTo(Routes.SIGN_IN) { inclusive = true }
-                            }
-                        }
-                    )
-                }
-                composable(Routes.DASHBOARD) {
-                    DashboardScreen(
-                        onOpenDrawer = { navController.navigate(Routes.SETTINGS) },
-                        onNavigateTo = { route -> navController.navigate(route) }
-                    )
-                }
-                composable(Routes.CATALOGUE) {
-                    CatalogueScreen(
-                        onOpenDrawer = { navController.navigate(Routes.SETTINGS) },
-                        onAddProduct = { navController.navigate(Routes.PRODUCT_NEW) },
-                        onEditProduct = { id -> navController.navigate(Routes.productEdit(id)) }
-                    )
-                }
-                composable(Routes.STOCK) {
-                    StockScreen(
-                        onOpenDrawer = { navController.navigate(Routes.SETTINGS) },
-                        onReceiveStock = { navController.navigate(Routes.RECEIVE_STOCK) }
-                    )
-                }
-                composable(Routes.STOCK_ADJUSTMENT) {
-                    StockAdjustmentScreen(
-                        onOpenDrawer = { navController.navigate(Routes.SETTINGS) },
-                        onStockAdjusted = { navController.popBackStack() }
-                    )
-                }
-                composable(Routes.SALES) {
-                    SalesScreen(
-                        authRepository = authRepository,
-                        onOpenDrawer = { navController.navigate(Routes.SETTINGS) },
-                        onAddProduct = { navController.navigate(Routes.PRODUCT_NEW) }
-                    )
-                }
-                composable(Routes.SALE_HISTORY) {
-                    SaleHistoryScreen(
-                        onOpenDrawer = { navController.navigate(Routes.SETTINGS) },
-                        authRepository = authRepository
-                    )
-                }
-                composable(Routes.REPORTS) {
-                    ReportsScreen(onOpenDrawer = { navController.navigate(Routes.SETTINGS) })
-                }
-                composable(Routes.ALERTS) {
-                    ReplenishmentAlertsScreen(onOpenDrawer = { navController.navigate(Routes.SETTINGS) })
-                }
-                composable(Routes.MEMBERS) {
-                    MemberListScreen(onOpenDrawer = { navController.navigate(Routes.SETTINGS) })
-                }
-                composable(Routes.AUDIT) {
-                    AuditViewerScreen(onOpenDrawer = { navController.navigate(Routes.SETTINGS) })
-                }
-                composable(Routes.BACKUP) {
-                    BackupRestoreScreen(onOpenDrawer = { navController.navigate(Routes.SETTINGS) })
-                }
-                composable(Routes.SETTINGS) {
-                    SettingsScreen(
-                        onOpenDrawer = { navController.popBackStack() },
-                        authRepository = authRepository
-                    )
-                }
-                composable(Routes.PRODUCT_NEW) {
-                    ProductFormScreen(
-                        productId = null,
-                        authRepository = authRepository,
-                        onOpenDrawer = { navController.navigate(Routes.SETTINGS) },
-                        onProductSaved = { navController.popBackStack() },
-                        onCancel = { navController.popBackStack() }
-                    )
-                }
-                composable(
-                    route = Routes.PRODUCT_EDIT,
-                    arguments = listOf(navArgument("productId") { type = NavType.StringType })
-                ) { entry ->
-                    ProductFormScreen(
-                        productId = entry.arguments?.getString("productId"),
-                        authRepository = authRepository,
-                        onOpenDrawer = { navController.navigate(Routes.SETTINGS) },
-                        onProductSaved = { navController.popBackStack() },
-                        onCancel = { navController.popBackStack() }
-                    )
-                }
-                composable(Routes.RECEIVE_STOCK) {
-                    ReceiveStockScreen(
-                        authRepository = authRepository,
-                        onOpenDrawer = { navController.navigate(Routes.SETTINGS) },
-                        onReceived = { navController.popBackStack() }
-                    )
+                    Spacer(modifier = Modifier.height(24.dp))
                 }
             }
         }
+    ) {
+        AppNavHost(navController = navController, onOpenDrawer = { scope.launch { drawerState.open() } })
     }
 }
 
 @Composable
-private fun DrawerSectionItem(
+private fun DrawerItem(
     entry: DrawerEntry,
-    navController: NavHostController,
-    onOpenDrawer: () -> Unit
+    currentRoute: String?,
+    indent: androidx.compose.ui.unit.Dp,
+    onClick: (String) -> Unit
 ) {
-    var expanded by remember { mutableStateOf(entry.children.isNotEmpty()) }
-    
-    if (entry.children.isEmpty()) {
-        NavigationDrawerItem(
-            icon = { Icon(entry.icon, contentDescription = entry.title) },
-            label = {
-                Column {
-                    Text(entry.title)
-                    entry.caption?.let {
-                        Text(text = it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    NavigationDrawerItem(
+        label = { Text(entry.label) },
+        icon = { Icon(imageVector = entry.icon, contentDescription = null) },
+        selected = currentRoute == entry.route,
+        onClick = { onClick(entry.route) },
+        modifier = Modifier.padding(start = indent, end = 12.dp)
+    )
+}
+
+@Composable
+private fun AppNavHost(navController: NavHostController, onOpenDrawer: () -> Unit) {
+    NavHost(navController = navController, startDestination = Routes.SPLASH) {
+        composable(Routes.SPLASH) {
+            SplashScreen(
+                onFinished = {
+                    navController.navigate(Routes.SIGN_IN) {
+                        popUpTo(Routes.SPLASH) { inclusive = true }
                     }
                 }
-            },
-            selected = false,
-            onClick = {
-                navController.navigate(entry.route) {
-                    popUpTo(Routes.DASHBOARD) { saveState = true }
-                    launchSingleTop = true
-                }
-                onOpenDrawer()
-            },
-            modifier = Modifier
-                .padding(horizontal = 4.dp, vertical = 2.dp)
-        )
-    } else {
-        NavigationDrawerItem(
-            icon = { Icon(entry.icon, contentDescription = entry.title) },
-            label = {
-                Column {
-                    Text(entry.title)
-                    entry.caption?.let {
-                        Text(text = it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            )
+        }
+        composable(Routes.SIGN_IN) {
+            SignInScreen(
+                onSignedIn = {
+                    navController.navigate(Routes.DASHBOARD) {
+                        popUpTo(Routes.SIGN_IN) { inclusive = true }
                     }
                 }
-            },
-            selected = false,
-            onClick = {
-                expanded = !expanded
-            },
-            modifier = Modifier
-                .padding(horizontal = 4.dp, vertical = 2.dp)
-        )
-        if (expanded) {
-            entry.children.forEach { child ->
-                NavigationDrawerItem(
-                    icon = { Icon(child.icon, contentDescription = child.title) },
-                    label = {
-                        Column {
-                            Text(child.title)
-                            child.caption?.let {
-                                Text(text = it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        }
-                    },
-                    selected = false,
-                    onClick = {
-                        navController.navigate(child.route) {
-                            popUpTo(Routes.DASHBOARD) { saveState = true }
-                            launchSingleTop = true
-                        }
-                        onOpenDrawer()
-                    },
-                    modifier = Modifier
-                        .padding(start = 24.dp, horizontal = 4.dp, vertical = 2.dp)
-                )
-            }
+            )
+        }
+        composable(Routes.DASHBOARD) {
+            DashboardScreen(onOpenDrawer = onOpenDrawer)
+        }
+        composable(Routes.CATALOGUE) {
+            CatalogueScreen(
+                onOpenDrawer = onOpenDrawer,
+                onAddProduct = { navController.navigate(Routes.PRODUCT_NEW) },
+                onEditProduct = { id -> navController.navigate(Routes.productEdit(id)) }
+            )
+        }
+        composable(Routes.STOCK) {
+            StockScreen(
+                onOpenDrawer = onOpenDrawer,
+                onReceiveStock = { navController.navigate(Routes.RECEIVE_STOCK) }
+            )
+        }
+        composable(Routes.SALES) {
+            SalesScreen(onOpenDrawer = onOpenDrawer, onAddProduct = { navController.navigate(Routes.PRODUCT_NEW) })
+        }
+        composable(Routes.SALE_HISTORY) {
+            SaleHistoryScreen(onOpenDrawer = onOpenDrawer)
+        }
+        composable(Routes.REPORTS) {
+            ReportsScreen(onOpenDrawer = onOpenDrawer)
+        }
+        composable(Routes.ALERTS) {
+            ReplenishmentAlertsScreen(onOpenDrawer = onOpenDrawer)
+        }
+        composable(Routes.MEMBERS) {
+            MemberListScreen(onOpenDrawer = onOpenDrawer)
+        }
+        composable(Routes.AUDIT) {
+            AuditViewerScreen(onOpenDrawer = onOpenDrawer)
+        }
+        composable(Routes.BACKUP) {
+            BackupRestoreScreen(onOpenDrawer = onOpenDrawer)
+        }
+        composable(Routes.SETTINGS) {
+            SettingsScreen(onOpenDrawer = onOpenDrawer)
+        }
+        composable(Routes.PRODUCT_NEW) {
+            ProductFormScreen(
+                productId = null,
+                onOpenDrawer = onOpenDrawer,
+                onProductSaved = { navController.popBackStack() },
+                onCancel = { navController.popBackStack() }
+            )
+        }
+        composable(
+            route = Routes.PRODUCT_EDIT,
+            arguments = listOf(navArgument("productId") { type = NavType.StringType })
+        ) { entry ->
+            ProductFormScreen(
+                productId = entry.arguments?.getString("productId"),
+                onOpenDrawer = onOpenDrawer,
+                onProductSaved = { navController.popBackStack() },
+                onCancel = { navController.popBackStack() }
+            )
+        }
+        composable(Routes.RECEIVE_STOCK) {
+            ReceiveStockScreen(
+                onOpenDrawer = onOpenDrawer,
+                onReceived = { navController.popBackStack() }
+            )
         }
     }
 }

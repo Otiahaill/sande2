@@ -36,12 +36,12 @@ class StockViewModel(
             products.map { StockRow(it, balances[it.id] ?: 0L) }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    fun receive(productId: String, quantity: Long, userId: String) {
+    /** Suspends until both writes are done, so callers only navigate away once stock is saved. */
+    suspend fun receive(productId: String, quantity: Long, userId: String) {
         if (quantity <= 0L) return
-        viewModelScope.launch {
-            movementRepository.recordReceive(productId, quantity, null, null, "local")
-            // Record as stock adjustment for audit trail
-            val adjustment = com.example.sande.data.entities.StockAdjustment(
+        movementRepository.recordReceive(productId, quantity, null, null, "local")
+        stockAdjustmentRepository.insert(
+            com.example.sande.data.entities.StockAdjustment(
                 id = java.util.UUID.randomUUID().toString(),
                 productId = productId,
                 businessId = "default-business",
@@ -52,7 +52,6 @@ class StockViewModel(
                 createdAt = System.currentTimeMillis(),
                 createdBy = userId
             )
-            stockAdjustmentRepository.insert(adjustment)
-        }
+        )
     }
 }

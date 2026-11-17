@@ -2,6 +2,7 @@ package com.example.sande.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.sande.data.AppSettings
 import com.example.sande.data.entities.Product
 import com.example.sande.data.repository.MovementRepository
 import com.example.sande.data.repository.ProductRepository
@@ -19,7 +20,8 @@ import java.util.UUID
 class SalesViewModel(
     private val movementRepository: MovementRepository,
     productRepository: ProductRepository,
-    private val saleHeaderRepository: SaleHeaderRepository
+    private val saleHeaderRepository: SaleHeaderRepository,
+    private val settings: AppSettings
 ) : ViewModel() {
 
     data class CartItem(
@@ -65,25 +67,78 @@ class SalesViewModel(
 
     fun subtotalCents(items: List<CartItem>): Long = items.sumOf { it.quantity * it.unitPriceCents }
 
+    private val _isSaving = MutableStateFlow(false)
+    val isSaving: StateFlow<Boolean> = _isSaving.asStateFlow()
+
+    /** Set when the policy is WARN and the cart exceeds stock; the UI asks the user to confirm. */
+    private val _pendingWarning = MutableStateFlow<String?>(null)
+    val pendingWarning: StateFlow<String?> = _pendingWarning.asStateFlow()
+
+    /** One-off message for the UI (success, blocked, or error). */
+    private val _notice = MutableStateFlow<String?>(null)
+    val notice: StateFlow<String?> = _notice.asStateFlow()
+
+    fun dismissWarning() { _pendingWarning.value = null }
+    fun consumeNotice() { _notice.value = null }
+
     /**
-     * Atomically records a complete sale: creates SaleHeader + all SALE movements
-     * in one Room transaction. Clears the cart on success.
+     * Checks stock against the negative-stock policy, then records the sale atomically.
+     * Ignored while another save is running, so a double tap cannot record two sales.
      */
-    suspend fun recordSale(businessId: String, salespersonId: String, salespersonRole: String) {
-        val items = _cart.value
-        if (items.isEmpty()) return
-
-        val receiptNumber = saleHeaderRepository.generateReceiptNumber("SAL", businessId)
-        val saleLineItems = items.map { line ->
-            SaleLineItem(
-                productId = line.productId,
-                quantity = line.quantity,
-                unitPriceCents = line.unitPriceCents
-            )
+    fun checkout(
+        businessId: String,
+        salespersonId: String,
+        salespersonRole: String,
+        confirmedOversell: Boolean = false
+    ) {
+        if (_isSaving.value || _cart.value.isEmpty()) return
+        _isSaving.value = true
+        _pendingWarning.value = null
+        viewModelScope.launch {
+            try {
+                val items = _cart.value
+                val shortfalls = items.mapNotNull { line ->
+                    val balance = movementRepository.getStockBalance(line.productId)
+                    if (balance < line.quantity) {
+                        "${line.productName}: ${balance.coerceAtLeast(0L)} in stock, ${line.quantity} in cart"
+                    } else null
+                }
+                if (shortfalls.isNotEmpty()) {
+                    val detail = shortfalls.joinToString("\n")
+                    when (settings.negativeStockPolicy) {
+                        AppSettings.POLICY_BLOCK -> {
+                            _notice.value = "Not enough stock:\n$detail"
+                            return@launch
+                        }
+                        AppSettings.POLICY_WARN -> if (!confirmedOversell) {
+                            _pendingWarning.value = detail
+                            return@launch
+                        }
+                    }
+                }
+                val receipt = saveSale(items, businessId, salespersonId, salespersonRole)
+                _cart.value = emptyList()
+                _notice.value = "Sale recorded: $receipt"
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _notice.value = "Could not record sale: ${e.message ?: "unknown error"}"
+            } finally {
+                _isSaving.value = false
+            }
         }
-        movementRepository.recordSaleAtomic(saleLineItems, receiptNumber, businessId, "local", salespersonId, salespersonRole)
+    }
 
-        _cart.value = emptyList()
+    private suspend fun saveSale(
+        items: List<CartItem>,
+        businessId: String,
+        salespersonId: String,
+        salespersonRole: String
+    ): String {
+        val receiptNumber = saleHeaderRepository.generateReceiptNumber("SAL", businessId)
+        val lines = items.map { SaleLineItem(it.productId, it.quantity, it.unitPriceCents) }
+        movementRepository.recordSaleAtomic(lines, receiptNumber, businessId, "local", salespersonId, salespersonRole)
+        return receiptNumber
     }
 
     /**

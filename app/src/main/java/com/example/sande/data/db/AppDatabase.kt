@@ -54,19 +54,22 @@ abstract class AppDatabase : RoomDatabase() {
 
         val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(database: SupportSQLiteDatabase) {
-                // Add new columns to products table
-                database.execSQL("ALTER TABLE products ADD COLUMN archivedAt INTEGER DEFAULT 0")
-                database.execSQL("ALTER TABLE products ADD COLUMN deletedAt INTEGER DEFAULT 0")
-                database.execSQL("ALTER TABLE products ADD COLUMN originalPriceCents INTEGER DEFAULT 0")
+                // New columns must be NOT NULL to match the entity definitions
+                database.execSQL("ALTER TABLE products ADD COLUMN archivedAt INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE products ADD COLUMN deletedAt INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE products ADD COLUMN originalPriceCents INTEGER NOT NULL DEFAULT 0")
 
-                // Add new columns to sale_headers table
-                database.execSQL("ALTER TABLE sale_headers ADD COLUMN salespersonId TEXT DEFAULT ''")
-                database.execSQL("ALTER TABLE sale_headers ADD COLUMN salespersonRole TEXT DEFAULT ''")
-                database.execSQL("ALTER TABLE sale_headers ADD COLUMN status TEXT DEFAULT 'completed'")
+                database.execSQL("ALTER TABLE sale_headers ADD COLUMN salespersonId TEXT NOT NULL DEFAULT ''")
+                database.execSQL("ALTER TABLE sale_headers ADD COLUMN salespersonRole TEXT NOT NULL DEFAULT ''")
+                database.execSQL("ALTER TABLE sale_headers ADD COLUMN status TEXT NOT NULL DEFAULT 'completed'")
 
-                // Add businessId index if not exists
-                database.execSQL("CREATE INDEX IF NOT EXISTS idx_products_businessId ON products(businessId)")
-                database.execSQL("CREATE INDEX IF NOT EXISTS idx_products_isActive ON products(isActive)")
+                // Index names must be exactly what Room generates: index_<table>_<column>
+                listOf("businessId", "categoryId", "isActive", "archivedAt", "deletedAt").forEach { col ->
+                    database.execSQL("CREATE INDEX IF NOT EXISTS index_products_$col ON products($col)")
+                }
+                listOf("salespersonId", "status").forEach { col ->
+                    database.execSQL("CREATE INDEX IF NOT EXISTS index_sale_headers_$col ON sale_headers($col)")
+                }
 
                 // Create draft_sales table
                 database.execSQL("""
@@ -95,6 +98,9 @@ abstract class AppDatabase : RoomDatabase() {
                         createdBy TEXT NOT NULL
                     )
                 """)
+                listOf("productId", "businessId", "createdAt").forEach { col ->
+                    database.execSQL("CREATE INDEX IF NOT EXISTS index_stock_adjustments_$col ON stock_adjustments($col)")
+                }
             }
         }
 

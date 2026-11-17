@@ -1,6 +1,7 @@
 package com.example.sande.di
 
 import android.app.Application
+import com.example.sande.data.AppSettings
 import com.example.sande.data.db.AppDatabase
 import com.example.sande.data.repository.AuthRepository
 import com.example.sande.data.repository.DraftSaleRepository
@@ -12,6 +13,10 @@ import com.example.sande.data.repository.SaleHeaderRepository
 import com.example.sande.data.repository.StockAdjustmentRepository
 
 class SandeApplication : Application() {
+    val settings: AppSettings by lazy {
+        AppSettings(this)
+    }
+
     val database: AppDatabase by lazy {
         AppDatabase.getDatabase(this)
     }

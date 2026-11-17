@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.sande.data.entities.Product
 import com.example.sande.data.repository.ProductRepository
+import com.example.sande.ui.formatKes
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -23,8 +24,8 @@ class ProductFormViewModel(
     private val _category = MutableStateFlow("")
     val category = _category.asStateFlow()
 
-    private val _priceCentsStr = MutableStateFlow("")
-    val priceCentsStr = _priceCentsStr.asStateFlow()
+    private val _priceStr = MutableStateFlow("")
+    val priceStr = _priceStr.asStateFlow()
 
     private val _saved = MutableStateFlow(false)
     val saved = _saved.asStateFlow()
@@ -41,7 +42,7 @@ class ProductFormViewModel(
                 _name.value = product.name
                 _sku.value = product.sku ?: ""
                 _category.value = product.category ?: ""
-                _priceCentsStr.value = product.priceCents.toString()
+                _priceStr.value = formatKes(product.priceCents)
             }
         }
     }
@@ -58,12 +59,26 @@ class ProductFormViewModel(
         _category.value = value
     }
 
-    fun setPriceCentsStr(value: String) {
-        _priceCentsStr.value = value
+    fun setPriceStr(value: String) {
+        _priceStr.value = value
     }
 
     val isFormValid: Boolean
-        get() = _name.value.isNotBlank() && _priceCentsStr.value.isNotBlank() && _priceCentsStr.value.toLongOrNull() != null
+        get() = _name.value.isNotBlank() && parseCents(_priceStr.value) != null
+
+    /** "220" or "220.50" (shillings) -> cents. Null if invalid or more than 2 decimals. */
+    private fun parseCents(input: String): Long? {
+        val text = input.trim().replace(",", "")
+        if (text.isEmpty()) return null
+        return try {
+            val value = java.math.BigDecimal(text)
+            if (value.signum() < 0 || value.scale() > 2) null else value.movePointRight(2).longValueExact()
+        } catch (e: ArithmeticException) {
+            null
+        } catch (e: NumberFormatException) {
+            null
+        }
+    }
 
     /**
      * Writes the product. The caller watches [saved] and only navigates away
@@ -74,7 +89,7 @@ class ProductFormViewModel(
         if (!isFormValid) return
 
         viewModelScope.launch {
-            val priceCents = _priceCentsStr.value.toLongOrNull() ?: 0L
+            val priceCents = parseCents(_priceStr.value) ?: return@launch
             val existing = loaded
             val product = Product(
                 id = existing?.id ?: UUID.randomUUID().toString(),

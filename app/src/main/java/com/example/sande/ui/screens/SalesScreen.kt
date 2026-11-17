@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -26,11 +27,15 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -43,7 +48,6 @@ import com.example.sande.ui.theme.SandeShape
 import com.example.sande.ui.theme.SandeTheme
 import com.example.sande.ui.viewModelFactoryOf
 import com.example.sande.ui.viewmodel.SalesViewModel
-import kotlinx.coroutines.launch
 import androidx.compose.material3.ExperimentalMaterial3Api
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -57,19 +61,51 @@ fun SalesScreen(
     val app = context.applicationContext as SandeApplication
     val vm: SalesViewModel = viewModel(
         factory = viewModelFactoryOf {
-            SalesViewModel(app.movementRepository, app.productRepository, app.saleHeaderRepository)
+            SalesViewModel(app.movementRepository, app.productRepository, app.saleHeaderRepository, app.settings)
         }
     )
     val products by vm.products.collectAsState()
     val cart by vm.cart.collectAsState()
-    val scope = rememberCoroutineScope()
+    val isSaving by vm.isSaving.collectAsState()
+    val pendingWarning by vm.pendingWarning.collectAsState()
+    val notice by vm.notice.collectAsState()
+    val session by app.authRepository.session.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    val businessId = session?.businessId ?: "default-business"
+    val userId = session?.uid ?: "local-owner"
+    val role = session?.role ?: "OWNER"
+
+    LaunchedEffect(notice) {
+        notice?.let {
+            snackbarHostState.showSnackbar(it)
+            vm.consumeNotice()
+        }
+    }
 
     SandeTheme {
+            pendingWarning?.let { detail ->
+                AlertDialog(
+                    onDismissRequest = { vm.dismissWarning() },
+                    title = { Text("Not enough stock") },
+                    text = { Text("$detail\n\nSell anyway? Stock will go negative.") },
+                    confirmButton = {
+                        TextButton(onClick = { vm.checkout(businessId, userId, role, confirmedOversell = true) }) {
+                            Text("Sell anyway")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { vm.dismissWarning() }) { Text("Cancel") }
+                    }
+                )
+            }
+
         Scaffold(
+            snackbarHost = { SnackbarHost(snackbarHostState) },
             floatingActionButton = {
-                if (cart.isNotEmpty()) {
+                if (cart.isNotEmpty() && !isSaving) {
                     FloatingActionButton(
-                        onClick = { scope.launch { vm.recordSale("default-business", "owner-uid", "OWNER") } },
+                        onClick = { vm.checkout(businessId, userId, role) },
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary,
                         shape = RoundedCornerShape(8.dp)
@@ -221,15 +257,15 @@ fun SalesScreen(
                         color = MaterialTheme.colorScheme.primary
                     )
                     Button(
-                        onClick = { scope.launch { vm.recordSale("default-business", "owner-uid", "OWNER") } },
-                        enabled = cart.isNotEmpty(),
+                        onClick = { vm.checkout(businessId, userId, role) },
+                        enabled = cart.isNotEmpty() && !isSaving,
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary,
                             contentColor = MaterialTheme.colorScheme.onPrimary
                         )
                     ) {
-                        Text(text = "Record sale")
+                        Text(text = if (isSaving) "Saving…" else "Record sale")
                     }
                 }
             }
