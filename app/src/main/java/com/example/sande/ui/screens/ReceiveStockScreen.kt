@@ -120,86 +120,84 @@ fun ReceiveStockScreen(
                 )
             }
         ) { paddingValues ->
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(paddingValues)
-                    ) {
-                        // Product search/picker
-                        Text(
-                            text = "Select Product",
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                        )
-                        
-                        SearchBar(
-                            query = searchQuery,
-                            onQueryChange = { searchQuery = it },
-                            onSearch = {},
-                            placeholder = { Text("Search products...") },
-                            enabled = true,
-                            content = {
-                                if (filteredProducts.isEmpty()) {
-                                    Text(
-                                        text = "No products found",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        modifier = Modifier.padding(16.dp)
-                                    )
-                                } else {
-                                    LazyColumn {
-                                        items(filteredProducts) { product ->
-                                            Column(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .clickable { selectedProductId = product.id }
-                                                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                                            ) {
-                                                Row(
-                                                    verticalAlignment = Alignment.CenterVertically,
-                                                    modifier = Modifier.fillMaxWidth()
-                                                ) {
-                                                    Column(modifier = Modifier.weight(1f)) {
-                                                        Text(product.name, style = MaterialTheme.typography.bodyMedium)
-                                                        if (!product.sku.isNullOrBlank()) {
-                                                            Text("SKU: ${product.sku}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                                        }
-                                                    }
-                                                    RadioButton(
-                                                        selected = selectedProductId == product.id,
-                                                        onClick = { selectedProductId = product.id }
-                                                    )
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                // Product search/picker
+                Text(
+                    text = "Select Product",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+                
+                SearchBar(
+                    query = searchQuery,
+                    onQueryChange = { searchQuery = it },
+                    onSearch = {},
+                    placeholder = { Text("Search products...") },
+                    enabled = true,
+                    content = {
+                        if (filteredProducts.isEmpty()) {
+                            Text(
+                                text = "No products found",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(16.dp)
+                            )
+                        } else {
+                            LazyColumn {
+                                items(filteredProducts) { product ->
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { selectedProductId = product.id }
+                                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(product.name, style = MaterialTheme.typography.bodyMedium)
+                                                if (!product.sku.isNullOrBlank()) {
+                                                    Text("SKU: ${product.sku}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                                 }
-                                                Divider()
                                             }
+                                            RadioButton(
+                                                selected = selectedProductId == product.id,
+                                                onClick = { selectedProductId = product.id }
+                                            )
                                         }
+                                        Divider()
                                     }
                                 }
                             }
-                        )
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        // Quantity input
-                        Text(
-                            text = "Quantity",
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.padding(horizontal = 16.dp)
-                        )
-                        OutlinedTextField(
-                            value = quantityStr,
-                            onValueChange = { quantityStr = it.filter { c -> c.isDigit() } },
-                            label = { Text("Quantity to receive") },
-                            singleLine = true,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
-                            shape = RoundedCornerShape(8.dp)
-                        )
-                        
-                        Spacer(modifier = Modifier.weight(1f))
+                        }
                     }
-                }
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Quantity input
+                Text(
+                    text = "Quantity",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+                OutlinedTextField(
+                    value = quantityStr,
+                    onValueChange = { quantityStr = it.filter { c -> c.isDigit() } },
+                    label = { Text("Quantity to receive") },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    shape = RoundedCornerShape(8.dp)
+                )
+                
+                Spacer(modifier = Modifier.weight(1f))
             }
-        )
+        }
     }
 }
