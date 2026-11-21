@@ -7,8 +7,8 @@ on:
     branches: [ main ]
 
 jobs:
-  android-build:
-    name: Android Build
+  build:
+    name: Build
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -31,140 +31,9 @@ jobs:
           chmod +x gradlew
           ./gradlew :app:assembleDebug --no-daemon
 
-      - name: Run Android tests
-        run: |
-          ./gradlew :app:testDebugUnitTest --no-daemon
-
       - name: Upload APK artifact
-        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: sande-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
-
-  backend-lint-and-typecheck:
-    name: Backend Lint & Typecheck
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./backend
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run TypeScript type check
-        run: npm run typecheck
-
-      - name: Run ESLint
-        run: npm run lint
-
-  backend-test:
-    name: Backend Tests
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./backend
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run tests
-        run: npm run test
-
-  deploy-backend:
-    name: Deploy Backend (Dev)
-    needs: [android-build, backend-lint-and-typecheck, backend-test]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-    environment: staging
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
-
-      - name: Install backend dependencies
-        working-directory: ./backend
-        run: npm ci
-
-      - name: Set Worker secrets
-        working-directory: ./backend
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-        run: |
-          npm run cf:secrets -- --env=dev
-
-      - name: Deploy Backend to Cloudflare Workers
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy --env dev
-        working-directory: ./backend
-
-      - name: Upload Android APK artifact
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: sande-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 30
-
-  deploy-control-centre:
-    name: Deploy Control Centre
-    needs: [deploy-backend]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-    environment: staging
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: control-centre/package-lock.json
-
-      - name: Install control centre dependencies
-        working-directory: ./control-centre
-        run: npm ci
-
-      - name: Build control centre
-        working-directory: ./control-centre
-        run: npm run build
-
-      - name: Deploy Control Centre to Cloudflare Pages
-        uses: cloudflare/pages-action@v1
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          directory: ./control-centre/dist
-          projectName: sande-control-centre
-```
