@@ -2,7 +2,7 @@
  * Admin login page - Platform admin authentication.
  * Validates against the backend /admin routes.
  */
-import { apiClient } from '../api/client.ts';
+import { apiClient } from '../api/client';
 
 export function renderAdminLogin(container: HTMLElement, onLogin: () => void): void {
   container.innerHTML = '';

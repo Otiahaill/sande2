@@ -11,12 +11,12 @@
  * Auth: Bearer token stored in sessionStorage.
  */
 
-import { apiClient } from '../api/client.ts';
-import { renderDashboard } from './pages/Dashboard.ts';
-import { renderBusinesses } from './pages/Businesses.ts';
-import { renderBusinessDetail } from './pages/BusinessDetail.ts';
-import { renderSyncExceptions } from './pages/SyncExceptions.ts';
-import { renderAdminLogin } from './pages/Login.ts';
+import { apiClient } from './api/client';
+import { renderDashboard } from './pages/Dashboard';
+import { renderBusinesses } from './pages/Businesses';
+import { renderBusinessDetail } from './pages/BusinessDetail';
+import { renderSyncExceptions } from './pages/SyncExceptions';
+import { renderAdminLogin } from './pages/Login';
 
 const app = document.getElementById('app');
 if (!app) {
@@ -30,10 +30,10 @@ if (savedToken) {
 }
 
 async function render(): Promise<void> {
-  const hash = window.location.hash.slice(1) || '/';
-  const path = hash.split('?')[0];
+  const hash = window.location.hash.slice(1);
+  const path = hash ? hash.split('?')[0] || '/' : '/';
+  if (!app) return;
   const params = new URLSearchParams(hash.split('?')[1] || '');
-
   app.innerHTML = '';
 
   // Navigation bar (shown on all pages except login)

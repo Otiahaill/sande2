@@ -1,8 +1,8 @@
 /**
  * Dashboard page - Platform overview with key metrics.
  */
-import { apiClient } from '../api/client.ts';
-import { formatCurrency, formatDate, formatRelative, createStatCard, createTable } from '../components/index.ts';
+import { apiClient } from '../api/client';
+import { formatCurrency, formatDate, formatRelative, createStatCard, createTable } from '../components/index';
 
 export function renderDashboard(container: HTMLElement): void {
   container.innerHTML = '';
@@ -44,9 +44,10 @@ export function renderDashboard(container: HTMLElement): void {
     createStatCard(statsRow, 'Open Exceptions', String(s.open_exceptions), 'Needs owner attention', '#ef4444');
 
     // Monitoring section
+    let monCard: HTMLDivElement | null = null;
     if (monitoring) {
       const m = monitoring;
-      const monCard = document.createElement('div');
+      monCard = document.createElement('div');
       monCard.style.backgroundColor = '#ffffff';
       monCard.style.border = '1px solid #e5e7eb';
       monCard.style.borderRadius = '0.5rem';
@@ -110,7 +111,7 @@ export function renderDashboard(container: HTMLElement): void {
       errCard.style.border = '1px solid #fecaca';
       errCard.style.borderRadius = '0.5rem';
       errCard.style.padding = '16px';
-      monCard && container.insertBefore(errCard, container.children[container.children.length - 1]); // insert before monitoring if exists, else append
+      monCard && container.insertBefore(errCard, container.children[container.children.length - 1] ?? null);
 
       const errTitle = document.createElement('h2');
       errTitle.textContent = 'Recent Sync Errors (24h)';
@@ -169,14 +170,14 @@ export function renderDashboard(container: HTMLElement): void {
 
   apiClient.getAuditLog(10).then((entries) => {
     createTable(auditTable, [
-      { key: 'created_at', label: 'Time', format: (v) => formatRelative(Number(v) || 0) },
-      { key: 'actor_id', label: 'Actor' },
-      { key: 'actor_role', label: 'Role' },
-      { key: 'operation', label: 'Action' },
-      { key: 'business_id', label: 'Business' },
-      { key: 'entity_type', label: 'Entity Type' },
-      { key: 'entity_id', label: 'Entity ID' },
-    ], entries);
+        { key: 'created_at', label: 'Time', format: (v) => formatRelative(Number(v) || 0) },
+        { key: 'actor_id', label: 'Actor' },
+        { key: 'actor_role', label: 'Role' },
+        { key: 'operation', label: 'Action' },
+        { key: 'business_id', label: 'Business' },
+        { key: 'entity_type', label: 'Entity Type' },
+        { key: 'entity_id', label: 'Entity ID' },
+      ], entries as unknown as Record<string, unknown>[]);
   }).catch(() => {
     auditTable.innerHTML = '<div style="color:#ef4444">Failed to load audit log</div>';
   });

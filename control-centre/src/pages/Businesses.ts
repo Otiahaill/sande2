@@ -1,8 +1,8 @@
 /**
  * Businesses page - List all businesses with status filters and quick actions.
  */
-import { apiClient } from '../api/client.ts';
-import { formatCurrency, formatRelative, createStatCard, createTable } from '../components/index.ts';
+import { apiClient } from '../api/client';
+import { formatCurrency, formatRelative, createStatCard, createTable } from '../components/index';
 
 export function renderBusinesses(container: HTMLElement): void {
   container.innerHTML = '';
@@ -63,7 +63,7 @@ export function renderBusinesses(container: HTMLElement): void {
     tableContainer.innerHTML = '';
 
     try {
-      const businesses = await apiClient.listBusinesses(status);
+      const businesses = await apiClient.listBusinesses(status!);
       emptyMsg.textContent = '';
 
       if (businesses.length === 0) {
@@ -87,9 +87,9 @@ export function renderBusinesses(container: HTMLElement): void {
         } },
         { key: 'member_count', label: 'Members' },
         { key: 'device_count', label: 'Devices' },
-      ], businesses, (row) => {
+      ], businesses as unknown as Record<string, unknown>[], (row) => {
         // Navigate to business detail
-        window.location.hash = `/business/${row.id}`;
+        window.location.hash = `/business/${row['id']}`;
       });
     } catch (err) {
       emptyMsg.textContent = `Failed to load businesses: ${err instanceof Error ? err.message : 'Unknown error'}`;

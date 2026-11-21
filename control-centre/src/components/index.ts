@@ -3,7 +3,7 @@
  * Built with vanilla DOM APIs (no framework) for minimal bundle size.
  */
 
-import { apiClient } from '../api/client.ts';
+import { apiClient } from '../api/client';
 
 export function formatCurrency(cents: number): string {
   return (cents / 100).toLocaleString(undefined, {

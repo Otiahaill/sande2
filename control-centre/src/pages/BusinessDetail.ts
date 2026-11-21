@@ -1,11 +1,12 @@
 /**
  * BusinessDetail page - Business detail with members, devices, sync health.
  */
-import { apiClient } from '../api/client.ts';
-import { formatRelative, createStatCard, createTable } from '../components/index.ts';
+import { apiClient } from '../api/client';
+import { formatRelative, createStatCard, createTable } from '../components/index';
 
 export function renderBusinessDetail(container: HTMLElement): void {
-  const businessId = window.location.hash.split('/').pop();
+  const hash = window.location.hash.slice(1);
+  const businessId = hash ? hash.split('/').pop() : undefined;
   if (!businessId) {
     container.innerHTML = '<div style="color:#ef4444">No business ID</div>';
     return;
@@ -23,7 +24,6 @@ export function renderBusinessDetail(container: HTMLElement): void {
   backBtn.style.marginBottom = '16px';
   backBtn.onclick = () => {
     window.location.hash = '/businesses';
-    renderBusinesses(window.location.hash);
   };
   container.appendChild(backBtn);
 
@@ -60,7 +60,7 @@ export function renderBusinessDetail(container: HTMLElement): void {
 
   async function load() {
     try {
-      const business = await apiClient.getBusiness(businessId);
+      const business = await apiClient.getBusiness(businessId!);
 
       title.textContent = business.name;
 
@@ -95,7 +95,7 @@ export function renderBusinessDetail(container: HTMLElement): void {
       actionBtn.style.cursor = 'pointer';
       actionBtn.onclick = async () => {
         try {
-          await apiClient.updateBusinessStatus(businessId, isSuspended ? 'active' : 'suspended', 'Suspended via Control Centre');
+          await apiClient.updateBusinessStatus(businessId!, isSuspended ? 'active' : 'suspended', 'Suspended via Control Centre');
           actionBtn.textContent = isSuspended ? 'Suspend Business' : 'Reactivate Business';
           statusChip.textContent = isSuspended ? 'active' : 'suspended';
           statusChip.style.backgroundColor = isSuspended ? '#dcfce7' : '#fee2e2';
@@ -196,13 +196,13 @@ export function renderBusinessDetail(container: HTMLElement): void {
       syncSection.appendChild(syncTable);
 
       try {
-        const syncHealth = await apiClient.getSyncHealth(businessId);
+        const syncHealth = await apiClient.getSyncHealth(businessId!);
         createTable(syncTable, [
           { key: 'total_batches_24h', label: 'Sync Batches (24h)' },
           { key: 'failed_batches_24h', label: 'Failed Batches' },
           { key: 'success_rate', label: 'Success Rate' },
           { key: 'open_exceptions', label: 'Open Exceptions' },
-        ], [syncHealth]);
+        ], [syncHealth] as unknown as Record<string, unknown>[]);
 
         // Device cursors
         if (syncHealth.device_cursors && syncHealth.device_cursors.length > 0) {

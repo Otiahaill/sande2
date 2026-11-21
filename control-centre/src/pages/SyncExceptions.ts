@@ -1,8 +1,8 @@
 /**
  * SyncExceptions page - Sync exception management for owner review.
  */
-import { apiClient } from '../api/client.ts';
-import { formatRelative, createTable } from '../components/index.ts';
+import { apiClient } from '../api/client';
+import { formatRelative, createTable } from '../components/index';
 
 export function renderSyncExceptions(container: HTMLElement): void {
   container.innerHTML = '';
