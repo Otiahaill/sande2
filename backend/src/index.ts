@@ -5,7 +5,9 @@ import { prettyJSON } from 'hono/pretty-json';
 import { HTTPException } from 'hono/http-exception';
 import { authMiddleware, requireOwner, requireAdmin } from './middleware/auth';
 import { rateLimitMiddleware } from './middleware/rateLimit';
+import { minVersionMiddleware, securityHeadersMiddleware, tenantIsolationMiddleware } from './middleware/security';
 import { businessDb } from './db/tenant';
+import { createPlatformDB } from './db/tenant';
 import { googleAuth, registerBusiness, acceptInvitation, registerDevice, refreshToken, logout } from './routes/auth';
 import { businessRoutes } from './routes/business';
 import { membershipRoutes } from './routes/memberships';
@@ -24,11 +26,12 @@ app.use('*', logger());
 app.use('*', prettyJSON());
 app.use('*', cors({
   origin: ['*'],
-  allowHeaders: ['Content-Type', 'Authorization', 'X-Device-Code', 'X-Business-Id'],
+  allowHeaders: ['Content-Type', 'Authorization', 'X-Device-Code', 'X-Business-Id', 'X-App-Version', 'X-App-Platform'],
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   maxAge: 86400,
 }));
 app.use('*', rateLimitMiddleware);
+app.use('*', securityHeadersMiddleware);
 
 // Health check (no auth)
 app.get('/health', healthCheck);
@@ -42,6 +45,8 @@ app.post('/auth/logout', logout);
 const protectedRoutes = app.basePath('/api');
 
 protectedRoutes.use('*', authMiddleware);
+protectedRoutes.use('*', minVersionMiddleware);
+protectedRoutes.use('*', tenantIsolationMiddleware);
 
 // Business registration & info
 protectedRoutes.post('/business/register', registerBusiness);
