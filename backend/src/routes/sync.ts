@@ -401,7 +401,7 @@ export async function status(c: Context<{ Bindings: CloudflareBindings; Variable
         last_push_at: cursor?.last_push_at,
         pending_push_count: cursor?.pending_push_count ?? 0,
       };
-    }).then(r => r.filter(Boolean));
+    }).then(r => r.filter(Boolean)));
   }
 
   return c.json({

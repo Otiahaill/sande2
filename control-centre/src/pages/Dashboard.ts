@@ -68,13 +68,15 @@ export function renderDashboard(container: HTMLElement): void {
       monGrid.style.gap = '12px';
       monCard.appendChild(monGrid);
 
-      const metrics = [
-        ['D1 Storage', m.d1_storage_mb],
-        ['D1 Rows Read (24h)', m.d1_rows_read_24h],
-        ['D1 Rows Written (24h)', m.d1_rows_written_24h],
-        ['R2 Storage', m.r2_storage_gb],
-        ['Worker Requests (24h)', m.worker_requests_24h],
-        ['Worker Errors (24h)', m.worker_errors_24h],
+      // Typed as tuples so `noUncheckedIndexedAccess` does not widen the
+      // destructured elements to `string | undefined`.
+      const metrics: Array<[string, string]> = [
+        ['D1 Storage', m.d1_storage_mb ?? 'N/A'],
+        ['D1 Rows Read (24h)', m.d1_rows_read_24h ?? 'N/A'],
+        ['D1 Rows Written (24h)', m.d1_rows_written_24h ?? 'N/A'],
+        ['R2 Storage', m.r2_storage_gb ?? 'N/A'],
+        ['Worker Requests (24h)', m.worker_requests_24h ?? 'N/A'],
+        ['Worker Errors (24h)', m.worker_errors_24h ?? 'N/A'],
       ];
 
       metrics.forEach(([label, val]) => {

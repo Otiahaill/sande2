@@ -142,7 +142,7 @@ export interface ApiResponse<T = unknown> {
 }
 
 class ApiErrorClass extends Error {
-  constructor(public code: string, public message: string, public status: number, public details?: unknown) {
+  constructor(public code: string, public override message: string, public status: number, public details?: unknown) {
     super(message);
     this.name = 'ApiError';
   }

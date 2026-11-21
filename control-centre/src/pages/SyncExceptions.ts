@@ -61,7 +61,7 @@ export function renderSyncExceptions(container: HTMLElement): void {
     tableContainer.innerHTML = '';
 
     try {
-      const exceptions = await apiClient.getExceptions('default-business', status);
+      const exceptions = await apiClient.getExceptions('default-business', status ?? undefined);
       emptyMsg.textContent = '';
 
       if (exceptions.length === 0) {

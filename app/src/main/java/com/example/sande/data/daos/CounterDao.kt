@@ -6,6 +6,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.example.sande.data.entities.Counter
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface CounterDao {
