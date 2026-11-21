@@ -32,9 +32,7 @@ class ConnectionResolver(
 
     /** Google Android OAuth client ID currently in effect. */
     fun googleAndroidClientId(): String {
-        return runBlocking {
-            connectionSettings.getGoogleClientId()
-        }?.takeIf { it.isNotBlank() } ?: appSettings.googleAndroidClientId
+        return appSettings.googleAndroidClientId
     }
 
     /** Backend base URL currently in effect. */

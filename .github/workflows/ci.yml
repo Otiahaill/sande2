@@ -26,6 +26,14 @@ jobs:
           mkdir -p "$ANDROID_HOME/licenses"
           printf '24333f8a63b6825ea9c5514f83c2829b004d1fee\n' > "$ANDROID_HOME/licenses/android-sdk-license"
 
+      - name: Inject secrets into local.properties
+        run: |
+          cat > local.properties << EOF
+          SANDE_GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+          SANDE_GOOGLE_ANDROID_CLIENT_ID=${{ secrets.GOOGLE_ANDROID_CLIENT_ID }}
+          SANDE_API_BASE_URL=${{ secrets.API_BASE_URL }}
+          EOF
+
       - name: Build debug APK
         run: |
           chmod +x gradlew

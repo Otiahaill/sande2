@@ -18,24 +18,27 @@ class AppSettings(context: Context) {
      *
      * This is the Web client ID. The Connection screen can override this at runtime via
      * [com.example.sande.data.prefs.ConnectionSettings]; that value wins.
-     * This field holds the fallback baked in at build time.
+     * This field holds the fallback baked in at build time from `BuildConfig`.
      */
     var googleClientId: String
-        get() = prefs.getString(KEY_GOOGLE_CLIENT_ID, DEFAULT_GOOGLE_CLIENT_ID) ?: DEFAULT_GOOGLE_CLIENT_ID
+        get() = prefs.getString(KEY_GOOGLE_CLIENT_ID, com.example.sande.BuildConfig.GOOGLE_CLIENT_ID)
+            ?.takeIf { it.isNotBlank() } ?: ""
         set(value) {
             prefs.edit().putString(KEY_GOOGLE_CLIENT_ID, value).apply()
         }
 
     /** Google Android OAuth client ID (build-time default). */
     var googleAndroidClientId: String
-        get() = prefs.getString(KEY_GOOGLE_ANDROID_CLIENT_ID, DEFAULT_GOOGLE_ANDROID_CLIENT_ID) ?: DEFAULT_GOOGLE_ANDROID_CLIENT_ID
+        get() = prefs.getString(KEY_GOOGLE_ANDROID_CLIENT_ID, com.example.sande.BuildConfig.GOOGLE_ANDROID_CLIENT_ID)
+            ?.takeIf { it.isNotBlank() } ?: ""
         set(value) {
             prefs.edit().putString(KEY_GOOGLE_ANDROID_CLIENT_ID, value).apply()
         }
 
     /** API base URL (build-time default; overridable at runtime). */
     var apiBaseUrl: String
-        get() = prefs.getString(KEY_API_BASE_URL, DEFAULT_API_BASE_URL) ?: DEFAULT_API_BASE_URL
+        get() = prefs.getString(KEY_API_BASE_URL, com.example.sande.BuildConfig.API_BASE_URL)
+            ?.takeIf { it.isNotBlank() } ?: DEFAULT_API_BASE_URL
         set(value) {
             prefs.edit().putString(KEY_API_BASE_URL, value).apply()
         }
@@ -76,11 +79,21 @@ class AppSettings(context: Context) {
         const val POLICY_ALLOW = "allow"
 
         /**
-         * Build-time defaults. Override at runtime from the Connection screen
-         * (Settings → Connection) once the backend is deployed.
+         * Build-time defaults for the Google OAuth client IDs.
+         *
+         * These are PUBLIC values (an OAuth client ID ships inside every APK),
+         * but they are kept out of source control and injected from
+         * `local.properties` / gradle properties so push-protection scanners do
+         * not flag them. See `app/build.gradle.kts` for the injection point.
+         *
+         *   local.properties:
+         *     SANDE_GOOGLE_CLIENT_ID=<web client id>
+         *     SANDE_GOOGLE_ANDROID_CLIENT_ID=<android client id>
+         *
+         * At runtime the user can also set them from Settings → Connection.
          */
-        const val DEFAULT_GOOGLE_CLIENT_ID = "30937762168-1q32ltfb5co7t0l5763fjn23dv2rtsbq.apps.googleusercontent.com"
-        const val DEFAULT_GOOGLE_ANDROID_CLIENT_ID = "30937762168-5c4b7ph38sk85nc3mqanedngbjv02n3f.apps.googleusercontent.com"
+        const val DEFAULT_GOOGLE_CLIENT_ID = ""
+        const val DEFAULT_GOOGLE_ANDROID_CLIENT_ID = ""
         const val DEFAULT_API_BASE_URL = "https://sande-backend-dev.your-subdomain.workers.dev"
 
         private const val KEY_NEGATIVE_STOCK = "negative_stock_policy"

@@ -2,6 +2,20 @@
 
 All entries are chronological. Status descriptions are accurate.
 
+## 2026-11-21 — CI Build Debugging (APK Not Yet Building)
+- **Bug:** `.github/workflows/ci.yml` failed with **0 jobs created** — invalid YAML (stray ``` fence at EOF, `defaults.run` + `working-directory` conflicts across 5 jobs)
+- **Fix:** Rewrote workflow as a single `build` job (checkout → JDK 17 → SDK licenses → assembleDebug → upload artifact). Verified GitHub Actions works via a minimal test workflow first.
+- **Bug:** `GoogleSignInClient.kt:72` — `??` is a TypeScript operator, invalid in Kotlin
+- **Fix:** Changed to Kotlin Elvis operator `?:`
+- **Bug:** `SessionManager.kt:52-53` — `VALID(expiresAt: Long)` is invalid Kotlin enum syntax
+- **Fix:** Changed to plain constants `VALID, EXPIRING_SOON, EXPIRED, UNKNOWN`
+- **Bug:** `GoogleSignInClient.kt` — `credential.idToken ?:` on a possibly non-null property
+- **Fix:** Explicit `if (idToken == null) { ... }` null check
+- **Security:** `backend/docs/DEPLOY.md` was committed with real Cloudflare + Google credentials; GitHub push protection blocked the push. Replaced all values with `<your-...>` placeholders and amended the commit.
+- **Fixed:** Control Centre TypeScript — import paths (`../api/client` → `./api/client`), `as unknown as Record<string, unknown>[]` type assertions, null-guards. `tsc --noEmit` now passes with 0 errors.
+- **Outstanding:** KSP fails with `[MissingType]: Element 'com.example.sande.data.db.AppDatabase' references a type that is not present`. Suspects: missing `MovementType` `@TypeConverter`, and `exportSchema = true` without `room.schemaLocation`.
+- **Status:** In progress — fix sequence documented in `study_session.md`
+
 ## 2026-11-21 — Phase 8: Hardening & Multi-Business Launch (Planning)
 - **Status:** In planning
 

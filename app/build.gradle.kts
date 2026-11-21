@@ -5,6 +5,16 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+// Read build-time configuration from local.properties (git-ignored) or gradle properties.
+// This keeps OAuth client IDs and the backend URL out of source control while still
+// letting CI inject them from GitHub secrets.
+val localProperties = java.util.Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+fun configValue(key: String, fallback: String = ""): String =
+    (project.findProperty(key) as String?) ?: localProperties.getProperty(key) ?: fallback
+
 android {
     namespace = "com.example.sande"
     compileSdk = 34
@@ -15,6 +25,16 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0.0"
+
+        // Injected build config — see local.properties / gradle properties
+        buildConfigField("String", "GOOGLE_CLIENT_ID", "\"${configValue("SANDE_GOOGLE_CLIENT_ID")}\"")
+        buildConfigField("String", "GOOGLE_ANDROID_CLIENT_ID", "\"${configValue("SANDE_GOOGLE_ANDROID_CLIENT_ID")}\"")
+        buildConfigField("String", "API_BASE_URL", "\"${configValue("SANDE_API_BASE_URL")}\"")
+    }
+
+    buildFeatures {
+        compose = true
+        buildConfig = true
     }
 
     buildTypes {
@@ -32,10 +52,6 @@ android {
         jvmTarget = "17"
     }
 
-    buildFeatures {
-        compose = true
-    }
-
     composeOptions {
         kotlinCompilerExtensionVersion = libs.versions.composeCompiler.get()
     }
@@ -45,6 +61,12 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+}
+
+// Room schema export location — required when exportSchema = true
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+    arg("room.incremental", "true")
 }
 
 dependencies {
