@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Inventory2
@@ -47,6 +49,7 @@ import androidx.navigation.navArgument
 import com.example.sande.data.repository.AuthRepository
 import com.example.sande.di.SandeApplication
 import com.example.sande.domain.PermissionPolicy
+import com.example.sande.ui.screens.AuditEventsScreen
 import com.example.sande.ui.screens.AuditViewerScreen
 import com.example.sande.ui.screens.BackupRestoreScreen
 import com.example.sande.ui.screens.CatalogueScreen
@@ -54,6 +57,7 @@ import com.example.sande.ui.screens.DashboardScreen
 import com.example.sande.ui.screens.MemberListScreen
 import com.example.sande.ui.screens.ProductFormScreen
 import com.example.sande.ui.screens.ReceiveStockScreen
+import com.example.sande.ui.screens.ReceiptHistoryScreen
 import com.example.sande.ui.screens.ReplenishmentAlertsScreen
 import com.example.sande.ui.screens.ReportsScreen
 import com.example.sande.ui.screens.SaleHistoryScreen
@@ -61,25 +65,49 @@ import com.example.sande.ui.screens.SalesScreen
 import com.example.sande.ui.screens.SettingsScreen
 import com.example.sande.ui.screens.SignInScreen
 import com.example.sande.ui.screens.SplashScreen
+import com.example.sande.ui.screens.StockMovementsScreen
 import com.example.sande.ui.screens.StockScreen
+import com.example.sande.ui.onboarding.BusinessResolutionScreen
+import com.example.sande.ui.onboarding.DeviceApprovalScreen
+import com.example.sande.ui.onboarding.InvitationAcceptScreen
+import com.example.sande.ui.onboarding.LegacyAdoptionScreen
+import com.example.sande.ui.onboarding.RecoveryCodesScreen
+import com.example.sande.ui.onboarding.WelcomeScreen
+import com.example.sande.ui.onboarding.GoogleSignInScreen
+import com.example.sande.ui.settings.ConnectionSettingsScreen
+import com.example.sande.ui.screens.SyncStatusScreen
 import com.example.sande.ui.theme.SandeTheme
 import kotlinx.coroutines.launch
 
 /** Every screen in the app has a route so the drawer can reach all of them. */
 object Routes {
+    // Onboarding
     const val SPLASH = "splash"
+    const val WELCOME = "welcome"
     const val SIGN_IN = "sign_in"
+    const val BUSINESS_RESOLUTION = "business_resolution"
+    const val LEGACY_ADOPTION = "legacy_adoption"
+    const val RECOVERY_CODES = "recovery_codes"
+    const val DEVICE_APPROVAL = "device_approval"
+    const val INVITATION_ACCEPT = "invitation_accept"
+
+    // Main app
     const val DASHBOARD = "dashboard"
     const val CATALOGUE = "catalogue"
     const val STOCK = "stock"
+    const val STOCK_MOVEMENTS = "stock/movements"
     const val SALES = "sales"
     const val SALE_HISTORY = "sale_history"
+    const val RECEIPT_HISTORY = "receipt_history"
     const val REPORTS = "reports"
     const val ALERTS = "alerts"
     const val MEMBERS = "members"
     const val AUDIT = "audit"
+    const val AUDIT_EVENTS = "audit/events"
     const val BACKUP = "backup"
     const val SETTINGS = "settings"
+    const val CONNECTION = "connection"
+    const val SYNC_STATUS = "sync_status"
     const val PRODUCT_NEW = "product/new"
     const val PRODUCT_EDIT = "product/edit/{productId}"
     const val RECEIVE_STOCK = "stock/receive"
@@ -124,8 +152,12 @@ private val ownerDrawerSections = listOf(
                 caption = "Product master data",
                 children = listOf(
                     DrawerEntry(
-                        Routes.STOCK, "Stock", Icons.Default.Storage,
+                        Routes.STOCK, "Stock Levels", Icons.Default.Storage,
                         caption = "Levels per catalogue product"
+                    ),
+                    DrawerEntry(
+                        Routes.STOCK_MOVEMENTS, "Stock Movements", Icons.Default.History,
+                        caption = "Detailed movement ledger"
                     ),
                     DrawerEntry(
                         Routes.ALERTS, "Low Stock Alerts", Icons.Default.Warning,
@@ -139,7 +171,7 @@ private val ownerDrawerSections = listOf(
         title = "Sales",
         entries = listOf(
             DrawerEntry(
-                Routes.SALES, "Sales", Icons.Default.ShoppingCart,
+                Routes.SALES, "New Sale", Icons.Default.ShoppingCart,
                 caption = "Record a sale",
                 children = listOf(
                     DrawerEntry(
@@ -147,8 +179,16 @@ private val ownerDrawerSections = listOf(
                         caption = "Sales already recorded"
                     ),
                     DrawerEntry(
-                        Routes.AUDIT, "Audit Viewer", Icons.Default.History,
+                        Routes.RECEIPT_HISTORY, "Receipt History", Icons.Default.ReceiptLong,
+                        caption = "Print & share receipts"
+                    ),
+                    DrawerEntry(
+                        Routes.AUDIT, "Audit Viewer (Legacy)", Icons.Default.History,
                         caption = "Every stock movement trail"
+                    ),
+                    DrawerEntry(
+                        Routes.AUDIT_EVENTS, "Audit Events", Icons.Default.History,
+                        caption = "Detailed audit trail with filters"
                     )
                 )
             )
@@ -166,6 +206,14 @@ private val ownerDrawerSections = listOf(
                 Routes.BACKUP, "Backup & Restore", Icons.Default.SettingsBackupRestore,
                 caption = "Export and import the database",
                 requiresOwner = true
+            ),
+            DrawerEntry(
+                Routes.CONNECTION, "Connection", Icons.Default.Cloud,
+                caption = "Backend URL and Google sign-in"
+            ),
+            DrawerEntry(
+                Routes.SYNC_STATUS, "Sync Status", Icons.Default.CloudDone,
+                caption = "Cloud synchronisation status"
             ),
             DrawerEntry(
                 Routes.SETTINGS, "Settings", Icons.Default.Settings,
@@ -293,17 +341,86 @@ private fun AppNavHost(navController: NavHostController, onOpenDrawer: () -> Uni
         composable(Routes.SPLASH) {
             SplashScreen(
                 onFinished = {
-                    navController.navigate(Routes.SIGN_IN) {
+                    navController.navigate(Routes.WELCOME) {
                         popUpTo(Routes.SPLASH) { inclusive = true }
                     }
                 }
             )
         }
+        composable(Routes.WELCOME) {
+            WelcomeScreen(
+                onNavigateToSignIn = {
+                    navController.navigate(Routes.SIGN_IN) {
+                        popUpTo(Routes.WELCOME) { inclusive = true }
+                    }
+                }
+            )
+        }
         composable(Routes.SIGN_IN) {
-            SignInScreen(
-                onSignedIn = {
-                    navController.navigate(Routes.DASHBOARD) {
+            GoogleSignInScreen(
+                onBack = {
+                    navController.navigate(Routes.WELCOME) {
                         popUpTo(Routes.SIGN_IN) { inclusive = true }
+                    }
+                }
+            )
+        }
+        composable(Routes.BUSINESS_RESOLUTION) {
+            BusinessResolutionScreen(
+                onBack = {
+                    navController.navigate(Routes.SIGN_IN) {
+                        popUpTo(Routes.BUSINESS_RESOLUTION) { inclusive = true }
+                    }
+                }
+            )
+        }
+        composable(Routes.LEGACY_ADOPTION) {
+            LegacyAdoptionScreen(
+                onBack = {
+                    navController.navigate(Routes.BUSINESS_RESOLUTION) {
+                        popUpTo(Routes.LEGACY_ADOPTION) { inclusive = true }
+                    }
+                },
+                onSkip = {
+                    navController.navigate(Routes.DASHBOARD) {
+                        popUpTo(Routes.LEGACY_ADOPTION) { inclusive = true }
+                    }
+                },
+                onComplete = {
+                    navController.navigate(Routes.DASHBOARD) {
+                        popUpTo(Routes.LEGACY_ADOPTION) { inclusive = true }
+                    }
+                }
+            )
+        }
+        composable(Routes.RECOVERY_CODES) {
+            RecoveryCodesScreen(
+                onContinue = {
+                    navController.navigate(Routes.DASHBOARD) {
+                        popUpTo(Routes.RECOVERY_CODES) { inclusive = true }
+                    }
+                }
+            )
+        }
+        composable(Routes.DEVICE_APPROVAL) {
+            DeviceApprovalScreen(
+                onApproved = {
+                    navController.navigate(Routes.DASHBOARD) {
+                        popUpTo(Routes.DEVICE_APPROVAL) { inclusive = true }
+                    }
+                },
+                onRetry = {
+                    navController.navigate(Routes.SIGN_IN) {
+                        popUpTo(Routes.DEVICE_APPROVAL) { inclusive = true }
+                    }
+                }
+            )
+        }
+        composable(Routes.INVITATION_ACCEPT) {
+            InvitationAcceptScreen(
+                onBack = {
+                    navController.navigate(Routes.SIGN_IN) {
+                        popUpTo(Routes.INVITATION_ACCEPT) { inclusive = true }
                     }
                 }
             )
@@ -330,6 +447,9 @@ private fun AppNavHost(navController: NavHostController, onOpenDrawer: () -> Uni
         composable(Routes.SALE_HISTORY) {
             SaleHistoryScreen(onOpenDrawer = onOpenDrawer)
         }
+        composable(Routes.RECEIPT_HISTORY) {
+            ReceiptHistoryScreen(onOpenDrawer = onOpenDrawer)
+        }
         composable(Routes.REPORTS) {
             ReportsScreen(onOpenDrawer = onOpenDrawer)
         }
@@ -342,11 +462,23 @@ private fun AppNavHost(navController: NavHostController, onOpenDrawer: () -> Uni
         composable(Routes.AUDIT) {
             AuditViewerScreen(onOpenDrawer = onOpenDrawer)
         }
+        composable(Routes.AUDIT_EVENTS) {
+            AuditEventsScreen(onOpenDrawer = onOpenDrawer)
+        }
+        composable(Routes.STOCK_MOVEMENTS) {
+            StockMovementsScreen(onOpenDrawer = onOpenDrawer)
+        }
         composable(Routes.BACKUP) {
             BackupRestoreScreen(onOpenDrawer = onOpenDrawer)
         }
         composable(Routes.SETTINGS) {
             SettingsScreen(onOpenDrawer = onOpenDrawer)
+        }
+        composable(Routes.CONNECTION) {
+            ConnectionSettingsScreen(onOpenDrawer = onOpenDrawer)
+        }
+        composable(Routes.SYNC_STATUS) {
+            SyncStatusScreen(onOpenDrawer = onOpenDrawer)
         }
         composable(Routes.PRODUCT_NEW) {
             ProductFormScreen(

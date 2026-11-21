@@ -48,7 +48,7 @@ fun StockScreen(
     val context = LocalContext.current
     val app = context.applicationContext as SandeApplication
     val vm: StockViewModel = viewModel(
-        factory = viewModelFactoryOf { StockViewModel(app.movementRepository, app.productRepository, app.stockAdjustmentRepository) }
+        factory = viewModelFactoryOf { StockViewModel(app.stockMovementRepository, app.productRepository) }
     )
     val rows by vm.rows.collectAsState()
 

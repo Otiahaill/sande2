@@ -4,11 +4,12 @@ import androidx.room.withTransaction
 import com.example.sande.data.db.AppDatabase
 import com.example.sande.data.daos.MovementDao
 import com.example.sande.data.daos.SaleHeaderDao
+import com.example.sande.data.daos.StockMovementDao
 import com.example.sande.data.entities.Movement
 import com.example.sande.data.entities.MovementType
 import com.example.sande.data.entities.SaleHeader
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.map
 import java.util.UUID
 
 /**
@@ -20,6 +21,11 @@ data class SaleLineItem(
     val unitPriceCents: Long
 )
 
+/**
+ * Legacy MovementRepository - kept for backwards compatibility with existing code.
+ * New code should use StockMovementRepository, CheckoutRepository, SaleSessionRepository, etc.
+ * This class now reads from stock_movements for balance calculations.
+ */
 class MovementRepository constructor(
     private val database: AppDatabase,
     private val productRepository: ProductRepository,
@@ -27,15 +33,24 @@ class MovementRepository constructor(
 ) {
     private val movementDao: MovementDao = database.movementDao()
     private val saleHeaderDao: SaleHeaderDao = database.saleHeaderDao()
+    private val stockMovementDao: StockMovementDao = database.stockMovementDao()
 
+    // Legacy read flows (for migration period)
     val getAll: Flow<List<Movement>> = movementDao.getAll()
 
     fun getByProduct(productId: String): Flow<List<Movement>> = movementDao.getByProduct(productId)
 
-    suspend fun getStockBalance(productId: String): Long = movementDao.getStockBalance(productId)
+    // Use new stock_movements table for balance
+    suspend fun getStockBalance(productId: String): Long = stockMovementDao.getStockBalance(productId)
+
+    // Observe real-time balances for all products in a business
+    fun observeBalances(businessId: String): Flow<Map<String, Long>> = stockMovementDao.observeBalances(businessId)
 
     fun getUnsynced(): Flow<List<Movement>> = movementDao.getUnsynced()
 
+    // Legacy write methods - kept for any remaining legacy code paths
+    // NEW CODE SHOULD USE CheckoutRepository.recordSaleAtomic() INSTEAD
+    @Deprecated("Use CheckoutRepository.recordSaleAtomic()", ReplaceWith("checkoutRepository.recordSaleAtomic(...)"))
     suspend fun recordSale(productId: String, quantity: Long, unitPriceCents: Long?, referenceId: String?, deviceId: String): String {
         val id = UUID.randomUUID().toString()
         val movement = Movement(
@@ -53,10 +68,10 @@ class MovementRepository constructor(
     }
 
     /**
-     * Atomically records a complete sale in one Room transaction:
-     * 1. Creates a SaleHeader with receipt number
-     * 2. Inserts all SALE movements with shared referenceId
+     * @deprecated Use CheckoutRepository.recordSaleAtomic() instead.
+     * This legacy method writes to both movements (legacy) and sale_headers.
      */
+    @Deprecated("Use CheckoutRepository.recordSaleAtomic()", ReplaceWith("checkoutRepository.recordSaleAtomic(...)"))
     suspend fun recordSaleAtomic(
         items: List<SaleLineItem>,
         receiptNumber: String,
@@ -100,6 +115,7 @@ class MovementRepository constructor(
         saleHeaderId
     }
 
+    @Deprecated("Use CheckoutRepository.recordReceiveAtomic()")
     suspend fun recordReceive(productId: String, quantity: Long, unitPriceCents: Long?, referenceId: String?, deviceId: String): String {
         val id = UUID.randomUUID().toString()
         val movement = Movement(
@@ -116,6 +132,7 @@ class MovementRepository constructor(
         return id
     }
 
+    @Deprecated("Use CheckoutRepository.recordAdjustmentAtomic()")
     suspend fun recordAdjustment(productId: String, quantity: Long, referenceId: String?, deviceId: String): String {
         val id = UUID.randomUUID().toString()
         val movement = Movement(
@@ -132,6 +149,7 @@ class MovementRepository constructor(
         return id
     }
 
+    @Deprecated("Use CheckoutRepository.voidSaleAtomic()")
     suspend fun recordVoid(originalMovementId: String, productId: String, quantity: Long, referenceId: String?, deviceId: String): String {
         val id = UUID.randomUUID().toString()
         val movement = Movement(

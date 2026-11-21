@@ -1,19 +1,20 @@
 package com.example.sande.data.repository
 
 import com.example.sande.data.db.AppDatabase
+import com.example.sande.data.daos.AuditEventDao
 import com.example.sande.data.daos.ProductDao
+import com.example.sande.data.entities.AuditEvent
 import com.example.sande.data.entities.Product
+import com.example.sande.data.entities.ProductPriceHistory
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import java.util.UUID
 
 class ProductRepository constructor(
     private val database: AppDatabase
 ) {
     private val dao: ProductDao = database.productDao()
+    private val priceHistoryDao = database.productPriceHistoryDao()
+    private val auditEventDao: AuditEventDao = database.auditEventDao()
 
     val getAllActive: Flow<List<Product>> = dao.getAllActive()
 
@@ -31,19 +32,124 @@ class ProductRepository constructor(
 
     suspend fun update(product: Product) = dao.update(product)
 
-    suspend fun archive(id: String) {
+    /**
+     * Updates product price and records the change in price history and audit log.
+     */
+    suspend fun updatePrice(
+        productId: String,
+        newPriceCents: Long,
+        changedBy: String,
+        actorRole: String,
+        deviceCode: String,
+        businessId: String,
+        reason: String? = null
+    ): Product? {
+        val existing = dao.getById(productId) ?: return null
+        if (existing.priceCents == newPriceCents) return existing
+
+        val oldPrice = existing.priceCents
+        val updated = existing.copy(
+            priceCents = newPriceCents,
+            originalPriceCents = if (existing.originalPriceCents == 0L) oldPrice else existing.originalPriceCents
+        )
+        dao.update(updated)
+
+        // Record price history
+        priceHistoryDao.insert(ProductPriceHistory(
+            id = UUID.randomUUID().toString(),
+            productId = productId,
+            oldPriceCents = oldPrice,
+            newPriceCents = newPriceCents,
+            changedBy = changedBy,
+            reason = reason,
+            createdAt = System.currentTimeMillis()
+        ))
+
+        // Record audit event
+        auditEventDao.insert(AuditEvent(
+            id = UUID.randomUUID().toString(),
+            businessId = businessId,
+            entityType = "product",
+            entityId = productId,
+            action = "updated",
+            actorId = changedBy,
+            actorRole = actorRole,
+            deviceCode = deviceCode,
+            severity = "info",
+            beforeJson = "{\"priceCents\":$oldPrice}",
+            afterJson = "{\"priceCents\":$newPriceCents}",
+            metadataJson = if (reason != null) "{\"reason\":\"$reason\"}" else null,
+            createdAt = System.currentTimeMillis(),
+            synced = false
+        ))
+
+        return updated
+    }
+
+    suspend fun archive(id: String, actorId: String, actorRole: String, deviceCode: String, businessId: String) {
         val now = System.currentTimeMillis()
+        val existing = dao.getById(id) ?: return
         dao.archive(id, now, now)
+        auditEventDao.insert(AuditEvent(
+            id = UUID.randomUUID().toString(),
+            businessId = businessId,
+            entityType = "product",
+            entityId = id,
+            action = "archived",
+            actorId = actorId,
+            actorRole = actorRole,
+            deviceCode = deviceCode,
+            severity = "info",
+            beforeJson = existing.toString(),
+            afterJson = "archived",
+            metadataJson = null,
+            createdAt = now,
+            synced = false
+        ))
     }
 
-    suspend fun softDelete(id: String) {
+    suspend fun softDelete(id: String, actorId: String, actorRole: String, deviceCode: String, businessId: String) {
         val now = System.currentTimeMillis()
+        val existing = dao.getById(id) ?: return
         dao.softDelete(id, now, now)
+        auditEventDao.insert(AuditEvent(
+            id = UUID.randomUUID().toString(),
+            businessId = businessId,
+            entityType = "product",
+            entityId = id,
+            action = "deleted",
+            actorId = actorId,
+            actorRole = actorRole,
+            deviceCode = deviceCode,
+            severity = "warning",
+            beforeJson = existing.toString(),
+            afterJson = "deleted",
+            metadataJson = null,
+            createdAt = now,
+            synced = false
+        ))
     }
 
-    suspend fun setActive(id: String, isActive: Boolean) {
+    suspend fun setActive(id: String, isActive: Boolean, actorId: String, actorRole: String, deviceCode: String, businessId: String) {
         val now = System.currentTimeMillis()
+        val existing = dao.getById(id) ?: return
         dao.setActive(id, isActive, now)
+        auditEventDao.insert(AuditEvent(
+            id = UUID.randomUUID().toString(),
+            businessId = businessId,
+            entityType = "product",
+            entityId = id,
+            action = if (isActive) "activated" else "deactivated",
+            actorId = actorId,
+            actorRole = actorRole,
+            deviceCode = deviceCode,
+            severity = "info",
+            beforeJson = existing.toString(),
+            afterJson = "isActive=$isActive",
+            metadataJson = null,
+            createdAt = now,
+            synced = false
+        ))
     }
 
     fun getByCategory(category: String): Flow<List<Product>> = dao.getByCategory(category)

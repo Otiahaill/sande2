@@ -2,55 +2,46 @@ package com.example.sande.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.sande.data.entities.MovementType
 import com.example.sande.data.entities.Product
-import com.example.sande.data.repository.MovementRepository
 import com.example.sande.data.repository.ProductRepository
-import com.example.sande.data.repository.StockAdjustmentRepository
+import com.example.sande.data.repository.StockMovementRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 
 class StockViewModel(
-    private val movementRepository: MovementRepository,
-    productRepository: ProductRepository,
-    private val stockAdjustmentRepository: StockAdjustmentRepository
+    private val stockMovementRepository: StockMovementRepository,
+    productRepository: ProductRepository
 ) : ViewModel() {
 
     data class StockRow(val product: Product, val balance: Long)
 
     val rows: StateFlow<List<StockRow>> =
-        combine(productRepository.getAllActiveByBusiness("default-business"), movementRepository.getAll) { products, movements ->
-            val balances = movements.groupBy { it.productId }.mapValues { entry ->
-                entry.value.sumOf { m ->
-                    when (m.type) {
-                        MovementType.RECEIVE -> m.quantity
-                        MovementType.SALE -> -m.quantity
-                        MovementType.ADJUST -> m.quantity
-                        MovementType.VOID -> m.quantity
-                    }
-                }
-            }
+        combine(productRepository.getAllActiveByBusiness("default-business"), stockMovementRepository.observeBalances("default-business")) { products, balances ->
             products.map { StockRow(it, balances[it.id] ?: 0L) }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    /** Suspends until both writes are done, so callers only navigate away once stock is saved. */
-    suspend fun receive(productId: String, quantity: Long, userId: String) {
+    /** Records a stock receipt as a single RECEIVE stock movement. */
+    suspend fun receive(productId: String, quantity: Long, deviceCode: String = "local", actorId: String = "local-owner", actorRole: String = "owner") {
         if (quantity <= 0L) return
-        movementRepository.recordReceive(productId, quantity, null, null, "local")
-        stockAdjustmentRepository.insert(
-            com.example.sande.data.entities.StockAdjustment(
+        stockMovementRepository.insert(
+            com.example.sande.data.entities.StockMovement(
                 id = java.util.UUID.randomUUID().toString(),
                 productId = productId,
                 businessId = "default-business",
-                adjustmentType = "RECEIVE",
-                quantityChange = quantity,
+                movementType = "RECEIVE",
+                quantityDelta = quantity,
+                unitPriceCents = null,
+                actorId = actorId,
+                actorRole = actorRole,
+                deviceCode = deviceCode,
                 reason = "Stock received",
                 referenceId = null,
+                reversalOf = null,
+                metadataJson = null,
                 createdAt = System.currentTimeMillis(),
-                createdBy = userId
+                synced = false
             )
         )
     }

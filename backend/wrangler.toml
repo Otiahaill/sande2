@@ -1,0 +1,92 @@
+name = "sande-backend"
+main = "src/index.ts"
+compatibility_date = "2026-11-17"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+ENVIRONMENT = "development"
+
+[dev]
+port = 8787
+ip = "127.0.0.1"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "sande-platform-dev"
+database_id = "06f5fadf-8b62-4ddb-9e95-421515291928"
+
+[[r2_buckets]]
+binding = "R2_BACKUPS"
+bucket_name = "sande-backups-dev"
+
+[[kv_namespaces]]
+binding = "SESSION_KV"
+id = "32df0f0153674c059656882dd8eeb9c2"
+
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "c7bf7ad612d64de5aafc09269023fd1b"
+
+[durable_objects]
+bindings = [
+  { name = "SYNC_COORDINATOR", class_name = "SyncCoordinator" }
+]
+
+[observability]
+enabled = true
+
+[triggers]
+crons = [
+  { name = "nightly-backup", schedule = "0 3 * * *" },
+  { name = "cleanup-sync-exceptions", schedule = "0 4 * * *" },
+  { name = "lease-expiry-check", schedule = "0 */6 * * *" }
+]
+
+[workflows]
+[[workflows.bindings]]
+name = "backup-workflow"
+class_name = "BackupWorkflow"
+
+# Staging environment
+[env.staging]
+name = "sande-backend-staging"
+vars = { ENVIRONMENT = "staging" }
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "sande-platform-staging"
+database_id = "PLACEHOLDER_STAGING_DB_ID"
+
+[[env.staging.r2_buckets]]
+binding = "R2_BACKUPS"
+bucket_name = "sande-backups-staging"
+
+[[env.staging.kv_namespaces]]
+binding = "SESSION_KV"
+id = "PLACEHOLDER_STAGING_SESSION_KV_ID"
+
+[[env.staging.kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "PLACEHOLDER_STAGING_RATE_LIMIT_KV_ID"
+
+# Production environment
+[env.production]
+name = "sande-backend-prod"
+vars = { ENVIRONMENT = "production" }
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "sande-platform-prod"
+database_id = "PLACEHOLDER_PROD_DB_ID"
+
+[[env.production.r2_buckets]]
+binding = "R2_BACKUPS"
+bucket_name = "sande-backups-prod"
+
+[[env.production.kv_namespaces]]
+binding = "SESSION_KV"
+id = "PLACEHOLDER_PROD_SESSION_KV_ID"
+
+[[env.production.kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "PLACEHOLDER_PROD_RATE_LIMIT_KV_ID"

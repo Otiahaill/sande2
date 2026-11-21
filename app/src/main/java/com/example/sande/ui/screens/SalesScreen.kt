@@ -61,7 +61,13 @@ fun SalesScreen(
     val app = context.applicationContext as SandeApplication
     val vm: SalesViewModel = viewModel(
         factory = viewModelFactoryOf {
-            SalesViewModel(app.movementRepository, app.productRepository, app.saleHeaderRepository, app.settings)
+            SalesViewModel(
+                app.checkoutRepository,
+                app.productRepository,
+                app.draftSaleRepository,
+                app.saleHeaderRepository,
+                app.settings
+            )
         }
     )
     val products by vm.products.collectAsState()

@@ -63,5 +63,38 @@ dependencies {
     ksp(libs.androidx.room.compiler)
     implementation(libs.kotlinx.serialization.json)
 
+    // Auth & Credentials
+    implementation(libs.androidx.credential.manager)
+    implementation(libs.androidx.credential.manager.play.services)
+    implementation(libs.google.play.services.auth)
+
+    // WorkManager
+    implementation(libs.androidx.work.runtime)
+
+    // Network (Ktor)
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.android)
+    implementation(libs.ktor.client.json)
+    implementation(libs.ktor.serialization.kotlinx)
+
+    // OkHttp (for Ktor engine)
+    implementation(libs.okhttp)
+
+    // EncryptedSharedPreferences
+    implementation(libs.androidx.security.crypto)
+
+    // Biometric
+    implementation(libs.androidx.biometric)
+
+    // Image loading
+    implementation(libs.coil.compose)
+
     testImplementation(libs.junit)
+    testImplementation(libs.truth)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.androidx.test.rules)
+    testImplementation(libs.androidx.room.testing)
+
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.espresso.core)
 }

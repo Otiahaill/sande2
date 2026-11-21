@@ -42,10 +42,10 @@ class SaleHeaderRepository constructor(
 
     /**
      * Generates a receipt number in the format {prefix}-{deviceShort}-{counter}.
-     * counter is the next sequence number based on existing sale headers.
+     * counter is the next sequence number based on existing sale headers for the business.
      */
-    suspend fun generateReceiptNumber(prefix: String, deviceShort: String): String {
-        val count = dao.countAll()
+    suspend fun generateReceiptNumber(prefix: String, deviceShort: String, businessId: String): String {
+        val count = dao.countByBusiness(businessId)
         val counter = count + 1
         return "$prefix-$deviceShort-${String.format("%05d", counter)}"
     }

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Backup archives live in the app cache while being shared -->
+    <cache-path
+        name="backups"
+        path="." />
+    <!-- Receipt PDFs are written to external files dir -->
+    <external-files-path
+        name="receipts"
+        path="." />
+    <external-path
+        name="external_files"
+        path="." />
+</paths>

@@ -45,7 +45,7 @@ fun ReceiveStockScreen(
     val context = LocalContext.current
     val app = context.applicationContext as SandeApplication
     val vm: StockViewModel = viewModel(
-        factory = viewModelFactoryOf { StockViewModel(app.movementRepository, app.productRepository, app.stockAdjustmentRepository) }
+        factory = viewModelFactoryOf { StockViewModel(app.movementRepository, app.productRepository) }
     )
     val rows by vm.rows.collectAsState()
     val session by app.authRepository.session.collectAsState()
@@ -140,7 +140,13 @@ fun ReceiveStockScreen(
                         error = null
                         scope.launch {
                             try {
-                                vm.receive(id, qty, session?.uid ?: "local-owner")
+                                vm.receive(
+                                    productId = id,
+                                    quantity = qty,
+                                    deviceCode = app.connectionResolver.deviceCode(),
+                                    actorId = session?.uid ?: "local-owner",
+                                    actorRole = session?.role ?: "owner"
+                                )
                                 onReceived()
                             } catch (e: kotlinx.coroutines.CancellationException) {
                                 throw e

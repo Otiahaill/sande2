@@ -2,222 +2,219 @@ package com.example.sande.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.sande.data.entities.Movement
-import com.example.sande.data.entities.SaleHeader
-import com.example.sande.data.repository.MovementRepository
-import com.example.sande.data.repository.SaleHeaderRepository
+import com.example.sande.data.entities.BusinessProfile
+import com.example.sande.data.entities.SaleItem
+import com.example.sande.data.entities.SaleSession
+import com.example.sande.data.repository.BusinessProfileRepository
+import com.example.sande.data.repository.SaleItemRepository
+import com.example.sande.data.repository.SaleSessionRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
-import java.time.LocalDate
-import java.time.ZoneId
-
-@Serializable
-data class ProductSales(
-    val productId: String,
-    val productName: String,
-    val quantitySold: Long,
-    val revenueCents: Long
-)
-
-@Serializable
-data class SalespersonSummary(
-    val salespersonId: String,
-    val salespersonRole: String,
-    val salesCount: Int,
-    val revenueCents: Long
-)
-
-@Serializable
-data class DailyReport(
-    val date: String,
-    val salesCount: Int,
-    val totalRevenueCents: Long,
-    val itemsSold: Long,
-    val topProducts: List<ProductSales>,
-    val salesBySalesperson: List<SalespersonSummary>
-)
-
-@Serializable
-data class PeriodReport(
-    val startDate: String,
-    val endDate: String,
-    val totalSales: Int,
-    val totalRevenueCents: Long,
-    val totalItemsSold: Long,
-    val averageTicketCents: Long,
-    val dailyBreakdown: List<DailyReport>
-)
+import java.util.Calendar
+import java.util.TimeZone
 
 class ReportsViewModel(
-    private val saleHeaderRepository: SaleHeaderRepository,
-    private val movementRepository: MovementRepository
+    private val saleSessionRepository: SaleSessionRepository,
+    private val saleItemRepository: SaleItemRepository,
+    private val businessProfileRepository: BusinessProfileRepository
 ) : ViewModel() {
 
-    enum class PeriodType {
-        TODAY, YESTERDAY, LAST_7_DAYS, LAST_30_DAYS, CUSTOM
-    }
+    private val _selectedPeriod = MutableStateFlow("Today")
+    val selectedPeriod: StateFlow<String> = _selectedPeriod
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), "Today")
 
-    private val _selectedPeriod = MutableStateFlow<PeriodType>(PeriodType.LAST_7_DAYS)
-    val selectedPeriod: StateFlow<PeriodType> = _selectedPeriod.asStateFlow()
+    private val _startDate = MutableStateFlow(getStartOfDay().time)
+    val startDate: StateFlow<Long> = _startDate
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), getStartOfDay().time)
 
-    private val _customStartDate = MutableStateFlow<java.time.LocalDate?>(null)
-    val customStartDate: StateFlow<java.time.LocalDate?> = _customStartDate.asStateFlow()
+    private val _endDate = MutableStateFlow(System.currentTimeMillis())
+    val endDate: StateFlow<Long> = _endDate
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), System.currentTimeMillis())
 
-    private val _customEndDate = MutableStateFlow<java.time.LocalDate?>(null)
-    val customEndDate: StateFlow<java.time.LocalDate?> = _customEndDate.asStateFlow()
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    val periodReport: StateFlow<PeriodReport> = combine(
-        saleHeaderRepository.getByBusiness("default-business"),
-        movementRepository.getAll,
-        _selectedPeriod,
-        _customStartDate,
-        _customEndDate
-    ) { sales, movements, periodType, customStart, customEnd ->
-        generatePeriodReport(sales, movements, periodType, customStart, customEnd)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PeriodReport(
-        startDate = java.time.LocalDate.now().toString(),
-        endDate = java.time.LocalDate.now().toString(),
-        totalSales = 0,
-        totalRevenueCents = 0,
-        totalItemsSold = 0,
-        averageTicketCents = 0,
-        dailyBreakdown = emptyList()
-    ))
+    val businessTimeZone: String
+        get() = businessProfile.value?.timezone ?: "Africa/Nairobi"
 
-    fun setPeriod(period: PeriodType) {
+    val businessProfile = businessProfileRepository.getActiveById("default-business")
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), null)
+
+    private val tz = TimeZone.getTimeZone(businessTimeZone)
+
+    val reportData: StateFlow<ReportData> =
+        combine(
+            saleSessionRepository.getByBusinessAndDateRange("default-business", startDate.value, endDate.value),
+            saleItemRepository.getByBusinessAndDateRange("default-business", startDate.value, endDate.value),
+            selectedPeriod
+        ) { sessions, items, _ ->
+            buildReport(sessions, items)
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ReportData.empty())
+
+    fun setPeriod(period: String) {
         _selectedPeriod.value = period
+        val (start, end) = calculateDateRange(period)
+        _startDate.value = start
+        _endDate.value = end
     }
 
-    fun setCustomRange(start: java.time.LocalDate, end: java.time.LocalDate) {
-        _customStartDate.value = start
-        _customEndDate.value = end
-        _selectedPeriod.value = PeriodType.CUSTOM
+    fun setCustomDateRange(start: Long, end: Long) {
+        _selectedPeriod.value = "Custom"
+        _startDate.value = start
+        _endDate.value = end
     }
 
-    private fun generatePeriodReport(
-        sales: List<SaleHeader>,
-        movements: List<Movement>,
-        periodType: PeriodType,
-        customStart: java.time.LocalDate?,
-        customEnd: java.time.LocalDate?
-    ): PeriodReport {
-        val now = java.time.LocalDate.now(java.time.ZoneId.systemDefault())
-        val (startDate, endDate) = when (periodType) {
-            PeriodType.TODAY -> now to now
-            PeriodType.YESTERDAY -> now.minusDays(1) to now.minusDays(1)
-            PeriodType.LAST_7_DAYS -> now.minusDays(6) to now
-            PeriodType.LAST_30_DAYS -> now.minusDays(29) to now
-            PeriodType.CUSTOM -> (customStart ?: now.minusDays(6)) to (customEnd ?: now)
+    fun exportCsv() {
+        // TODO: Implement CSV export
+        // Would generate CSV and share via intent
+    }
+
+    private fun calculateDateRange(period: String): Pair<Long, Long> {
+        val cal = Calendar.getInstance(tz)
+        val now = cal.timeInMillis
+        return when (period) {
+            "Today" -> {
+                cal.set(Calendar.HOUR_OF_DAY, 0)
+                cal.set(Calendar.MINUTE, 0)
+                cal.set(Calendar.SECOND, 0)
+                cal.set(Calendar.MILLISECOND, 0)
+                cal.timeInMillis to now
+            }
+            "Yesterday" -> {
+                cal.set(Calendar.HOUR_OF_DAY, 0)
+                cal.set(Calendar.MINUTE, 0)
+                cal.set(Calendar.SECOND, 0)
+                cal.set(Calendar.MILLISECOND, 0)
+                cal.add(Calendar.DAY_OF_MONTH, -1)
+                val start = cal.timeInMillis
+                cal.add(Calendar.DAY_OF_MONTH, 1)
+                cal.add(Calendar.MILLISECOND, -1)
+                start to cal.timeInMillis
+            }
+            "This Week" -> {
+                cal.set(Calendar.HOUR_OF_DAY, 0)
+                cal.set(Calendar.MINUTE, 0)
+                cal.set(Calendar.SECOND, 0)
+                cal.set(Calendar.MILLISECOND, 0)
+                cal.set(Calendar.DAY_OF_WEEK, cal.getFirstDayOfWeek())
+                val start = cal.timeInMillis
+                cal.add(Calendar.DAY_OF_MONTH, 7)
+                cal.add(Calendar.MILLISECOND, -1)
+                start to cal.timeInMillis
+            }
+            "This Month" -> {
+                cal.set(Calendar.HOUR_OF_DAY, 0)
+                cal.set(Calendar.MINUTE, 0)
+                cal.set(Calendar.SECOND, 0)
+                cal.set(Calendar.MILLISECOND, 0)
+                cal.set(Calendar.DAY_OF_MONTH, 1)
+                val start = cal.timeInMillis
+                cal.add(Calendar.MONTH, 1)
+                cal.add(Calendar.MILLISECOND, -1)
+                start to cal.timeInMillis
+            }
+            "Last Month" -> {
+                cal.set(Calendar.HOUR_OF_DAY, 0)
+                cal.set(Calendar.MINUTE, 0)
+                cal.set(Calendar.SECOND, 0)
+                cal.set(Calendar.MILLISECOND, 0)
+                cal.set(Calendar.DAY_OF_MONTH, 1)
+                cal.add(Calendar.MONTH, -1)
+                val start = cal.timeInMillis
+                cal.add(Calendar.MONTH, 1)
+                cal.add(Calendar.MILLISECOND, -1)
+                start to cal.timeInMillis
+            }
+            else -> getStartOfDay().time to now
         }
+    }
 
-        val filteredSales = sales.filter { sale ->
-            val saleDate = java.time.Instant.ofEpochMilli(sale.createdAt).atZone(java.time.ZoneId.systemDefault()).toLocalDate()
-            saleDate >= startDate && saleDate <= endDate && sale.status == "completed"
-        }
+    private fun getStartOfDay(): Calendar {
+        val cal = Calendar.getInstance(tz)
+        cal.set(Calendar.HOUR_OF_DAY, 0)
+        cal.set(Calendar.MINUTE, 0)
+        cal.set(Calendar.SECOND, 0)
+        cal.set(Calendar.MILLISECOND, 0)
+        return cal
+    }
 
-        val filteredMovements = movements.filter { movement ->
-            val movementDate = java.time.Instant.ofEpochMilli(movement.createdAt).atZone(java.time.ZoneId.systemDefault()).toLocalDate()
-            movementDate >= startDate && movementDate <= endDate && movement.type == com.example.sande.data.entities.MovementType.SALE
-        }
+    private fun buildReport(sessions: List<SaleSession>, items: List<SaleItem>): ReportData {
+        val completedSessions = sessions.filter { it.status == "completed" }
 
-        val dailyReports = buildDailyReports(startDate, endDate, filteredSales, filteredMovements)
+        val totalSales = completedSessions.sumOf { it.totalCents }
+        val transactionCount = completedSessions.size
 
-        val totalSales = filteredSales.size
-        val totalRevenueCents = filteredSales.sumOf { it.totalCents }
-        val totalItemsSold = filteredMovements.sumOf { it.quantity }
-        val averageTicketCents = if (totalSales > 0) totalRevenueCents / totalSales else 0L
+        // Top products
+        val productMap = items.groupBy { it.productId }
+            .mapValues { (_, its) ->
+                val first = its.first()
+                first.name to its.sumOf { it.totalCents } to its.sumOf { it.quantity }
+            }
+            .toList()
+            .sortedByDescending { it.second.first }
+            .take(10)
+            .map { (name, pair) -> TopProductData(it.key, name, pair.second, pair.first) }
 
-        return PeriodReport(
-            startDate = startDate.toString(),
-            endDate = endDate.toString(),
+        // Sales by hour
+        val hourMap = completedSessions.groupBy { session ->
+            val cal = Calendar.getInstance(tz)
+            cal.timeInMillis = session.createdAt
+            cal.get(Calendar.HOUR_OF_DAY)
+        }.mapValues { (hour, sessions) ->
+            HourlySalesData(hour, sessions.size, sessions.sumOf { it.totalCents })
+        }.toList()
+        .sortedBy { it.hour }
+
+        // Sales by cashier
+        val cashierMap = completedSessions.groupBy { it.salespersonId }
+            .mapValues { (id, sessions) ->
+                CashierSalesData(id, sessions.first().salespersonRole, sessions.size, sessions.sumOf { it.totalCents })
+            }.toList()
+        .sortedByDescending { it.total }
+
+        return ReportData(
             totalSales = totalSales,
-            totalRevenueCents = totalRevenueCents,
-            totalItemsSold = totalItemsSold,
-            averageTicketCents = averageTicketCents,
-            dailyBreakdown = dailyReports
+            transactionCount = transactionCount,
+            topProducts = productMap,
+            salesByHour = hourMap,
+            salesByCashier = cashierMap
         )
     }
+}
 
-    private fun buildDailyReports(
-        startDate: java.time.LocalDate,
-        endDate: java.time.LocalDate,
-        sales: List<SaleHeader>,
-        movements: List<Movement>
-    ): List<DailyReport> {
-        val dailyMap = mutableMapOf<java.time.LocalDate, MutableList<SaleHeader>>()
-        var current = startDate
-        while (current <= endDate) {
-            dailyMap[current] = mutableListOf()
-            current = current.plusDays(1)
-        }
-
-        sales.forEach { sale ->
-            val date = java.time.Instant.ofEpochMilli(sale.createdAt).atZone(java.time.ZoneId.systemDefault()).toLocalDate()
-            dailyMap[date]?.add(sale)
-        }
-
-        val movementByDate = movements.groupBy { movement ->
-            java.time.Instant.ofEpochMilli(movement.createdAt).atZone(java.time.ZoneId.systemDefault()).toLocalDate()
-        }
-
-        return dailyMap.entries.map { (date, daySales) ->
-            val dayMovements = movementByDate[date] ?: emptyList()
-            
-            val productSales = dayMovements
-                .groupBy { it.productId }
-                .map { (productId, productMovements) ->
-                    val first = productMovements.first()
-                    val totalQty = productMovements.sumOf { it.quantity }
-                    val totalRevenue = productMovements.sumOf { it.quantity * (it.unitPriceCents ?: 0L) }
-                    ProductSales(
-                        productId = productId,
-                        productName = first.referenceId ?: productId,
-                        quantitySold = totalQty,
-                        revenueCents = totalRevenue
-                    )
-                }.sortedByDescending { it.revenueCents }
-
-            val salespersonSummary = daySales.groupBy { it.salespersonId }
-                .map { (salespersonId, personSales) ->
-                    val first = personSales.first()
-                    SalespersonSummary(
-                        salespersonId = salespersonId,
-                        salespersonRole = first.salespersonRole,
-                        salesCount = personSales.size,
-                        revenueCents = personSales.sumOf { it.totalCents }
-                    )
-                }.sortedByDescending { it.revenueCents }
-
-            DailyReport(
-                date = date.toString(),
-                salesCount = daySales.size,
-                totalRevenueCents = daySales.sumOf { it.totalCents },
-                itemsSold = dayMovements.sumOf { it.quantity },
-                topProducts = productSales,
-                salesBySalesperson = salespersonSummary
-            )
-        }.filter { it.salesCount > 0 }
-    }
-
-    suspend fun exportReportCsv(report: PeriodReport): String {
-        val sb = StringBuilder()
-        sb.append("Date,Sales Count,Revenue (cents),Items Sold,Average Ticket (cents)\n")
-        report.dailyBreakdown.forEach { day ->
-            sb.append("${day.date},${day.salesCount},${day.totalRevenueCents},${day.itemsSold},")
-            sb.append("${if (day.salesCount > 0) day.totalRevenueCents / day.salesCount else 0}\n")
-        }
-        return sb.toString()
-    }
-
-    suspend fun exportReportJson(report: PeriodReport): String {
-        return Json.encodeToString(PeriodReport.serializer(), report)
+data class ReportData(
+    val totalSales: Long = 0,
+    val transactionCount: Int = 0,
+    val topProducts: List<TopProductData> = emptyList(),
+    val salesByHour: List<HourlySalesData> = emptyList(),
+    val salesByCashier: List<CashierSalesData> = emptyList()
+) {
+    companion object {
+        fun empty() = ReportData()
     }
 }
+
+data class TopProductData(
+    val productId: String,
+    val name: String,
+    val quantitySold: Long,
+    val revenue: Long
+)
+
+data class HourlySalesData(
+    val hour: Int,
+    val count: Int,
+    val total: Long
+)
+
+data class CashierSalesData(
+    val cashierId: String,
+    val role: String,
+    val count: Int,
+    val total: Long
+)

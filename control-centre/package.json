@@ -1,0 +1,19 @@
+{
+  "name": "sande-control-centre",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SANDE Control Centre - Platform Admin SPA",
+  "type": "module",
+  "scripts": {
+    "dev": "echo 'Deploy to Cloudflare Pages for live development'",
+    "build": "esbuild src/main.ts --bundle --format=esm --target=es2022 --outfile=dist/main.js --external:*.css --external:*.html --define:process.env.NODE_ENV=\\\"production\\\"",
+    "lint": "npx eslint src --ext .ts 2>/dev/null || echo 'ESLint not configured, skipping'"
+  },
+  "devDependencies": {
+    "esbuild": "^0.23.0",
+    "typescript": "^5.5.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

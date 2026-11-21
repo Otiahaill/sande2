@@ -1,0 +1,13 @@
+name = "sande-control-centre"
+compatibility_date = "2026-11-21"
+
+[build]
+command = "npm run build"
+destination = "dist"
+
+[build.environment]
+SANDE_API_BASE = "https://sande-backend-dev.<your-subdomain>.workers.dev"
+
+[[rules]]
+src = "src/**"
+exclude = ["index.html"]

@@ -1,0 +1,49 @@
+{
+  "name": "sande-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SANDE 2 Online Backend - Cloudflare Workers + D1 + R2",
+  "main": "src/index.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --port 8787",
+    "deploy": "wrangler deploy",
+    "deploy:staging": "wrangler deploy --env staging",
+    "deploy:prod": "wrangler deploy --env production",
+    "db:create": "wrangler d1 create sande-platform",
+    "db:migrate": "wrangler d1 migrations apply sande-platform",
+    "db:migrate:local": "wrangler d1 migrations apply sande-platform --local",
+    "db:execute": "wrangler d1 execute sande-platform --command",
+    "db:execute:local": "wrangler d1 execute sande-platform --local --command",
+
+    "cf:setup": "node scripts/cloudflare-setup.mjs",
+    "cf:migrate": "node scripts/d1-migrate.mjs",
+    "cf:secrets": "node scripts/set-secrets.mjs",
+    "cf:deploy": "node scripts/deploy-worker.mjs",
+    "cf:manifest": "node scripts/store-config.mjs",
+    "cf:verify": "node scripts/verify-connection.mjs",
+    "cf:connect": "node scripts/connect-all.mjs",
+
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts",
+    "cf-typegen": "wrangler types --env-interface CloudflareBindings"
+  },
+  "dependencies": {
+    "hono": "^4.5.0",
+    "jose": "^5.6.0",
+    "zod": "^3.23.0",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240903.0",
+    "@types/node": "^22.0.0",
+    "@types/uuid": "^10.0.0",
+    "esbuild": "^0.23.0",
+    "eslint": "^9.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0",
+    "wrangler": "^3.78.0"
+  }
+}
