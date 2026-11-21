@@ -6,7 +6,7 @@ import androidx.room.PrimaryKey
 
 @Entity(
     tableName = "membership_mirrors",
-    indices = [Index("businessId"), Index("accountId"), Index("deviceCode"), Index("syncedAt")]
+    indices = [Index("businessId"), Index("accountId"), Index("deviceCode"), Index("lastSyncedAt")]
 )
 data class MembershipMirror(
     @PrimaryKey val id: String, // businessId:accountId

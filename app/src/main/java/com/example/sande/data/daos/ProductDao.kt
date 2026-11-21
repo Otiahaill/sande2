@@ -42,6 +42,14 @@ interface ProductDao {
     @Query("SELECT * FROM products WHERE businessId = :businessId AND (name LIKE :query OR sku LIKE :query) AND isActive = 1 AND archivedAt = 0 AND deletedAt = 0 ORDER BY name ASC")
     fun searchProducts(businessId: String, query: String): Flow<List<Product>>
 
+    /** Count of every product owned by a business, including archived and soft-deleted rows. */
+    @Query("SELECT COUNT(*) FROM products WHERE businessId = :businessId")
+    suspend fun countByBusiness(businessId: String): Int
+
+    /** Every product owned by a business, including archived and soft-deleted rows. */
+    @Query("SELECT * FROM products WHERE businessId = :businessId")
+    suspend fun getAllByBusiness(businessId: String): List<Product>
+
     @Query("SELECT * FROM products WHERE archivedAt > 0 AND deletedAt = 0 ORDER BY archivedAt DESC")
     fun getArchived(): Flow<List<Product>>
 

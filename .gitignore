@@ -66,5 +66,11 @@ cxx/
 # Keep Gradle wrapper JAR (needed for CI builds)
 !gradle/wrapper/gradle-wrapper.jar
 
+# Node dependencies and build output (restored by `npm ci` in CI)
+node_modules/
+dist/
+.wrangler/
+*.tsbuildinfo
+
 # Firebase functions
 functions/node_modules/

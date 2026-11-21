@@ -9,6 +9,9 @@ interface SaleHeaderDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(saleHeader: SaleHeader)
 
+    @Update
+    suspend fun update(saleHeader: SaleHeader)
+
     @Query("SELECT * FROM sale_headers ORDER BY createdAt DESC")
     fun getAll(): Flow<List<SaleHeader>>
 

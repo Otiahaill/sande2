@@ -26,6 +26,9 @@ interface OutboxEntryDao {
     @Query("SELECT * FROM outbox_entries WHERE businessId = :businessId ORDER BY createdAt ASC")
     fun getByBusiness(businessId: String): Flow<List<OutboxEntry>>
 
+    @Query("SELECT COUNT(*) FROM outbox_entries WHERE businessId = :businessId")
+    suspend fun countByBusiness(businessId: String): Int
+
     @Query("SELECT * FROM outbox_entries WHERE businessId = :businessId AND synced = 0 ORDER BY createdAt ASC")
     fun getUnsyncedByBusiness(businessId: String): Flow<List<OutboxEntry>>
 

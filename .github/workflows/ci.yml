@@ -7,10 +7,10 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
-    name: Build
+  android:
+    name: Android build + tests
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v4
@@ -21,23 +21,30 @@ jobs:
           distribution: temurin
           java-version: 17
 
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
       - name: Accept Android SDK licenses
         run: |
           mkdir -p "$ANDROID_HOME/licenses"
           printf '24333f8a63b6825ea9c5514f83c2829b004d1fee\n' > "$ANDROID_HOME/licenses/android-sdk-license"
 
-      - name: Inject secrets into local.properties
-        run: |
-          cat > local.properties << EOF
-          SANDE_GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
-          SANDE_GOOGLE_ANDROID_CLIENT_ID=${{ secrets.GOOGLE_ANDROID_CLIENT_ID }}
-          SANDE_API_BASE_URL=${{ secrets.API_BASE_URL }}
-          EOF
-
+      # Secrets are passed as Gradle project properties (-P) instead of being written
+      # into local.properties, because local.properties also carries `sdk.dir` for the
+      # Android SDK and overwriting it breaks the build.
       - name: Build debug APK
         run: |
           chmod +x gradlew
-          ./gradlew :app:assembleDebug --no-daemon
+          ./gradlew :app:assembleDebug --no-daemon \
+            -PSANDE_GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}" \
+            -PSANDE_GOOGLE_ANDROID_CLIENT_ID="${{ secrets.GOOGLE_ANDROID_CLIENT_ID }}" \
+            -PSANDE_API_BASE_URL="${{ secrets.API_BASE_URL }}"
+
+      - name: Run unit tests
+        run: ./gradlew :app:testDebugUnitTest --no-daemon
+
+      - name: Run Android lint
+        run: ./gradlew :app:lintDebug --no-daemon
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
@@ -45,3 +52,43 @@ jobs:
           name: sande-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
+
+      # Room exports the schema JSON during the KSP step. MigrationTestHelper
+      # loads these files from disk, so they have to be committed to the repo
+      # before the instrumented migration tests can run. Upload them here so
+      # they can be committed without a local build.
+      - name: Upload Room schema
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: room-schemas
+          path: app/schemas/
+          retention-days: 30
+          if-no-files-found: ignore
+
+  control-centre:
+    name: Control Centre build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: control-centre
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: control-centre/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npx tsc --noEmit
+
+      - name: Build
+        run: npm run build

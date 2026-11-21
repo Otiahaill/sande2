@@ -36,7 +36,14 @@ class ApiClient(
             json(Json { ignoreUnknownKeys = true })
         }
         install(Logging) {
-            level = io.ktor.client.plugins.logging.LogLevel.ALL
+            // Never log request/response bodies in a release build: they contain
+            // OAuth tokens, membership data and business records.
+            level = if (com.example.sande.BuildConfig.DEBUG) {
+                io.ktor.client.plugins.logging.LogLevel.INFO
+            } else {
+                io.ktor.client.plugins.logging.LogLevel.NONE
+            }
+            sanitizeHeader { header -> header == HttpHeaders.Authorization }
         }
         
         // Default request timeout

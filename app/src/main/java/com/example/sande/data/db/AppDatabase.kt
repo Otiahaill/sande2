@@ -8,8 +8,10 @@ import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.sande.data.daos.AuditEventDao
+import com.example.sande.data.daos.BusinessDao
 import com.example.sande.data.daos.BusinessProfileDao
 import com.example.sande.data.daos.CounterDao
+import com.example.sande.data.daos.DeviceRegistrationDao
 import com.example.sande.data.daos.DraftSaleDao
 import com.example.sande.data.daos.MemberDao
 import com.example.sande.data.daos.MembershipMirrorDao
@@ -80,6 +82,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun productDao(): ProductDao
     abstract fun productCategoryDao(): ProductCategoryDao
     abstract fun productPriceHistoryDao(): ProductPriceHistoryDao
+    abstract fun businessDao(): BusinessDao
     abstract fun movementDao(): MovementDao // Legacy
     abstract fun stockMovementDao(): StockMovementDao
     abstract fun outboxDao(): OutboxDao // Legacy
@@ -187,6 +190,8 @@ abstract class AppDatabase : RoomDatabase() {
                 """)
 
                 // Create stock_movements table
+                // The FOREIGN KEY clause must mirror StockMovement's @Entity foreignKeys,
+                // otherwise Room's schema validation rejects the migrated database.
                 database.execSQL("""
                     CREATE TABLE IF NOT EXISTS stock_movements (
                         id TEXT PRIMARY KEY NOT NULL,
@@ -203,7 +208,8 @@ abstract class AppDatabase : RoomDatabase() {
                         reversalOf TEXT,
                         metadataJson TEXT,
                         createdAt INTEGER NOT NULL,
-                        synced INTEGER NOT NULL DEFAULT 0
+                        synced INTEGER NOT NULL DEFAULT 0,
+                        FOREIGN KEY(productId) REFERENCES products(id) ON DELETE RESTRICT
                     )
                 """)
                 listOf("productId", "businessId", "actorId", "createdAt", "synced", "referenceId").forEach { col ->
@@ -234,6 +240,8 @@ abstract class AppDatabase : RoomDatabase() {
                 }
 
                 // Create sale_items table
+                // The FOREIGN KEY clauses must mirror SaleItem's @Entity foreignKeys,
+                // otherwise Room's schema validation rejects the migrated database.
                 database.execSQL("""
                     CREATE TABLE IF NOT EXISTS sale_items (
                         id TEXT PRIMARY KEY NOT NULL,
@@ -245,7 +253,9 @@ abstract class AppDatabase : RoomDatabase() {
                         unitPriceCents INTEGER NOT NULL,
                         totalCents INTEGER NOT NULL,
                         businessId TEXT NOT NULL,
-                        createdAt INTEGER NOT NULL
+                        createdAt INTEGER NOT NULL,
+                        FOREIGN KEY(productId) REFERENCES products(id) ON DELETE RESTRICT,
+                        FOREIGN KEY(sessionId) REFERENCES sale_sessions(id) ON DELETE CASCADE
                     )
                 """)
                 listOf("sessionId", "productId", "businessId").forEach { col ->
@@ -307,6 +317,8 @@ abstract class AppDatabase : RoomDatabase() {
                 }
 
                 // Create product_price_history table
+                // The FOREIGN KEY clause must mirror ProductPriceHistory's @Entity foreignKeys,
+                // otherwise Room's schema validation rejects the migrated database.
                 database.execSQL("""
                     CREATE TABLE IF NOT EXISTS product_price_history (
                         id TEXT PRIMARY KEY NOT NULL,
@@ -315,7 +327,8 @@ abstract class AppDatabase : RoomDatabase() {
                         newPriceCents INTEGER NOT NULL,
                         changedBy TEXT NOT NULL,
                         reason TEXT,
-                        createdAt INTEGER NOT NULL
+                        createdAt INTEGER NOT NULL,
+                        FOREIGN KEY(productId) REFERENCES products(id) ON DELETE CASCADE
                     )
                 """)
                 listOf("productId", "createdAt").forEach { col ->
@@ -341,7 +354,7 @@ abstract class AppDatabase : RoomDatabase() {
                         updatedAt INTEGER NOT NULL
                     )
                 """)
-                listOf("businessId", "accountId", "deviceCode", "syncedAt").forEach { col ->
+                listOf("businessId", "accountId", "deviceCode", "lastSyncedAt").forEach { col ->
                     database.execSQL("CREATE INDEX IF NOT EXISTS index_membership_mirrors_$col ON membership_mirrors($col)")
                 }
 
@@ -438,34 +451,35 @@ abstract class AppDatabase : RoomDatabase() {
                 database.execSQL("""
                     INSERT INTO stock_movements (id, productId, businessId, movementType, quantityDelta, unitPriceCents, actorId, actorRole, deviceCode, reason, referenceId, reversalOf, metadataJson, createdAt, synced)
                     SELECT
-                        id,
-                        productId,
-                        businessId,
-                        type as movementType,
-                        CASE type
-                            WHEN 'RECEIVE' THEN quantity
-                            WHEN 'SALE' THEN -quantity
-                            WHEN 'ADJUST' THEN quantity
-                            WHEN 'VOID' THEN quantity
-                            ELSE quantity
+                        m.id,
+                        m.productId,
+                        m.businessId,
+                        m.type as movementType,
+                        CASE m.type
+                            WHEN 'RECEIVE' THEN m.quantity
+                            WHEN 'SALE' THEN -m.quantity
+                            WHEN 'ADJUST' THEN m.quantity
+                            WHEN 'VOID' THEN m.quantity
+                            ELSE m.quantity
                         END as quantityDelta,
-                        unitPriceCents,
-                        COALESCE(deviceId, 'legacy') as actorId,
+                        m.unitPriceCents,
+                        COALESCE(m.deviceId, 'legacy') as actorId,
                         'unknown' as actorRole,
-                        COALESCE(deviceId, 'legacy') as deviceCode,
-                        CASE type
+                        COALESCE(m.deviceId, 'legacy') as deviceCode,
+                        CASE m.type
                             WHEN 'RECEIVE' THEN 'Stock received'
-                            WHEN 'SALE' THEN 'Sale #' || COALESCE(referenceId, '')
+                            WHEN 'SALE' THEN 'Sale #' || COALESCE(m.referenceId, '')
                             WHEN 'ADJUST' THEN 'Stock adjustment'
-                            WHEN 'VOID' THEN 'Void of #' || COALESCE(referenceId, '')
+                            WHEN 'VOID' THEN 'Void of #' || COALESCE(m.referenceId, '')
                             ELSE 'Legacy movement'
                         END as reason,
-                        referenceId,
+                        m.referenceId,
                         NULL as reversalOf,
                         NULL as metadataJson,
-                        createdAt,
-                        synced
-                    FROM movements
+                        m.createdAt,
+                        m.synced
+                    FROM movements m
+                    JOIN products p ON m.productId = p.id
                 """)
 
                 // 2. Migrate sale_headers -> sale_sessions
@@ -491,18 +505,21 @@ abstract class AppDatabase : RoomDatabase() {
                 """)
 
                 // 3. Create sale_items from sale_headers + movements
-                // For each sale_header, find SALE movements with matching referenceId and create sale_items
+                // For each sale_header, find SALE movements with matching referenceId and create sale_items.
+                // sale_items.unitPriceCents / totalCents / categoryName are NOT NULL, but the
+                // legacy movements.unitPriceCents is nullable and product_categories is LEFT
+                // JOINed — so coalesce them or the INSERT aborts the whole migration.
                 database.execSQL("""
                     INSERT INTO sale_items (id, sessionId, productId, productName, categoryName, quantity, unitPriceCents, totalCents, businessId, createdAt)
                     SELECT
                         'si_' || m.id,
                         sh.id as sessionId,
                         m.productId,
-                        p.name as productName,
-                        pc.name as categoryName,
+                        COALESCE(p.name, 'Unknown product') as productName,
+                        COALESCE(pc.name, '') as categoryName,
                         m.quantity,
-                        m.unitPriceCents,
-                        m.quantity * m.unitPriceCents as totalCents,
+                        COALESCE(m.unitPriceCents, 0) as unitPriceCents,
+                        m.quantity * COALESCE(m.unitPriceCents, 0) as totalCents,
                         m.businessId,
                         m.createdAt
                     FROM movements m
@@ -513,17 +530,24 @@ abstract class AppDatabase : RoomDatabase() {
                 """)
 
                 // 4. Migrate outbox -> outbox_entries
+                // The legacy `outbox` table has columns (id, entityType, entityId, operation,
+                // payload, createdAt, attempts, synced) and NO businessId / payloadJson /
+                // attemptCount / lastError columns. Selecting the new names here would abort
+                // the migration with "no such column". Map old -> new explicitly:
+                //   payload    -> payloadJson
+                //   attempts   -> attemptCount
+                //   businessId -> derived from the legacy business (single-tenant offline app)
                 database.execSQL("""
                     INSERT INTO outbox_entries (id, businessId, entityType, entityId, operation, payloadJson, batchId, attemptCount, lastError, createdAt, updatedAt, synced, syncedAt)
                     SELECT
                         id,
-                        businessId,
+                        COALESCE((SELECT b.id FROM businesses b ORDER BY b.createdAt LIMIT 1), 'default-business') as businessId,
                         entityType,
                         entityId,
                         operation,
-                        payloadJson,
+                        payload as payloadJson,
                         NULL as batchId,
-                        0 as attemptCount,
+                        attempts as attemptCount,
                         NULL as lastError,
                         createdAt,
                         createdAt as updatedAt,

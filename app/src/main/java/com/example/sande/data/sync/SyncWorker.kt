@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.annotation.WorkerThread
 import androidx.work.Worker
 import androidx.work.WorkerParameters
-import com.example.sande.data.api.ApiClient
+import com.example.sande.data.remote.ApiClient
 import com.example.sande.data.db.AppDatabase
 import com.example.sande.data.entities.OutboxEntry
 import com.example.sande.data.entities.SyncCursor

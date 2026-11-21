@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -8,12 +10,18 @@ plugins {
 // Read build-time configuration from local.properties (git-ignored) or gradle properties.
 // This keeps OAuth client IDs and the backend URL out of source control while still
 // letting CI inject them from GitHub secrets.
-val localProperties = java.util.Properties().apply {
+//
+// NOTE: `java.util.Properties` must be imported explicitly. In a Kotlin DSL script the
+// bare `java` identifier resolves to Gradle's `java` extension, which shadows the
+// `java` package and produces "Unresolved reference: util".
+val localProperties = Properties().apply {
     val f = rootProject.file("local.properties")
     if (f.exists()) f.inputStream().use { load(it) }
 }
 fun configValue(key: String, fallback: String = ""): String =
-    (project.findProperty(key) as String?) ?: localProperties.getProperty(key) ?: fallback
+    (project.findProperty(key) as? String)?.takeIf { it.isNotBlank() }
+        ?: localProperties.getProperty(key)?.takeIf { it.isNotBlank() }
+        ?: fallback
 
 android {
     namespace = "com.example.sande"
@@ -115,8 +123,13 @@ dependencies {
     testImplementation(libs.truth)
     testImplementation(libs.androidx.test.core)
     testImplementation(libs.androidx.test.rules)
-    testImplementation(libs.androidx.room.testing)
 
+    // Instrumented tests (Room migration tests) need MigrationTestHelper and the
+    // InstrumentationRegistry, which are only available on the androidTest classpath.
+    androidTestImplementation(libs.junit)
+    androidTestImplementation(libs.truth)
     androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.core)
     androidTestImplementation(libs.espresso.core)
+    androidTestImplementation(libs.androidx.room.testing)
 }

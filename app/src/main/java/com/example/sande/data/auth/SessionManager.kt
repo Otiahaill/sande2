@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.sande.data.prefs.TokenManager
 import com.example.sande.data.remote.ApiClient
 import com.example.sande.data.remote.ApiException
+import com.example.sande.data.remote.GoogleAuthRequest
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job

@@ -19,6 +19,12 @@ interface MovementDao {
     @Query("SELECT * FROM movements WHERE businessId = :businessId ORDER BY createdAt DESC")
     fun getByBusiness(businessId: String): Flow<List<Movement>>
 
+    @Query("SELECT COUNT(*) FROM movements WHERE businessId = :businessId")
+    suspend fun countByBusiness(businessId: String): Int
+
+    @Query("SELECT * FROM movements WHERE businessId = :businessId")
+    suspend fun getAllByBusiness(businessId: String): List<Movement>
+
     @Query("SELECT * FROM movements ORDER BY createdAt DESC")
     fun getAll(): Flow<List<Movement>>
 
