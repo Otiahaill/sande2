@@ -69,7 +69,7 @@ class GoogleSignInClient(
                         val idToken = credential.idToken ?: return@onResult deferred.complete(Result.failure(Exception("No ID token")))
                         deferred.complete(Result.success(GoogleSignInResult(
                             idToken = idToken,
-                            email = credential.id ?? "",
+                            email = credential.id ?: "",
                             displayName = credential.name,
                             photoUrl = credential.pictureUri?.toString(),
                         )))
