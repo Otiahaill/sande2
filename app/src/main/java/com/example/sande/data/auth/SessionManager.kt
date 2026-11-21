@@ -49,11 +49,11 @@ class SessionManager(
     }
 
     enum class LeaseState {
-        VALID(expiresAt: Long),
-        EXPIRING_SOON(expiresAt: Long), // < 24 hours
-        EXPIRED,
-        UNKNOWN;
-    }
+    VALID,
+    EXPIRING_SOON,
+    EXPIRED,
+    UNKNOWN
+}
 
     data class AccountInfo(
         val id: String,
