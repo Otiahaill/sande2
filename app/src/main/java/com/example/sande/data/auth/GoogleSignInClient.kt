@@ -66,7 +66,10 @@ class GoogleSignInClient(
                 override fun onResult(result: GetCredentialResponse) {
                     val credential = result.credential
                     if (credential is GoogleIdTokenCredential) {
-                        val idToken = credential.idToken ?: return@onResult deferred.complete(Result.failure(Exception("No ID token")))
+                        val idToken = credential.idToken
+                        if (idToken == null) {
+                            return@onResult deferred.complete(Result.failure(Exception("No ID token")))
+                        }
                         deferred.complete(Result.success(GoogleSignInResult(
                             idToken = idToken,
                             email = credential.id ?: "",
