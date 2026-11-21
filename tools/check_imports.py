@@ -97,7 +97,7 @@ def main():
             imported = set()
             wildcards = []
             for line in raw.splitlines():
-                im = re.match(r"^\s*import\s+([\w.]+)(?:\s+as\s+(\w+))?\s*$", line)
+                im = re.match(r"^\s*import\s+([\w.]+(?:\.\*)?)(?:\s+as\s+(\w+))?\s*$", line)
                 if im:
                     if im.group(1).endswith(".*"):
                         wildcards.append(im.group(1)[:-2])

@@ -42,6 +42,18 @@ SYMBOL_IMPORTS = {
     "Context": "kotlinx.coroutines.CoroutineContext",
 }
 
+# androidx.room symbols. A missing one makes the Room KSP processor report
+# "MissingType: Element 'X' references a type that is not present".
+ROOM_SYMBOLS = [
+    "Dao", "Insert", "Update", "Delete", "Query", "Transaction",
+    "TypeConverter", "TypeConverters", "ColumnInfo", "Index", "PrimaryKey",
+    "ForeignKey", "Entity", "Database", "RoomDatabase", "Room", "Migration",
+    "SupportSQLiteDatabase", "OnConflictStrategy", "AutoMigration",
+    "RenameColumn", "Fts4", "JournalMode", "ColumnType", "RewriteQueriesToDropUnusedColumns",
+]
+for _s in ROOM_SYMBOLS:
+    SYMBOL_IMPORTS.setdefault(_s, "androidx.room." + _s)
+
 # Symbols that must be imported, but only count as "used" in a type/expression
 # position that is not part of a declaration we own.
 USE_RE = re.compile(r"(?<![\w.])([A-Z][A-Za-z0-9_]*)")
@@ -68,7 +80,7 @@ def main():
             imported = set()
             wildcards = []
             for line in raw.splitlines():
-                im = re.match(r"^\s*import\s+([\w.]+)(?:\s+as\s+(\w+))?\s*$", line)
+                im = re.match(r"^\s*import\s+([\w.]+(?:\.\*)?)(?:\s+as\s+(\w+))?\s*$", line)
                 if im:
                     if im.group(1).endswith(".*"):
                         wildcards.append(im.group(1)[:-2])
