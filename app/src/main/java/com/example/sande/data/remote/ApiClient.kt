@@ -102,7 +102,7 @@ class ApiClient(
             val tokens = tokenManager.getCurrentTokens()
             tokens?.let {
                 if (it.isAccessTokenValid()) {
-                    this.headers.append(HttpHeaders.Authorization, "[redacted]
+                    this.headers.append(HttpHeaders.Authorization, "[redacted]")
                 }
             }
         }
