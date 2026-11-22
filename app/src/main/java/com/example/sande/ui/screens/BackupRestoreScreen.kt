@@ -51,6 +51,7 @@ import com.example.sande.ui.theme.SandeTheme
 import com.example.sande.ui.viewModelFactoryOf
 import com.example.sande.ui.viewmodel.BackupViewModel
 import kotlinx.coroutines.launch
+import androidx.compose.material.icons.filled.Menu
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,7 +90,7 @@ fun BackupRestoreScreen(
                 title = { Text("Backup & Restore") },
                 navigationIcon = {
                     IconButton(onClick = onOpenDrawer) {
-                        Icon(Icons.Default.Menu, contentDescription = "Open drawer")
+                        Icon(Icons.Filled.Menu, contentDescription = "Open drawer")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -133,7 +134,7 @@ fun BackupRestoreScreen(
                 ),
                 shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
             ) {
-                Icon(Icons.Default.Download, contentDescription = null)
+                Icon(Icons.Filled.Download, contentDescription = null)
                 androidx.compose.foundation.layout.Spacer(modifier = Modifier.size(8.dp))
                 Text(if (isBusy) "Working..." else "Create Backup", fontSize = 16.sp, fontWeight = FontWeight.Medium)
             }
@@ -174,7 +175,7 @@ fun BackupRestoreScreen(
                             modifier = Modifier.fillMaxWidth(),
                             shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
                         ) {
-                            Icon(Icons.Default.Share, contentDescription = null)
+                            Icon(Icons.Filled.Share, contentDescription = null)
                             androidx.compose.foundation.layout.Spacer(modifier = Modifier.size(8.dp))
                             Text("Share Backup")
                         }
@@ -205,7 +206,7 @@ fun BackupRestoreScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
             ) {
-                Icon(Icons.Default.Restore, contentDescription = null)
+                Icon(Icons.Filled.Restore, contentDescription = null)
                 androidx.compose.foundation.layout.Spacer(modifier = Modifier.size(8.dp))
                 Text("Choose Backup File", fontSize = 16.sp)
             }

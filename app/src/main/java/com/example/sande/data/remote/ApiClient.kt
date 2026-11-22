@@ -14,7 +14,6 @@ import io.ktor.client.request.HttpRequestPipeline
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
-import io.ktor.client.request.url
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
@@ -63,7 +62,7 @@ sealed class Result<out T> {
         is Failure -> throw error
     }
 
-    fun map(transform: (T) -> R): Result<R> = when (this) {
+    fun <R> map(transform: (T) -> R): Result<R> = when (this) {
         is Success -> Result.success(transform(value))
         is Failure -> Result.failure(error)
     }
@@ -110,7 +109,7 @@ class ApiClient(
         client.requestPipeline.intercept(HttpRequestPipeline.Render) {
             val tokens = tokenManager.getTokens()
             if (tokens != null && tokens.isAccessTokenValid()) {
-                headers.append(HttpHeaders.Authorization, "[redacted]")
+                subject.headers.append(HttpHeaders.Authorization, "[redacted]")
             }
         }
     }
@@ -125,8 +124,7 @@ class ApiClient(
     suspend fun healthCheck(baseUrl: String): String = withContext(Dispatchers.IO) {
         try {
             val url = baseUrl.trimEnd('/')
-            val response = client.get<HealthResponse> {
-                this.url("$url/health")
+            val response = client.get<HealthResponse>("$url/health") {
             }
             if (response.status == "healthy") {
                 "OK — backend is healthy (${response.latencyMs}ms)"
@@ -146,8 +144,7 @@ class ApiClient(
      */
     suspend fun googleAuth(request: GoogleAuthRequest): Result<AuthResponse> = withContext(Dispatchers.IO) {
         try {
-            val response = client.post<AuthResponse> {
-                url("$baseUrl/auth/google")
+            val response = client.post<AuthResponse> ("$baseUrl/auth/google") {
                 contentType(io.ktor.http.ContentType.Application.Json)
                 body = request
             }
@@ -163,8 +160,7 @@ class ApiClient(
      */
     suspend fun registerBusiness(request: BusinessRegistrationRequest): Result<BusinessRegistrationResponse> = withContext(Dispatchers.IO) {
         try {
-            val response = client.post<BusinessRegistrationResponse> {
-                url("$baseUrl/api/business/register")
+            val response = client.post<BusinessRegistrationResponse> ("$baseUrl/api/business/register") {
                 contentType(io.ktor.http.ContentType.Application.Json)
                 body = request
             }
@@ -180,8 +176,7 @@ class ApiClient(
      */
     suspend fun refreshToken(request: RefreshTokenRequest): Result<RefreshTokenResponse> = withContext(Dispatchers.IO) {
         try {
-            val response = client.post<RefreshTokenResponse> {
-                url("$baseUrl/auth/refresh")
+            val response = client.post<RefreshTokenResponse> ("$baseUrl/auth/refresh") {
                 contentType(io.ktor.http.ContentType.Application.Json)
                 body = request
             }
@@ -197,8 +192,7 @@ class ApiClient(
      */
     suspend fun logout(request: RefreshTokenRequest): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val response = client.post<String> {
-                url("$baseUrl/auth/logout")
+            val response = client.post<String> ("$baseUrl/auth/logout") {
                 contentType(io.ktor.http.ContentType.Application.Json)
                 body = request
             }
@@ -214,8 +208,7 @@ class ApiClient(
      */
     suspend fun acceptInvitation(request: AcceptInvitationRequest): Result<InvitationAcceptResponse> = withContext(Dispatchers.IO) {
         try {
-            val response = client.post<InvitationAcceptResponse> {
-                url("$baseUrl/api/memberships/accept")
+            val response = client.post<InvitationAcceptResponse> ("$baseUrl/api/memberships/accept") {
                 contentType(io.ktor.http.ContentType.Application.Json)
                 body = request
             }
@@ -231,8 +224,7 @@ class ApiClient(
      */
     suspend fun registerDevice(request: DeviceRegistrationRequest): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val response = client.post<String> {
-                url("$baseUrl/api/devices/register")
+            val response = client.post<String> ("$baseUrl/api/devices/register") {
                 contentType(io.ktor.http.ContentType.Application.Json)
                 body = request
             }
@@ -250,8 +242,7 @@ class ApiClient(
      */
     suspend fun pushSync(request: SyncPushRequest): Result<SyncPushResponse> = withContext(Dispatchers.IO) {
         try {
-            val response = client.post<SyncPushResponse> {
-                url("$baseUrl/api/sync/push")
+            val response = client.post<SyncPushResponse> ("$baseUrl/api/sync/push") {
                 contentType(io.ktor.http.ContentType.Application.Json)
                 body = request
             }
@@ -267,8 +258,7 @@ class ApiClient(
      */
     suspend fun pullSync(cursor: Long, limit: Int): Result<SyncPullResponse> = withContext(Dispatchers.IO) {
         try {
-            val response = client.get<SyncPullResponse> {
-                url("$baseUrl/api/sync/pull")
+            val response = client.get<SyncPullResponse> ("$baseUrl/api/sync/pull") {
                 parameter("cursor", cursor.toString())
                 parameter("limit", limit.toString())
             }
@@ -284,8 +274,7 @@ class ApiClient(
      */
     suspend fun getSyncStatus(): Result<SyncStatusResponse> = withContext(Dispatchers.IO) {
         try {
-            val response = client.get<SyncStatusResponse> {
-                url("$baseUrl/api/sync/status")
+            val response = client.get<SyncStatusResponse> ("$baseUrl/api/sync/status") {
             }
             handleResponse(response)
         } catch (e: Exception) {
@@ -301,8 +290,7 @@ class ApiClient(
      */
     suspend fun getMyBusiness(): Result<BusinessInfoResponse> = withContext(Dispatchers.IO) {
         try {
-            val response = client.get<BusinessInfoResponse> {
-                url("$baseUrl/api/business/me")
+            val response = client.get<BusinessInfoResponse> ("$baseUrl/api/business/me") {
             }
             handleResponse(response)
         } catch (e: Exception) {
@@ -316,8 +304,7 @@ class ApiClient(
      */
     suspend fun updateProfile(request: ProfileUpdateRequest): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val response = client.post<String> {
-                url("$baseUrl/api/business/me/profile")
+            val response = client.post<String> ("$baseUrl/api/business/me/profile") {
                 contentType(io.ktor.http.ContentType.Application.Json)
                 body = request
             }
@@ -335,8 +322,7 @@ class ApiClient(
      */
     suspend fun listMemberships(): Result<List<MembershipInfo>> = withContext(Dispatchers.IO) {
         try {
-            val response = client.get<MembershipsResponse> {
-                url("$baseUrl/api/memberships")
+            val response = client.get<MembershipsResponse> ("$baseUrl/api/memberships") {
             }
             handleResponse(response).map { it.memberships }
         } catch (e: Exception) {
@@ -350,8 +336,7 @@ class ApiClient(
      */
     suspend fun inviteStaff(request: InviteStaffRequest): Result<InviteStaffResponse> = withContext(Dispatchers.IO) {
         try {
-            val response = client.post<InviteStaffResponse> {
-                url("$baseUrl/api/memberships/invite")
+            val response = client.post<InviteStaffResponse> ("$baseUrl/api/memberships/invite") {
                 contentType(io.ktor.http.ContentType.Application.Json)
                 body = request
             }
@@ -369,8 +354,7 @@ class ApiClient(
      */
     suspend fun listDevices(): Result<List<DeviceInfo>> = withContext(Dispatchers.IO) {
         try {
-            val response = client.get<DevicesResponse> {
-                url("$baseUrl/api/devices")
+            val response = client.get<DevicesResponse> ("$baseUrl/api/devices") {
             }
             handleResponse(response).map { it.devices }
         } catch (e: Exception) {
@@ -384,8 +368,7 @@ class ApiClient(
      */
     suspend fun approveDevice(deviceCode: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val response = client.post<String> {
-                url("$baseUrl/api/devices/$deviceCode/approve")
+            val response = client.post<String> ("$baseUrl/api/devices/$deviceCode/approve") {
                 contentType(io.ktor.http.ContentType.Application.Json)
             }
             handleResponse(response).map { Unit }
@@ -402,8 +385,7 @@ class ApiClient(
      */
     suspend fun createBackup(): Result<BackupCreateResponse> = withContext(Dispatchers.IO) {
         try {
-            val response = client.post<BackupCreateResponse> {
-                url("$baseUrl/api/backup/create")
+            val response = client.post<BackupCreateResponse> ("$baseUrl/api/backup/create") {
                 contentType(io.ktor.http.ContentType.Application.Json)
             }
             handleResponse(response)

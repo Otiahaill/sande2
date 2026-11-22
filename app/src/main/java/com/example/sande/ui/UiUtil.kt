@@ -81,7 +81,7 @@ fun ScreenHeader(
     ) {
         IconButton(onClick = { if (onBack != null) onBack() else onOpenDrawer() }) {
             Icon(
-                imageVector = if (onBack != null) Icons.Default.ArrowBack else Icons.Default.Menu,
+                imageVector = if (onBack != null) Icons.Filled.ArrowBack else Icons.Filled.Menu,
                 contentDescription = if (onBack != null) "Back" else "Open navigation menu",
                 tint = MaterialTheme.colorScheme.onSurface
             )

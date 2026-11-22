@@ -50,8 +50,8 @@ fun BusinessResolutionScreen(
         factory = viewModelFactoryOf { OnboardingViewModel(app.tokenManager, app.sessionManager, app.legacyAdoptionManager) }
     )
 
-    val authState = vm.authState.observeAsState(null)
-    val pendingRegistration = vm.pendingRegistration.observeAsState(null)
+    val authState = vm.authState.collectAsState()
+    val pendingRegistration = vm.pendingRegistration.collectAsState()
     val scope = rememberCoroutineScope()
 
     // Navigate when registration completes

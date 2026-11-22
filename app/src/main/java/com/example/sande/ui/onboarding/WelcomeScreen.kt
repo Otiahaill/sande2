@@ -37,7 +37,7 @@ fun WelcomeScreen(
     val context = androidx.compose.ui.platform.LocalContext.current
     val app = context.applicationContext as SandeApplication
     val vm: OnboardingViewModel = viewModel(
-        factory = viewModelFactoryOf { OnboardingViewModel(app.tokenManager, app.sessionManager) }
+        factory = viewModelFactoryOf { OnboardingViewModel(app.tokenManager, app.sessionManager, app.legacyAdoptionManager) }
     )
 
     val scope = rememberCoroutineScope()
@@ -51,7 +51,7 @@ fun WelcomeScreen(
     ) {
         // Logo
         androidx.compose.foundation.Image(
-            painter = painterResource(id = com.example.sande.R.drawable.sandelogo_foreground),
+            painter = painterResource(id = com.example.sande.R.drawable.sandelogo),
             contentDescription = "SANDE Logo",
             modifier = Modifier.size(120.dp),
             contentScale = ContentScale.Fit

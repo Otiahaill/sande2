@@ -71,7 +71,7 @@ fun MemberListScreen(
                     navigationIcon = {
                         androidx.compose.material3.IconButton(onClick = onOpenDrawer) {
                             Icon(
-                                imageVector = Icons.Default.Menu,
+                                imageVector = Icons.Filled.Menu,
                                 contentDescription = "Open menu"
                             )
                         }
@@ -90,7 +90,7 @@ fun MemberListScreen(
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.PersonAdd,
+                        imageVector = Icons.Filled.PersonAdd,
                         contentDescription = "Add member",
                         tint = MaterialTheme.colorScheme.onPrimary
                     )
@@ -130,7 +130,7 @@ fun MemberListScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.Person,
+                                        imageVector = Icons.Filled.Person,
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.size(24.dp)

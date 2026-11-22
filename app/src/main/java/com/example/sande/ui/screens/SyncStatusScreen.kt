@@ -33,6 +33,8 @@ import com.example.sande.ui.viewModelFactoryOf
 import com.example.sande.ui.viewmodel.SyncStatusViewModel
 import kotlinx.coroutines.launch
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Menu
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,7 +68,7 @@ fun SyncStatusScreen(
                 title = { Text("Sync Status") },
                 navigationIcon = {
                     androidx.compose.material3.IconButton(onClick = onOpenDrawer) {
-                        androidx.compose.material.icons.Icons.Default.Menu
+                        androidx.compose.material.icons.Icons.Filled.Menu
                     }
                 },
                 actions = {
@@ -89,7 +91,7 @@ fun SyncStatusScreen(
                         ),
                         shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
                     ) {
-                        androidx.compose.material.icons.Icons.Default.Refresh
+                        androidx.compose.material.icons.Icons.Filled.Refresh
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -122,7 +124,7 @@ fun SyncStatusScreen(
                     if (isSyncing) {
                         CircularProgressIndicator(modifier = Modifier.size(48.dp))
                     } else {
-                        androidx.compose.material.icons.Icons.Default.CloudDone(
+                        androidx.compose.material.icons.Icon(Icons.Filled.CloudDone, contentDescription = null)
                             contentDescription = "Sync status",
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(48.dp)
@@ -187,7 +189,7 @@ fun SyncStatusScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        androidx.compose.material.icons.Icons.Default.Info(
+                        androidx.compose.material.icons.Icon(Icons.Filled.Info, contentDescription = null)
                             contentDescription = "Info",
                             tint = MaterialTheme.colorScheme.onSecondaryContainer
                         )

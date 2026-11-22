@@ -13,15 +13,6 @@ import kotlinx.coroutines.flow.map
 import java.util.UUID
 
 /**
- * Simple data class for sale line items in the repository layer (no UI dependencies).
- */
-data class SaleLineItem(
-    val productId: String,
-    val quantity: Long,
-    val unitPriceCents: Long
-)
-
-/**
  * Legacy MovementRepository - kept for backwards compatibility with existing code.
  * New code should use StockMovementRepository, CheckoutRepository, SaleSessionRepository, etc.
  * This class now reads from stock_movements for balance calculations.

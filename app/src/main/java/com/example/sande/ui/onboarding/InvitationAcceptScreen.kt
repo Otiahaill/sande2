@@ -69,7 +69,7 @@ fun InvitationAcceptScreen(
             text = "Accept Invitation",
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
-            textAlign = androidx.compose.ui.text.TextAlign.Center
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
 
         // Message
@@ -77,7 +77,7 @@ fun InvitationAcceptScreen(
             text = "Enter the 6-digit invitation code you received to join the business.",
             fontSize = 16.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = androidx.compose.ui.text.TextAlign.Center,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             modifier = Modifier.fillMaxWidth().padding(16.dp)
         )
 

@@ -63,7 +63,7 @@ fun AuditViewerScreen(
                     navigationIcon = {
                         androidx.compose.material3.IconButton(onClick = onOpenDrawer) {
                             Icon(
-                                imageVector = Icons.Default.Menu,
+                                imageVector = Icons.Filled.Menu,
                                 contentDescription = "Open menu"
                             )
                         }
@@ -108,7 +108,7 @@ fun AuditViewerScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.History,
+                                        imageVector = Icons.Filled.History,
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.size(24.dp)

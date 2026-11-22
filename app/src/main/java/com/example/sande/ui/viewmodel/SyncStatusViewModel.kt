@@ -8,6 +8,7 @@ import com.example.sande.data.repository.SyncCursorRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -39,8 +40,8 @@ class SyncStatusViewModel(
 
     fun load() {
         viewModelScope.launch {
-            val deviceCode = tokenManager.getDeviceCode().await() ?: "unknown"
-            val businessId = tokenManager.getBusinessId().await() ?: "default-business"
+            val deviceCode = tokenManager.getDeviceCode() ?: "unknown"
+            val businessId = tokenManager.getBusinessId() ?: "default-business"
 
             // Load unsynced count
             outboxEntryRepository.getUnsyncedByBusiness(businessId).first().let {
@@ -48,7 +49,7 @@ class SyncStatusViewModel(
             }
 
             // Load cursor
-            syncCursorRepository.getByBusinessAndDevice(businessId, deviceCode).firstOrNull()?.let {
+            syncCursorRepository.getByBusinessAndDevice(businessId, deviceCode)?.let {
                 _cursor.value = it.cursor
                 _lastSyncAt.value = it.lastPushAt
             }

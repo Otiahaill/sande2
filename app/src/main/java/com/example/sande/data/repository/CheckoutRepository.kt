@@ -18,8 +18,9 @@ import com.example.sande.data.entities.Receipt
 import com.example.sande.data.entities.SaleItem
 import com.example.sande.data.entities.SaleSession
 import com.example.sande.data.entities.StockMovement
-import com.google.common.hash.Hashing
+import kotlinx.coroutines.flow.first
 import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
 import java.util.UUID
 
 /**
@@ -155,12 +156,10 @@ class CheckoutRepository constructor(
         }
 
         // 4. Create Receipt
-        val receiptCounter = counterDao.getNextValue(businessId, deviceCode, "receipt")
+        val receiptCounter = counterDao.getNextValue(businessId, deviceCode, "receipt", now)
         val receiptId = "rcpt_${UUID.randomUUID()}"
         val receiptContent = buildReceiptContent(saleSession, items)
-        val contentHash = Hashing.sha256()
-            .hashString(receiptContent, StandardCharsets.UTF_8)
-            .toString()
+        val contentHash = sha256Hex(receiptContent)
 
         val receipt = Receipt(
             id = receiptId,
@@ -236,6 +235,17 @@ class CheckoutRepository constructor(
             Total: ${session.totalCents/100}
             Status: ${session.status}
         """.trimIndent()
+    }
+
+    /**
+     * SHA-256 of [text], as a lowercase hex string.
+     *
+     * Guava's `Hashing` is not available on Android, so the JDK digest is used.
+     */
+    private fun sha256Hex(text: String): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+            .digest(text.toByteArray(StandardCharsets.UTF_8))
+        return digest.joinToString("") { "%02x".format(it) }
     }
 
     /**
@@ -400,7 +410,7 @@ class CheckoutRepository constructor(
         reason: String = "Voided by user"
     ): Boolean = database.withTransaction {
         val session = saleSessionDao.getById(sessionId)
-        if (session == null || session.status == "voided") return false
+        if (session == null || session.status == "voided") return@withTransaction false
 
         val now = System.currentTimeMillis()
 

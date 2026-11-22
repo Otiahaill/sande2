@@ -55,6 +55,7 @@ import com.example.sande.ui.viewmodel.ReportsViewModel
 import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.TimeZone
+import androidx.compose.material.icons.filled.Menu
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -82,12 +83,12 @@ fun ReportsScreen(
                 title = { Text("Reports") },
                 navigationIcon = {
                     IconButton(onClick = onOpenDrawer) {
-                        Icon(Icons.Default.Menu, contentDescription = "Open drawer")
+                        Icon(Icons.Filled.Menu, contentDescription = "Open drawer")
                     }
                 },
                 actions = {
                     androidx.compose.material3.IconButton(onClick = { vm.exportCsv() }) {
-                        Icon(Icons.Default.Download, contentDescription = "Export CSV")
+                        Icon(Icons.Filled.Download, contentDescription = "Export CSV")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

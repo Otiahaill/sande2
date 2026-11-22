@@ -55,6 +55,9 @@ import com.example.sande.ui.theme.SandeTheme
 import com.example.sande.ui.viewModelFactoryOf
 import com.example.sande.ui.viewmodel.AuditEventsViewModel
 import kotlinx.coroutines.launch
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Menu
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -82,7 +85,7 @@ fun AuditEventsScreen(
                 title = { Text("Audit Trail") },
                 navigationIcon = {
                     IconButton(onClick = onOpenDrawer) {
-                        Icon(Icons.Default.Menu, contentDescription = "Open drawer")
+                        Icon(Icons.Filled.Menu, contentDescription = "Open drawer")
                     }
                 },
                 actions = {
@@ -90,7 +93,7 @@ fun AuditEventsScreen(
                         value = searchText,
                         onValueChange = { searchText = it },
                         label = { Text("Search...") },
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
+                        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = "Search") },
                         keyboardOptions = KeyboardOptions.Default,
                         visualTransformation = VisualTransformationKt.None,
                         modifier = Modifier
@@ -189,10 +192,10 @@ fun AuditEventItem(event: AuditEvent) {
     }
 
     val severityIcon = when (event.severity) {
-        "critical" -> Icons.Default.Error
-        "error" -> Icons.Default.ErrorOutline
-        "warning" -> Icons.Default.Warning
-        else -> Icons.Default.Info
+        "critical" -> Icons.Filled.Error
+        "error" -> Icons.Filled.ErrorOutline
+        "warning" -> Icons.Filled.Warning
+        else -> Icons.Filled.Info
     }
 
     Card(

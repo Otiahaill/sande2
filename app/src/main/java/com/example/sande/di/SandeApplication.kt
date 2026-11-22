@@ -12,6 +12,7 @@ import com.example.sande.data.prefs.ConnectionSettings
 import com.example.sande.data.prefs.TokenManager
 import com.example.sande.data.remote.ApiClient
 import com.example.sande.data.repository.AuditEventRepository
+import com.example.sande.data.repository.AuthRepository
 import com.example.sande.data.repository.BusinessProfileRepository
 import com.example.sande.data.repository.CheckoutRepository
 import com.example.sande.data.repository.CounterRepository
@@ -64,6 +65,9 @@ class SandeApplication : Application() {
     }
     val legacyAdoptionManager: LegacyAdoptionManager by lazy {
         LegacyAdoptionManager(this, database, tokenManager, apiClient)
+    }
+    val authRepository: AuthRepository by lazy {
+        AuthRepository()
     }
 
     // Repositories

@@ -56,6 +56,7 @@ import com.example.sande.ui.theme.SandeTheme
 import com.example.sande.ui.viewModelFactoryOf
 import com.example.sande.ui.viewmodel.ReceiptHistoryViewModel
 import kotlinx.coroutines.launch
+import androidx.compose.material.icons.filled.Menu
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -82,7 +83,7 @@ fun ReceiptHistoryScreen(
                 title = { Text("Receipt History") },
                 navigationIcon = {
                     IconButton(onClick = onOpenDrawer) {
-                        Icon(Icons.Default.Menu, contentDescription = "Open drawer")
+                        Icon(Icons.Filled.Menu, contentDescription = "Open drawer")
                     }
                 },
                 actions = {
@@ -90,7 +91,7 @@ fun ReceiptHistoryScreen(
                         value = searchText,
                         onValueChange = { searchText = it },
                         label = { Text("Search receipts...") },
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
+                        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = "Search") },
                         keyboardOptions = KeyboardOptions.Default,
                         visualTransformation = VisualTransformationKt.None,
                         modifier = Modifier
@@ -242,7 +243,7 @@ fun ReceiptHistoryItem(
                         containerColor = MaterialTheme.colorScheme.errorContainer
                     )
                 ) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                    Icon(Icons.Filled.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
                 }
             }
         }

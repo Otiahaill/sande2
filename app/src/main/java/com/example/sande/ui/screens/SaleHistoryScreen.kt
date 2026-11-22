@@ -79,7 +79,7 @@ fun SaleHistoryScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    imageVector = androidx.compose.material.icons.Icons.Default.ReceiptLong,
+                                    imageVector = androidx.compose.material.icons.Icons.Filled.ReceiptLong,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(20.dp)

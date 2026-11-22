@@ -135,11 +135,11 @@ private val ownerDrawerSections = listOf(
         title = "Overview",
         entries = listOf(
             DrawerEntry(
-                Routes.DASHBOARD, "Dashboard", Icons.Default.Dashboard,
+                Routes.DASHBOARD, "Dashboard", Icons.Filled.Dashboard,
                 caption = "Totals and recent activity"
             ),
             DrawerEntry(
-                Routes.REPORTS, "Reports", Icons.Default.BarChart,
+                Routes.REPORTS, "Reports", Icons.Filled.BarChart,
                 caption = "Sales and stock summaries"
             )
         )
@@ -148,19 +148,19 @@ private val ownerDrawerSections = listOf(
         title = "Inventory",
         entries = listOf(
             DrawerEntry(
-                Routes.CATALOGUE, "Catalogue", Icons.Default.Inventory2,
+                Routes.CATALOGUE, "Catalogue", Icons.Filled.Inventory2,
                 caption = "Product master data",
                 children = listOf(
                     DrawerEntry(
-                        Routes.STOCK, "Stock Levels", Icons.Default.Storage,
+                        Routes.STOCK, "Stock Levels", Icons.Filled.Storage,
                         caption = "Levels per catalogue product"
                     ),
                     DrawerEntry(
-                        Routes.STOCK_MOVEMENTS, "Stock Movements", Icons.Default.History,
+                        Routes.STOCK_MOVEMENTS, "Stock Movements", Icons.Filled.History,
                         caption = "Detailed movement ledger"
                     ),
                     DrawerEntry(
-                        Routes.ALERTS, "Low Stock Alerts", Icons.Default.Warning,
+                        Routes.ALERTS, "Low Stock Alerts", Icons.Filled.Warning,
                         caption = "Replenishment for catalogue items"
                     )
                 )
@@ -171,23 +171,23 @@ private val ownerDrawerSections = listOf(
         title = "Sales",
         entries = listOf(
             DrawerEntry(
-                Routes.SALES, "New Sale", Icons.Default.ShoppingCart,
+                Routes.SALES, "New Sale", Icons.Filled.ShoppingCart,
                 caption = "Record a sale",
                 children = listOf(
                     DrawerEntry(
-                        Routes.SALE_HISTORY, "Sale History", Icons.Default.ReceiptLong,
+                        Routes.SALE_HISTORY, "Sale History", Icons.Filled.ReceiptLong,
                         caption = "Sales already recorded"
                     ),
                     DrawerEntry(
-                        Routes.RECEIPT_HISTORY, "Receipt History", Icons.Default.ReceiptLong,
+                        Routes.RECEIPT_HISTORY, "Receipt History", Icons.Filled.ReceiptLong,
                         caption = "Print & share receipts"
                     ),
                     DrawerEntry(
-                        Routes.AUDIT, "Audit Viewer (Legacy)", Icons.Default.History,
+                        Routes.AUDIT, "Audit Viewer (Legacy)", Icons.Filled.History,
                         caption = "Every stock movement trail"
                     ),
                     DrawerEntry(
-                        Routes.AUDIT_EVENTS, "Audit Events", Icons.Default.History,
+                        Routes.AUDIT_EVENTS, "Audit Events", Icons.Filled.History,
                         caption = "Detailed audit trail with filters"
                     )
                 )
@@ -198,25 +198,25 @@ private val ownerDrawerSections = listOf(
         title = "Administration",
         entries = listOf(
             DrawerEntry(
-                Routes.MEMBERS, "Members", Icons.Default.People,
+                Routes.MEMBERS, "Members", Icons.Filled.People,
                 caption = "Manage team members",
                 requiresOwner = true
             ),
             DrawerEntry(
-                Routes.BACKUP, "Backup & Restore", Icons.Default.SettingsBackupRestore,
+                Routes.BACKUP, "Backup & Restore", Icons.Filled.SettingsBackupRestore,
                 caption = "Export and import the database",
                 requiresOwner = true
             ),
             DrawerEntry(
-                Routes.CONNECTION, "Connection", Icons.Default.Cloud,
+                Routes.CONNECTION, "Connection", Icons.Filled.Cloud,
                 caption = "Backend URL and Google sign-in"
             ),
             DrawerEntry(
-                Routes.SYNC_STATUS, "Sync Status", Icons.Default.CloudDone,
+                Routes.SYNC_STATUS, "Sync Status", Icons.Filled.CloudDone,
                 caption = "Cloud synchronisation status"
             ),
             DrawerEntry(
-                Routes.SETTINGS, "Settings", Icons.Default.Settings,
+                Routes.SETTINGS, "Settings", Icons.Filled.Settings,
                 caption = "Account and preferences"
             )
         )
@@ -228,11 +228,11 @@ private val salespersonDrawerSections = listOf(
         title = "Sales",
         entries = listOf(
             DrawerEntry(
-                Routes.SALES, "New Sale", Icons.Default.ShoppingCart,
+                Routes.SALES, "New Sale", Icons.Filled.ShoppingCart,
                 caption = "Record a sale"
             ),
             DrawerEntry(
-                Routes.SALE_HISTORY, "My Sales", Icons.Default.ReceiptLong,
+                Routes.SALE_HISTORY, "My Sales", Icons.Filled.ReceiptLong,
                 caption = "Your sales history"
             )
         )
@@ -241,11 +241,11 @@ private val salespersonDrawerSections = listOf(
         title = "Inventory",
         entries = listOf(
             DrawerEntry(
-                Routes.CATALOGUE, "Product Catalogue", Icons.Default.Inventory2,
+                Routes.CATALOGUE, "Product Catalogue", Icons.Filled.Inventory2,
                 caption = "Browse products"
             ),
             DrawerEntry(
-                Routes.STOCK, "Stock Levels", Icons.Default.Storage,
+                Routes.STOCK, "Stock Levels", Icons.Filled.Storage,
                 caption = "View stock levels"
             )
         )
@@ -254,7 +254,7 @@ private val salespersonDrawerSections = listOf(
         title = "Account",
         entries = listOf(
             DrawerEntry(
-                Routes.SETTINGS, "Settings", Icons.Default.Settings,
+                Routes.SETTINGS, "Settings", Icons.Filled.Settings,
                 caption = "Account and preferences"
             )
         )

@@ -41,6 +41,9 @@ import com.example.sande.ui.viewModelFactoryOf
 import com.example.sande.ui.viewmodel.ConnectionViewModel
 import kotlinx.coroutines.launch
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Warning
 
 /**
  * Connection settings screen — where the user points the app at a backend
@@ -84,7 +87,7 @@ fun ConnectionSettingsScreen(
                 title = { Text("Connection") },
                 navigationIcon = {
                     IconButton(onClick = onOpenDrawer) {
-                        Icon(Icons.Default.Menu, contentDescription = "Open drawer")
+                        Icon(Icons.Filled.Menu, contentDescription = "Open drawer")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -118,7 +121,7 @@ fun ConnectionSettingsScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = if (vm.isReady.value) Icons.Default.CheckCircle else Icons.Default.Warning,
+                        imageVector = if (vm.isReady.value) Icons.Filled.CheckCircle else Icons.Filled.Warning,
                         contentDescription = null,
                         tint = if (vm.isReady.value) {
                             MaterialTheme.colorScheme.onPrimaryContainer

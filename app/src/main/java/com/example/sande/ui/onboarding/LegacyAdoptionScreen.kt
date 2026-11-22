@@ -28,11 +28,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.TextAlign
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.observeAsState
+import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.sande.data.auth.LegacyAdoptionManager
 import com.example.sande.di.SandeApplication
@@ -41,6 +41,8 @@ import com.example.sande.ui.viewModelFactoryOf
 import com.example.sande.ui.viewmodel.OnboardingViewModel
 import kotlinx.coroutines.launch
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.Icons
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,11 +58,11 @@ fun LegacyAdoptionScreen(
         factory = viewModelFactoryOf { OnboardingViewModel(app.tokenManager, app.sessionManager, app.legacyAdoptionManager) }
     )
 
-    val legacyDataCounts = vm.legacyDataCounts.observeAsState(null)
-    val adoptionProgress = vm.adoptionProgress.observeAsState(0f)
-    val adoptionMessage = vm.adoptionMessage.observeAsState("")
-    val adoptionError = vm.adoptionError.observeAsState(null)
-    val adoptionComplete = vm.adoptionComplete.observeAsState(false)
+    val legacyDataCounts = vm.legacyDataCounts.collectAsState()
+    val adoptionProgress = vm.adoptionProgress.collectAsState()
+    val adoptionMessage = vm.adoptionMessage.collectAsState()
+    val adoptionError = vm.adoptionError.collectAsState()
+    val adoptionComplete = vm.adoptionComplete.collectAsState()
 
     val scope = rememberCoroutineScope()
 
@@ -86,7 +88,8 @@ fun LegacyAdoptionScreen(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Icon
-        Download(
+        Icon(
+            imageVector = Icons.Filled.Download,
             contentDescription = "Data migration",
             modifier = Modifier.size(64.dp),
             tint = MaterialTheme.colorScheme.primary

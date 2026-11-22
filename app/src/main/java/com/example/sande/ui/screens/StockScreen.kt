@@ -62,7 +62,7 @@ fun StockScreen(
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Add,
+                        imageVector = Icons.Filled.Add,
                         contentDescription = "Receive stock",
                         tint = MaterialTheme.colorScheme.onPrimary
                     )
@@ -102,7 +102,7 @@ fun StockScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.Inventory,
+                                        imageVector = Icons.Filled.Inventory,
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.size(24.dp)

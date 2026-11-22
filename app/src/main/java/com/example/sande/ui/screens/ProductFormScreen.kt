@@ -70,7 +70,7 @@ fun ProductFormScreen(
                     navigationIcon = {
                         IconButton(onClick = { onCancel() }) {
                             Icon(
-                                imageVector = Icons.Default.Menu,
+                                imageVector = Icons.Filled.Menu,
                                 contentDescription = "Close"
                             )
                         }

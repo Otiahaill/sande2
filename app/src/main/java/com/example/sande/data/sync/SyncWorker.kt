@@ -229,17 +229,19 @@ class SyncWorker(
             val connectivityManager = applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE)
                     as android.net.ConnectivityManager
             val activeNetwork = connectivityManager.activeNetwork
-            if (activeNetwork == null || !connectivityManager.getNetworkCapabilities(activeNetwork).hasCapability(
+            val capabilities = activeNetwork?.let { connectivityManager.getNetworkCapabilities(it) }
+            if (capabilities == null || !capabilities.hasCapability(
                 android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET
             )) {
                 return Result.retry()
             }
 
-            // Push local changes first
-            outboxProcessor.push()
-
-            // Then pull remote changes
-            pullApplier.pull()
+            // Push local changes first, then pull remote changes.
+            // The worker body is not a coroutine, so the suspend work is run here.
+            runBlocking {
+                outboxProcessor.push()
+                pullApplier.pull()
+            }
 
             Result.success()
         } catch (e: Exception) {

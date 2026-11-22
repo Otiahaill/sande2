@@ -31,17 +31,19 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.TextAlign
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.observeAsState
+import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.sande.di.SandeApplication
 import com.example.sande.ui.theme.SandeTheme
 import com.example.sande.ui.viewModelFactoryOf
 import com.example.sande.ui.viewmodel.OnboardingViewModel
 import kotlinx.coroutines.launch
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.Icons
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,7 +57,7 @@ fun RecoveryCodesScreen(
         factory = viewModelFactoryOf { OnboardingViewModel(app.tokenManager, app.sessionManager, app.legacyAdoptionManager) }
     )
 
-    val authState = vm.authState.observeAsState(null)
+    val authState = vm.authState.collectAsState()
     val scope = rememberCoroutineScope()
 
     var codesConfirmed by remember { mutableStateOf(false) }
@@ -66,7 +68,7 @@ fun RecoveryCodesScreen(
 
     LaunchedEffect(Unit) {
         scope.launch {
-            val codes = app.tokenManager.getRecoveryCodes().await()
+            val codes = app.tokenManager.getRecoveryCodes()
             recoveryCodes.value = codes
         }
     }
@@ -80,7 +82,8 @@ fun RecoveryCodesScreen(
     ) {
         // Header
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Security(
+            Icon(
+                imageVector = Icons.Filled.Security,
                 contentDescription = "Security",
                 modifier = Modifier.size(48.dp),
                 tint = MaterialTheme.colorScheme.primary
@@ -112,7 +115,8 @@ fun RecoveryCodesScreen(
                 modifier = Modifier.padding(16.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Warning(
+                Icon(
+                    imageVector = Icons.Filled.Warning,
                     contentDescription = "Warning",
                     tint = MaterialTheme.colorScheme.error
                 )
@@ -198,7 +202,8 @@ fun RecoveryCodesScreen(
             ),
             shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
         ) {
-            ContentCopy(
+            Icon(
+                imageVector = Icons.Filled.ContentCopy,
                 contentDescription = "Copy",
                 modifier = Modifier.padding(end = 8.dp)
             )
@@ -219,7 +224,8 @@ fun RecoveryCodesScreen(
                 modifier = Modifier.fillMaxWidth().padding(16.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Check(
+                Icon(
+                    imageVector = Icons.Filled.Check,
                     contentDescription = "",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -237,7 +243,7 @@ fun RecoveryCodesScreen(
                 if (!codesConfirmed) return@Button
                 scope.launch {
                     isConfirming = true
-                    app.tokenManager.markRecoveryCodesConfirmed().await()
+                    app.tokenManager.markRecoveryCodesConfirmed()
                     onContinue()
                 }
             },

@@ -45,7 +45,7 @@ fun GoogleSignInScreen(
     val activity = context as androidx.activity.ComponentActivity
     val app = context.applicationContext as SandeApplication
     val vm: OnboardingViewModel = viewModel(
-        factory = viewModelFactoryOf { OnboardingViewModel(app.tokenManager, app.sessionManager) }
+        factory = viewModelFactoryOf { OnboardingViewModel(app.tokenManager, app.sessionManager, app.legacyAdoptionManager) }
     )
 
     val googleAuthManager = remember { GoogleAuthManager(context, app.connectionResolver.googleClientId()) }
@@ -93,7 +93,7 @@ fun GoogleSignInScreen(
     ) {
         // Logo
         androidx.compose.foundation.Image(
-            painter = androidx.compose.ui.res.painterResource(id = com.example.sande.R.drawable.sandelogo_foreground),
+            painter = androidx.compose.ui.res.painterResource(id = com.example.sande.R.drawable.sandelogo),
             contentDescription = "SANDE Logo",
             modifier = Modifier.size(120.dp),
         )

@@ -58,7 +58,7 @@ fun CatalogueScreen(
                 FloatingActionButton(
                     onClick = onAddProduct
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "Add product")
+                    Icon(Icons.Filled.Add, contentDescription = "Add product")
                 }
             }
         ) { innerPadding ->

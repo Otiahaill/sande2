@@ -70,7 +70,7 @@ fun SettingsScreen(
                     navigationIcon = {
                         IconButton(onClick = onOpenDrawer) {
                             Icon(
-                                imageVector = Icons.Default.Menu,
+                                imageVector = Icons.Filled.Menu,
                                 contentDescription = "Open menu"
                             )
                         }
@@ -99,7 +99,7 @@ fun SettingsScreen(
                             supportingContent = { Text("Role: ${currentUserRole ?: "Unknown"}") },
                             leadingContent = {
                                 Icon(
-                                    imageVector = Icons.Default.AccountCircle,
+                                    imageVector = Icons.Filled.AccountCircle,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary
                                 )
@@ -170,7 +170,7 @@ fun SettingsScreen(
                             supportingContent = { Text("1.0.0") },
                             leadingContent = {
                                 Icon(
-                                    imageVector = Icons.Default.Info,
+                                    imageVector = Icons.Filled.Info,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -181,7 +181,7 @@ fun SettingsScreen(
                             headlineContent = { Text("Terms of Service") },
                             leadingContent = {
                                 Icon(
-                                    imageVector = Icons.Default.Description,
+                                    imageVector = Icons.Filled.Description,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -192,7 +192,7 @@ fun SettingsScreen(
                             headlineContent = { Text("Privacy Policy") },
                             leadingContent = {
                                 Icon(
-                                    imageVector = Icons.Default.PrivacyTip,
+                                    imageVector = Icons.Filled.PrivacyTip,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )

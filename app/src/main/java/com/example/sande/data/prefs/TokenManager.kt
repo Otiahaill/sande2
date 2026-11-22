@@ -27,7 +27,7 @@ class TokenManager(private val context: Context) {
             masterKeyAlias,
             context,
             EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM_SPEC
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
         )
     } catch (e: GeneralSecurityException) {
         throw RuntimeException("Failed to create encrypted preferences", e)
@@ -154,7 +154,7 @@ class TokenManager(private val context: Context) {
     }
 
     suspend fun getNegativeStockPolicy(): String = withContext(Dispatchers.IO) {
-        prefs.getString(KEY_NEGATIVE_STOCK_POLICY, "warn") // allow, warn, block
+        prefs.getString(KEY_NEGATIVE_STOCK_POLICY, "warn") ?: "warn" // allow, warn, block
     }
 
     suspend fun setReceiptFooter(footer: String?) = withContext(Dispatchers.IO) {
@@ -202,7 +202,7 @@ data class StoredTokens(
     val refreshToken: String,
     val accessTokenExpiry: Long, // epoch millis
     val refreshTokenExpiry: Long, // epoch millis
-    val membership: com.example.sande.data.auth.AuthTokens.MembershipInfo,
+    val membership: com.example.sande.data.auth.MembershipInfo,
     val accountId: String,
 ) {
     fun isAccessTokenValid(): Boolean = System.currentTimeMillis() < accessTokenExpiry

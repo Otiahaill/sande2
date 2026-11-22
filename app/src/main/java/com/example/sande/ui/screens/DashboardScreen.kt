@@ -54,7 +54,7 @@ fun DashboardScreen(
         factory = viewModelFactoryOf { CatalogueViewModel(app.productRepository) }
     )
     val stockViewModel: StockViewModel = viewModel(
-        factory = viewModelFactoryOf { StockViewModel(app.movementRepository, app.productRepository, app.stockAdjustmentRepository) }
+        factory = viewModelFactoryOf { StockViewModel(app.stockMovementRepository, app.productRepository) }
     )
     val products by catalogueViewModel.products.collectAsState()
     val stockRows by stockViewModel.rows.collectAsState()
@@ -89,7 +89,7 @@ fun DashboardScreen(
                     title = "Inv. Value",
                     value = formatKes(totalValueCents),
                     subtitle = "All products",
-                    icon = Icons.Default.Inventory,
+                    icon = Icons.Filled.Inventory,
                     iconColor = MaterialTheme.colorScheme.primary,
                     cardColor = Color(0xFFE3F2FD),
                     modifier = Modifier.weight(1f)
@@ -98,7 +98,7 @@ fun DashboardScreen(
                     title = "Low Stock",
                     value = lowStockCount.toString(),
                     subtitle = "Needs attention",
-                    icon = Icons.Default.Storage,
+                    icon = Icons.Filled.Storage,
                     iconColor = MaterialTheme.colorScheme.error,
                     cardColor = Color(0xFFFFEEEE),
                     modifier = Modifier.weight(1f)
@@ -107,7 +107,7 @@ fun DashboardScreen(
                     title = "Units",
                     value = totalStock.toString(),
                     subtitle = "In stock",
-                    icon = Icons.Default.ShoppingCart,
+                    icon = Icons.Filled.ShoppingCart,
                     iconColor = MaterialTheme.colorScheme.secondary,
                     cardColor = Color(0xFFE4E4EC),
                     modifier = Modifier.weight(1f)
@@ -139,7 +139,7 @@ fun DashboardScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Inventory,
+                                imageVector = Icons.Filled.Inventory,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(20.dp)

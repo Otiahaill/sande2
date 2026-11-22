@@ -240,7 +240,7 @@ fun SalesScreen(
                                     Spacer(modifier = Modifier.width(16.dp))
                                     IconButton(onClick = { vm.removeFromCart(line.productId) }) {
                                         Icon(
-                                            imageVector = Icons.Default.DeleteOutline,
+                                            imageVector = Icons.Filled.DeleteOutline,
                                             contentDescription = "Remove",
                                             tint = MaterialTheme.colorScheme.error
                                         )

@@ -43,7 +43,7 @@ fun DeviceApprovalScreen(
         factory = viewModelFactoryOf { OnboardingViewModel(app.tokenManager, app.sessionManager, app.legacyAdoptionManager) }
     )
 
-    val authState = vm.authState.observeAsState(null)
+    val authState = vm.authState.collectAsState()
     val scope = rememberCoroutineScope()
 
     var isRetrying by remember { mutableStateOf(false) }
@@ -67,7 +67,7 @@ fun DeviceApprovalScreen(
             text = "Device Awaiting Approval",
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
-            textAlign = androidx.compose.ui.text.TextAlign.Center
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
 
         // Message
@@ -75,7 +75,7 @@ fun DeviceApprovalScreen(
             text = "Your device has been registered but needs approval from the business owner before it can sync data.",
             fontSize = 16.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = androidx.compose.ui.text.TextAlign.Center,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             modifier = Modifier.fillMaxWidth().padding(16.dp)
         )
 
