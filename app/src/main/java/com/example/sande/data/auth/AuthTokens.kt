@@ -57,7 +57,16 @@ data class GoogleSignInResult(
 
 /**
  * Device registration request.
+ *
+ * The request/response DTOs used by the API layer live in
+ * `com.example.sande.data.remote` — they are the wire format. The ones here
+ * were duplicated and are kept only because the auth package still references
+ * them; see the `remote` package for the canonical definitions.
  */
+@Deprecated(
+    "Use com.example.sande.data.remote.DeviceRegistrationRequest",
+    ReplaceWith("com.example.sande.data.remote.DeviceRegistrationRequest")
+)
 @Serializable
 @Keep
 data class DeviceRegistrationRequest(
@@ -70,6 +79,10 @@ data class DeviceRegistrationRequest(
 /**
  * Business registration request.
  */
+@Deprecated(
+    "Use com.example.sande.data.remote.BusinessRegistrationRequest",
+    ReplaceWith("com.example.sande.data.remote.BusinessRegistrationRequest")
+)
 @Serializable
 @Keep
 data class BusinessRegistrationRequest(
@@ -85,6 +98,10 @@ data class BusinessRegistrationRequest(
 /**
  * Staff invitation request.
  */
+@Deprecated(
+    "Use com.example.sande.data.remote.InviteStaffRequest",
+    ReplaceWith("com.example.sande.data.remote.InviteStaffRequest")
+)
 @Serializable
 @Keep
 data class InviteStaffRequest(
@@ -95,6 +112,10 @@ data class InviteStaffRequest(
 /**
  * Invitation acceptance request.
  */
+@Deprecated(
+    "Use com.example.sande.data.remote.AcceptInvitationRequest",
+    ReplaceWith("com.example.sande.data.remote.AcceptInvitationRequest")
+)
 @Serializable
 @Keep
 data class AcceptInvitationRequest(

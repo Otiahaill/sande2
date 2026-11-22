@@ -2,26 +2,74 @@ package com.example.sande.data.remote
 
 import android.content.Context
 import com.example.sande.data.auth.AuthTokens
-import com.example.sande.data.auth.GoogleSignInResult
+import com.example.sande.data.auth.OutboxEntry
 import com.example.sande.data.prefs.TokenManager
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.logging.Logging
+import io.ktor.client.plugins.logging.LogLevel
+import io.ktor.client.plugins.logging.sanitizeHeader
 import io.ktor.client.request.HttpRequestBuilder
-import io.ktor.client.request.post
+import io.ktor.client.request.HttpRequestPipeline
+import io.ktor.client.request.body
+import io.ktor.client.request.contentType
 import io.ktor.client.request.get
+import io.ktor.client.request.parameter
+import io.ktor.client.request.post
+import io.ktor.client.request.url
 import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import java.util.concurrent.TimeUnit
 
+/**
+ * Result type used by the API layer.
+ *
+ * `kotlin.Result` cannot be used as a return type of a suspend function that is
+ * called from a non-inline context in older Kotlin versions, and it cannot be
+ * returned from a function with a nullable generic argument, so the API layer
+ * uses its own small wrapper.
+ */
+sealed class Result<out T> {
+    data class Success<out T>(val value: T) : Result<T>()
+    data class Failure(val error: Throwable) : Result<Nothing>()
+
+    companion object {
+        fun <T> success(value: T): Result<T> = Success(value)
+        fun <T> failure(error: Throwable): Result<T> = Failure(error)
+    }
+
+    fun onSuccess(action: (T) -> Unit): Result<T> {
+        if (this is Success) action(value)
+        return this
+    }
+
+    fun onFailure(action: (Throwable) -> Unit): Result<T> {
+        if (this is Failure) action(error)
+        return this
+    }
+
+    fun getOrNull(): T? = (this as? Success)?.value
+
+    fun getOrThrow(): T = when (this) {
+        is Success -> value
+        is Failure -> throw error
+    }
+
+    fun map(transform: (T) -> R): Result<R> = when (this) {
+        is Success -> Result.success(transform(value))
+        is Failure -> Result.failure(error)
+    }
+}
 /**
  * Ktor HTTP client for communicating with the SANDE backend.
  */
@@ -39,9 +87,9 @@ class ApiClient(
             // Never log request/response bodies in a release build: they contain
             // OAuth tokens, membership data and business records.
             level = if (com.example.sande.BuildConfig.DEBUG) {
-                io.ktor.client.plugins.logging.LogLevel.INFO
+                LogLevel.INFO
             } else {
-                io.ktor.client.plugins.logging.LogLevel.NONE
+                LogLevel.NONE
             }
             sanitizeHeader { header -> header == HttpHeaders.Authorization }
         }
@@ -54,7 +102,7 @@ class ApiClient(
             val tokens = tokenManager.getCurrentTokens()
             tokens?.let {
                 if (it.isAccessTokenValid()) {
-                    this.headers.append(HttpHeaders.Authorization, "Bearer ${it.accessToken}")
+                    this.headers.append(HttpHeaders.Authorization, "[redacted]
                 }
             }
         }
@@ -395,6 +443,19 @@ class ApiClient(
 // ===== Request/Response DTOs =====
 
 @Serializable
+data class HealthResponse(
+    val status: String,
+    val latencyMs: Long,
+    val checks: HealthChecks? = null,
+)
+@Serializable
+data class HealthChecks(
+    val d1: String? = null,
+    val r2: String? = null,
+    val kv: String? = null,
+)
+
+@Serializable
 data class GoogleAuthRequest(
     val idToken: String,
     val deviceCode: String,
@@ -421,18 +482,18 @@ data class AuthResponseData(
 data class AccountInfo(
     val id: String,
     val email: String,
-    val display_name: String?,
-    val photo_url: String?,
+    @SerialName("display_name") val displayName: String?,
+    @SerialName("photo_url") val photoUrl: String?,
 )
 
 @Serializable
 data class MembershipInfo(
     val id: String,
-    val business_id: String,
-    val business_name: String,
+    @SerialName("business_id") val businessId: String,
+    @SerialName("business_name") val businessName: String,
     val role: String,
     val status: String,
-    val device_code: String?,
+    @SerialName("device_code") val deviceCode: String?,
 )
 
 @Serializable
@@ -498,6 +559,7 @@ data class InvitationAcceptResponse(
 data class InvitationAcceptData(
     val tokens: AuthTokens,
     val accountId: String,
+    val recoveryCodes: List<String>,
 )
 
 @Serializable
@@ -515,23 +577,6 @@ data class SyncPushRequest(
 )
 
 @Serializable
-data class OutboxEntry(
-    val id: String,
-    val businessId: String,
-    val entityType: String,
-    val entityId: String,
-    val operation: String,
-    val payloadJson: String,
-    val batchId: String? = null,
-    val attemptCount: Int = 0,
-    val lastError: String? = null,
-    val createdAt: Long,
-    val updatedAt: Long,
-    val synced: Boolean = false,
-    val syncedAt: Long = 0,
-)
-
-@Serializable
 data class SyncPushResponse(
     val success: Boolean,
     val data: SyncPushData? = null,
@@ -540,11 +585,8 @@ data class SyncPushResponse(
 
 @Serializable
 data class SyncPushData(
-    val batchId: String,
-    val processed: Int,
-    val success: Int,
-    val errors: Int,
-    val errorDetails: List<String>? = null,
+    val pushed: Int,
+    val failed: Int,
 )
 
 @Serializable
@@ -558,24 +600,15 @@ data class SyncPullResponse(
 data class SyncPullData(
     val cursor: Long,
     val changes: List<ChangeLogEntry>,
-    val hasMore: Boolean,
+    val more: Boolean,
 )
 
 @Serializable
 data class ChangeLogEntry(
-    val id: String,
-    val business_id: String,
-    val entity_type: String,
-    val entity_id: String,
     val operation: String,
-    val actor_id: String,
-    val actor_role: String,
-    val device_code: String,
-    val before_json: String?,
-    val after_json: String?,
-    val metadata_json: String?,
-    val server_seq: Long,
-    val created_at: Long,
+    val entityType: String,
+    val entityId: String,
+    val payloadJson: String,
 )
 
 @Serializable
@@ -587,71 +620,49 @@ data class SyncStatusResponse(
 
 @Serializable
 data class SyncStatusData(
-    val device_code: String,
-    val cursor: Long,
-    val last_pull_at: Long,
-    val last_push_at: Long,
-    val pending_push_count: Int,
-    val unsynced_count: Int,
-    val other_devices: List<OtherDeviceStatus>,
-    val lease_expires_at: Long,
-)
-
-@Serializable
-data class OtherDeviceStatus(
-    val device_code: String,
-    val device_name: String,
-    val status: String,
-    val last_pull_at: Long?,
-    val last_push_at: Long?,
-    val pending_push_count: Int,
+    val cursor: Long = 0,
+    val pendingPushCount: Int = 0,
+    val lastPullAt: Long = 0,
+    val lastPushAt: Long = 0,
 )
 
 @Serializable
 data class BusinessInfoResponse(
     val success: Boolean,
-    val data: BusinessInfo? = null,
+    val data: BusinessInfoData? = null,
     val error: ApiError? = null,
 )
 
 @Serializable
-data class BusinessInfo(
+data class BusinessInfoData(
     val id: String,
     val name: String,
     val category: String,
-    val phone: String?,
-    val country_code: String,
-    val currency_code: String,
+    val countryCode: String,
+    val currencyCode: String,
     val timezone: String,
     val address: String?,
-    val logo_r2_key: String?,
-    val negative_stock_policy: String,
-    val receipt_footer: String?,
-    val status: String,
-    val created_at: Long,
+    val logoUri: String?,
+    val negativeStockPolicy: String,
+    val receiptFooter: String?,
+    val createdAt: Long,
+    val updatedAt: Long,
+    val deletedAt: Long,
+    val schemaVersion: Int,
 )
 
 @Serializable
 data class ProfileUpdateRequest(
-    val name: String? = null,
-    val category: String? = null,
-    val phone: String? = null,
-    val address: String? = null,
-    val negative_stock_policy: String? = null,
-    val receipt_footer: String? = null,
-    val logo_r2_key: String? = null,
-)
-
-@Serializable
-data class MembershipsResponse(
-    val success: Boolean,
-    val data: MembershipsData? = null,
-    val error: ApiError? = null,
-)
-
-@Serializable
-data class MembershipsData(
-    val memberships: List<MembershipInfo>,
+    val name: String?,
+    val category: String?,
+    val phone: String?,
+    val countryCode: String?,
+    val currencyCode: String?,
+    val timezone: String?,
+    val address: String?,
+    val logoUri: String?,
+    val negativeStockPolicy: String?,
+    val receiptFooter: String?,
 )
 
 @Serializable
@@ -669,11 +680,22 @@ data class InviteStaffResponse(
 
 @Serializable
 data class InviteStaffData(
-    val invitation_id: String,
+    val id: String,
     val email: String,
     val role: String,
-    val expires_at: Long,
-    val code: String, // Only in development!
+    val status: String,
+)
+
+@Serializable
+data class DeviceInfo(
+    val id: String,
+    val deviceCode: String,
+    val deviceName: String,
+    val deviceType: String,
+    val status: String,
+    val lastSeenAt: Long,
+    val lastSyncAt: Long?,
+    val pushToken: String?,
 )
 
 @Serializable
@@ -689,25 +711,6 @@ data class DevicesData(
 )
 
 @Serializable
-data class DeviceInfo(
-    val id: String,
-    val device_code: String,
-    val device_name: String,
-    val device_type: String,
-    val status: String,
-    val account_email: String?,
-    val account_display_name: String?,
-    val role: String?,
-    val approved_by: String?,
-    val approved_at: Long?,
-    val revoked_at: Long?,
-    val revoked_by: String?,
-    val last_seen_at: Long,
-    val last_sync_at: Long?,
-    val created_at: Long,
-)
-
-@Serializable
 data class BackupCreateResponse(
     val success: Boolean,
     val data: BackupCreateData? = null,
@@ -716,13 +719,9 @@ data class BackupCreateResponse(
 
 @Serializable
 data class BackupCreateData(
-    val backup_id: String,
-    val r2_key: String,
-    val size_bytes: Long,
-    val row_counts: Map<String, Int>,
-    val total_rows: Int,
-    val content_hash: String,
-    val created_at: Long,
+    val backupId: String,
+    val sizeBytes: Long,
+    val checksum: String,
 )
 
 @Serializable
@@ -732,65 +731,6 @@ data class ApiError(
     val details: String? = null,
 )
 
-@Serializable
-data class HealthResponse(
-    val status: String,
-    val timestamp: String? = null,
-    val latency_ms: Long = 0,
-    val checks: HealthChecks? = null,
-    val version: String? = null,
-)
-
-@Serializable
-data class HealthChecks(
-    val d1: String? = null,
-    val r2: String? = null,
-    val kv: String? = null,
-)
-
-/**
- * Result wrapper for async operations.
- */
-sealed class Result<out T> {
-    data class Success<out T>(val value: T) : Result<T>()
-    data class Failure(val error: Throwable) : Result<Nothing>()
-
-    companion object {
-        fun <T> success(value: T): Result<T> = Success(value)
-        fun <T> failure(error: Throwable): Result<T> = Failure(error)
-    }
-
-    fun onSuccess(action: (T) -> Unit): Result<T> {
-        if (this is Success) action(value)
-        return this
-    }
-
-    fun onFailure(action: (Throwable) -> Unit): Result<T> {
-        if (this is Failure) action(error)
-        return this
-    }
-
-    fun map<U>(transform: (T) -> U): Result<U> {
-        return when (this) {
-            is Success -> Success(transform(value))
-            is Failure -> Failure(error)
-        }
-    }
-
-    fun getOrNull(): T? = when (this) {
-        is Success -> value
-        is Failure -> null
-    }
-
-    fun getOrThrow(): T = when (this) {
-        is Success -> value
-        is Failure -> throw error
-    }
-}
-
-/**
- * Custom exception for API errors.
- */
 class ApiException(
     message: String,
     cause: Throwable? = null,

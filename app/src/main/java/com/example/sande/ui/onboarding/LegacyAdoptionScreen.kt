@@ -3,15 +3,23 @@ package com.example.sande.ui.onboarding
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProgressIndicator
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -21,9 +29,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.TextAlign
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.observeAsState
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.sande.data.auth.LegacyAdoptionManager
 import com.example.sande.di.SandeApplication
@@ -55,14 +65,14 @@ fun LegacyAdoptionScreen(
     val scope = rememberCoroutineScope()
 
     // Auto-start adoption if counts are available and not already adopting/complete
-    androidx.compose.runtime.LaunchedEffect(legacyDataCounts.value) {
+    LaunchedEffect(legacyDataCounts.value) {
         if (legacyDataCounts.value != null && !adoptionComplete.value && adoptionProgress.value == 0f) {
             vm.adoptLegacyData()
         }
     }
 
     // Navigate when complete
-    androidx.compose.runtime.LaunchedEffect(adoptionComplete.value) {
+    LaunchedEffect(adoptionComplete.value) {
         if (adoptionComplete.value) {
             onComplete()
         }
@@ -76,7 +86,7 @@ fun LegacyAdoptionScreen(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Icon
-        androidx.compose.material.icons.filled.Download(
+        Download(
             contentDescription = "Data migration",
             modifier = Modifier.size(64.dp),
             tint = MaterialTheme.colorScheme.primary
@@ -87,7 +97,7 @@ fun LegacyAdoptionScreen(
             text = "Migrate Your Existing Data",
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
-            textAlign = androidx.compose.ui.text.TextAlign.Center
+            textAlign = TextAlign.Center
         )
 
         // Message
@@ -95,7 +105,7 @@ fun LegacyAdoptionScreen(
             text = "We found existing business data on this device. Would you like to migrate it to your new online account?",
             fontSize = 16.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = androidx.compose.ui.text.TextAlign.Center,
+            textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth().padding(16.dp)
         )
 
@@ -121,7 +131,7 @@ fun LegacyAdoptionScreen(
                     DataRow(label = "Stock Adjustments", count = c.stockAdjustments)
                     DataRow(label = "Pending Sync Items", count = c.outboxEntries)
                     androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(8.dp))
-                    androidx.compose.material3.Divider()
+                    Divider()
                     DataRow(
                         label = "Total Records",
                         count = c.total,
@@ -142,7 +152,7 @@ fun LegacyAdoptionScreen(
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                androidx.compose.material3.LinearProgressIndicator(
+                LinearProgressIndicator(
                     progress = adoptionProgress.value,
                     modifier = Modifier.fillMaxWidth(),
                     color = MaterialTheme.colorScheme.primary
@@ -177,13 +187,13 @@ fun LegacyAdoptionScreen(
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
                 ) {
                     if (adoptionProgress.value > 0f && adoptionProgress.value < 1f) {
-                        ProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary)
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary)
                         androidx.compose.foundation.layout.Spacer(modifier = Modifier.width(8.dp))
                     }
                     Text(text = if (adoptionProgress.value > 0f && adoptionProgress.value < 1f) "Migrating..." else "Migrate Data", fontSize = 16.sp, fontWeight = FontWeight.Medium)
                 }
 
-                androidx.compose.material3.OutlinedButton(
+                OutlinedButton(
                     onClick = {
                         onSkip()
                     },
@@ -209,7 +219,7 @@ fun LegacyAdoptionScreen(
         }
 
         // Back button
-        androidx.compose.material3.TextButton(onClick = { if (adoptionProgress.value == 0f || adoptionProgress.value == 1f) onBack() }) {
+        TextButton(onClick = { if (adoptionProgress.value == 0f || adoptionProgress.value == 1f) onBack() }) {
             Text(text = "Back", fontSize = 16.sp)
         }
     }
@@ -231,28 +241,6 @@ fun LegacyAdoptionScreen(
                 fontWeight = if (isTotal) FontWeight.Bold else FontWeight.Normal,
                 color = if (isTotal) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
             )
-        }
-    }
-
-    fun startAdoption() {
-        scope.launch {
-            isAdopting = true
-            error = null
-            progress = 0f
-            progressMessage = "Starting..."
-
-            // Get the registration request from the business resolution screen
-            // For now, we'll need to pass this through - in practice it would come from the previous screen
-            // This is a simplified version - the actual implementation would get the request from viewmodel state
-            try {
-                // This would need the registration request from the previous screen
-                // For now, we'll show an error
-                error = "Migration requires business registration first. Please complete registration."
-                isAdopting = false
-            } catch (e: Exception) {
-                error = "Migration failed: ${e.message}"
-                isAdopting = false
-            }
         }
     }
 }

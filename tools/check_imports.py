@@ -78,6 +78,16 @@ def main():
         pm = re.search(r"^package\s+([\w.]+)", raw, re.M)
         pkg = pm.group(1) if pm else ""
         syms = set(DECL_RE.findall(raw))
+        # Enum constants
+        for ec_match in re.finditer(r"enum class\s+[A-Za-z_][A-Za-z0-9_]*\s*\{([^}]*)\}", raw, re.S):
+            ec_content = ec_match.group(1)
+            for ec in re.findall(r"([A-Z][A-Z0-9_]+)", ec_content):
+                syms.add(ec)
+        # Companion object members
+        for co_match in re.finditer(r"companion object\s*\{([^}]*)\}", raw, re.S):
+            co_content = co_match.group(1)
+            for co in re.findall(r"([A-Z_][A-Z0-9_]*)", co_content):
+                syms.add(co)
         file_local[path] = syms
         for s in syms:
             declared[pkg].add(s)
@@ -131,6 +141,13 @@ def main():
             local |= set(re.findall(r"\binterface\s+([A-Za-z_][A-Za-z0-9_]*)", raw))
             local |= set(re.findall(r"\benum class\s+([A-Za-z_][A-Za-z0-9_]*)", raw))
             local |= set(re.findall(r"\bfun\s+[A-Za-z0-9_]*\.?([A-Za-z_][A-Za-z0-9_]*)\s*\(", raw))
+            # Enum constants and companion object members
+            for ec_match in re.finditer(r"enum class\s+[A-Za-z_][A-Za-z0-9_]*\s*\{([^}]*)\}", raw, re.S):
+                ec_content = ec_match.group(1)
+                local |= set(re.findall(r"([A-Z][A-Z0-9_]+)", ec_content))
+            for co_match in re.finditer(r"companion object\s*\{([^}]*)\}", raw, re.S):
+                co_content = co_match.group(1)
+                local |= set(re.findall(r"([A-Z_][A-Z0-9_]*)", co_content))
 
             # Symbols reachable without an import: own package, wildcard imports.
             reachable = set(declared.get(own_pkg, ()))

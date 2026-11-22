@@ -3,9 +3,9 @@ package com.example.sande.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.sande.data.auth.GoogleSignInResult
-import com.example.sande.data.auth.BusinessRegistrationRequest
-import com.example.sande.data.auth.AcceptInvitationRequest
-import com.example.sande.data.auth.DeviceRegistrationRequest
+import com.example.sande.data.remote.AcceptInvitationRequest
+import com.example.sande.data.remote.BusinessRegistrationRequest
+import com.example.sande.data.remote.DeviceRegistrationRequest
 import com.example.sande.data.auth.LegacyAdoptionManager
 import com.example.sande.data.prefs.TokenManager
 import com.example.sande.data.auth.SessionManager

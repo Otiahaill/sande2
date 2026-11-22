@@ -3,7 +3,11 @@ package com.example.sande.data.auth
 import android.content.Context
 import com.example.sande.data.db.AppDatabase
 import com.example.sande.data.entities.BusinessProfile
+import com.example.sande.data.entities.Outbox
 import com.example.sande.data.entities.OutboxEntry
+import com.example.sande.data.entities.ProductCategory
+import com.example.sande.data.entities.SaleHeader
+import com.example.sande.data.entities.StockMovement
 import com.example.sande.data.prefs.TokenManager
 import com.example.sande.data.remote.ApiClient
 import com.example.sande.data.remote.BusinessRegistrationRequest
@@ -128,7 +132,7 @@ class LegacyAdoptionManager(
     }
 
     private suspend fun rewriteCategoryBusinessIds(newBusinessId: String) {
-        val categories = database.productCategoryDao().getByBusiness(legacyBusinessId).firstOrNullList()
+        val categories: List<ProductCategory> = database.productCategoryDao().getByBusiness(legacyBusinessId).firstOrNullList()
         for (category in categories) {
             database.productCategoryDao().update(category.copy(businessId = newBusinessId))
         }
@@ -142,14 +146,14 @@ class LegacyAdoptionManager(
     }
 
     private suspend fun rewriteStockMovementBusinessIds(newBusinessId: String) {
-        val movements = database.stockMovementDao().getByBusiness(legacyBusinessId).firstOrNullList()
+        val movements: List<StockMovement> = database.stockMovementDao().getByBusiness(legacyBusinessId).firstOrNullList()
         for (movement in movements) {
             database.stockMovementDao().update(movement.copy(businessId = newBusinessId))
         }
     }
 
     private suspend fun rewriteSaleBusinessIds(newBusinessId: String) {
-        val sales = database.saleHeaderDao().getByBusiness(legacyBusinessId).firstOrNullList()
+        val sales: List<SaleHeader> = database.saleHeaderDao().getByBusiness(legacyBusinessId).firstOrNullList()
         for (sale in sales) {
             database.saleHeaderDao().update(sale.copy(businessId = newBusinessId))
         }
@@ -168,7 +172,7 @@ class LegacyAdoptionManager(
      * business, and the legacy rows are removed so the work is not done twice.
      */
     private suspend fun migrateLegacyOutbox(newBusinessId: String) {
-        val legacyEntries = database.outboxDao().getUnsynced(limit = Int.MAX_VALUE).firstOrNullList()
+        val legacyEntries: List<Outbox> = database.outboxDao().getUnsynced(limit = Int.MAX_VALUE).firstOrNullList()
         for (legacy in legacyEntries) {
             val entry = OutboxEntry(
                 id = legacy.id,
