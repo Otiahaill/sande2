@@ -29,7 +29,6 @@ android {
     // com.google.android.libraries.identity.googleid:googleid, which the Google
     // Sign-In flow uses). targetSdk stays at 34 so runtime behaviour is unchanged.
     compileSdk = 35
-
     defaultConfig {
         applicationId = "com.example.sande"
         minSdk = 26
