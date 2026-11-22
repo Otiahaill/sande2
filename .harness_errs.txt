@@ -1,276 +1,125 @@
 
-### data/auth/SessionManager.kt  (90)
-  38: Unresolved reference: nil
-  43: Too many arguments for private constructor AuthState() defined in com.example.sande.data.auth.SessionManager.AuthState
-  44: Classifier 'AccountInfo' does not have a companion object, and thus must be initialized here
-  44: Function invocation 'List<MembershipInfo>(...)' expected
-  44: No value passed for parameter 'init'
-  44: No value passed for parameter 'size'
-  44: Too many arguments for private constructor AuthState() defined in com.example.sande.data.auth.SessionManager.AuthState
-  45: Too many arguments for private constructor AuthState() defined in com.example.sande.data.auth.SessionManager.AuthState
-  47: This type is final, so it cannot be inherited from
-  48: This type is final, so it cannot be inherited from
-  49: This type is final, so it cannot be inherited from
-  91: Type mismatch: inferred type is com.example.sande.data.prefs.StoredTokens but com.example.sande.data.auth.StoredTokens was expected
-  92: Type mismatch: inferred type is com.example.sande.data.prefs.StoredTokens but com.example.sande.data.auth.StoredTokens was expected
-  140: Unresolved reference: needsBusinessSelection
-  142: Unresolved reference: account
-  143: Unresolved reference: account
-  144: Unresolved reference: account
-  145: Unresolved reference: account
-  147: Cannot infer a type for this parameter. Please specify it explicitly.
-  147: Unresolved reference: memberships
-  156: Not enough information to infer type variable T
-  159: Unresolved reference: tokens
-  160: Unresolved reference: tokens
-  161: Suspension functions can be called only within coroutine body
-  161: Unresolved reference: account
-  162: Unresolved reference: await
-  163: Suspension functions can be called only within coroutine body
-  163: Unresolved reference: await
-  164: Suspension functions can be called only within coroutine body
-  164: Unresolved reference: await
-  185: Type mismatch: inferred type is com.example.sande.data.auth.BusinessRegistrationRequest but com.example.sande.data.remote.BusinessRegistrationRequest was expected
-  186: Unresolved reference: tokens
-  187: Suspension functions can be called only within coroutine body
-  187: Unresolved reference: accountId
-  187: Unresolved reference: await
-  188: Suspension functions can be called only within coroutine body
-  188: Unresolved reference: await
-  188: Unresolved reference: recoveryCodes
-  189: Suspension functions can be called only within coroutine body
-  189: Unresolved reference: await
-  190: Suspension functions can be called only within coroutine body
-  190: Unresolved reference: await
-  212: Cannot infer a type for this parameter. Please specify it explicitly.
-  212: Unresolved reference: tokens
-  213: Suspension functions can be called only within coroutine body
-  213: Unresolved reference: account
-  213: Unresolved reference: await
-  214: Suspension functions can be called only within coroutine body
-  214: Unresolved reference: await
-  215: Suspension functions can be called only within coroutine body
-  215: Unresolved reference: await
-  232: Type mismatch: inferred type is com.example.sande.data.auth.AcceptInvitationRequest but com.example.sande.data.remote.AcceptInvitationRequest was expected
-  233: Unresolved reference: tokens
-  234: Suspension functions can be called only within coroutine body
-  234: Unresolved reference: accountId
-  234: Unresolved reference: await
-  235: Suspension functions can be called only within coroutine body
-  235: Unresolved reference: await
-  236: Suspension functions can be called only within coroutine body
-  236: Unresolved reference: await
-  250: Type mismatch: inferred type is com.example.sande.data.auth.DeviceRegistrationRequest but com.example.sande.data.remote.DeviceRegistrationRequest was expected
-  263: Type mismatch: inferred type is com.example.sande.data.auth.RefreshTokenRequest but com.example.sande.data.remote.RefreshTokenRequest was expected
-  264: Unresolved reference: data
-  264: Unresolved reference: success
-  265: Unresolved reference: data
-  270: Unresolved reference: await
-  271: 'return' is not allowed here
-  271: Unresolved reference: await
-  273: 'return' is not allowed here
-  273: Unresolved reference: error
-  276: 'return' is not allowed here
-  288: Unresolved reference: await
-  294: None of the following functions can be called with the arguments supplied: 
-  296: Unresolved reference: await
-  303: Suspension functions can be called only within coroutine body
-  303: Unresolved reference: await
-  308: 'break' or 'continue' jumps across a function or a class boundary
-  321: Unresolved reference: await
-  340: Unresolved reference. None of the following candidates is applicable because of receiver type mismatch: 
-  341: Unresolved reference. None of the following candidates is applicable because of receiver type mismatch: 
-  350: Unresolved reference: await
-  351: Unresolved reference: await
-  365: Unresolved reference: await
-  378: 'return' is not allowed here
-  383: 'return' is not allowed here
-  384: 'return' is not allowed here
-  386: 'return' is not allowed here
-  400: Suspend function 'getTokens' should be called only from a coroutine or another suspend function
-  400: Unresolved reference: await
-  404: Unresolved reference: cancelChildren
-
-### data/remote/ApiClient.kt  (82)
+### data/remote/ApiClient.kt  (83)
   10: Unresolved reference: logging
-  38: Unresolved reference: Logging
-  41: Unresolved reference: level
-  42: Unresolved reference: logging
-  44: Unresolved reference: logging
-  46: Cannot infer a type for this parameter. Please specify it explicitly.
-  46: Unresolved reference: sanitizeHeader
-  50: Unresolved reference: requestTimeout
-  53: Unresolved reference: HttpRequestPipeline
-  53: Unresolved reference: intercept
-  54: Unresolved reference: getCurrentTokens
-  56: Unresolved reference: it
-  57: Unresolved reference: headers
-  57: Unresolved reference: it
-  76: None of the following functions can be called with the arguments supplied: 
-  77: Unresolved reference: url
-  97: None of the following functions can be called with the arguments supplied: 
-  98: Unresolved reference: url
-  99: Unresolved reference: contentType
-  100: Unresolved reference: body
-  114: None of the following functions can be called with the arguments supplied: 
-  115: Unresolved reference: url
-  116: Unresolved reference: contentType
-  117: Unresolved reference: body
-  131: None of the following functions can be called with the arguments supplied: 
-  132: Unresolved reference: url
-  133: Unresolved reference: contentType
-  134: Unresolved reference: body
-  148: None of the following functions can be called with the arguments supplied: 
-  149: Unresolved reference: url
-  150: Unresolved reference: contentType
-  151: Unresolved reference: body
-  153: Not enough information to infer type variable T
-  165: None of the following functions can be called with the arguments supplied: 
-  166: Unresolved reference: url
-  167: Unresolved reference: contentType
-  168: Unresolved reference: body
-  182: None of the following functions can be called with the arguments supplied: 
-  183: Unresolved reference: url
-  184: Unresolved reference: contentType
-  185: Unresolved reference: body
-  187: Not enough information to infer type variable T
-  201: None of the following functions can be called with the arguments supplied: 
-  202: Unresolved reference: url
-  203: Unresolved reference: contentType
-  204: Unresolved reference: body
-  218: None of the following functions can be called with the arguments supplied: 
-  219: Unresolved reference: url
-  220: Unresolved reference: parameter
-  221: Unresolved reference: parameter
-  235: None of the following functions can be called with the arguments supplied: 
-  236: Unresolved reference: url
-  252: None of the following functions can be called with the arguments supplied: 
-  253: Unresolved reference: url
-  267: None of the following functions can be called with the arguments supplied: 
-  268: Unresolved reference: url
-  269: Unresolved reference: contentType
-  270: Unresolved reference: body
-  272: Not enough information to infer type variable T
-  286: None of the following functions can be called with the arguments supplied: 
-  287: Unresolved reference: url
-  289: Not enough information to infer type variable T
-  289: Unresolved reference: it
-  301: None of the following functions can be called with the arguments supplied: 
-  302: Unresolved reference: url
-  303: Unresolved reference: contentType
-  304: Unresolved reference: body
-  320: None of the following functions can be called with the arguments supplied: 
-  321: Unresolved reference: url
-  323: Not enough information to infer type variable T
-  323: Unresolved reference: it
-  335: None of the following functions can be called with the arguments supplied: 
-  336: Unresolved reference: url
-  337: Unresolved reference: contentType
-  339: Not enough information to infer type variable T
-  353: None of the following functions can be called with the arguments supplied: 
-  354: Unresolved reference: url
-  355: Unresolved reference: contentType
-  368: Unresolved reference: bodyAsText
-  370: Cannot use 'T' as reified type parameter. Use a class instead.
-  388: Unresolved reference: bodyAsText
-  773: Type parameters must be placed before the name of the function
+  11: Unresolved reference: logging
+  12: Unresolved reference: logging
+  15: Unresolved reference: body
+  16: Unresolved reference: contentType
+  68: Unresolved reference: R
+  86: Unresolved reference: Logging
+  89: Unresolved reference: level
+  90: Unresolved reference: LogLevel
+  92: Unresolved reference: LogLevel
+  94: Cannot infer a type for this parameter. Please specify it explicitly.
+  94: Unresolved reference: sanitizeHeader
+  98: Unresolved reference: requestTimeout
+  101: Unresolved reference: intercept
+  102: Unresolved reference: getCurrentTokens
+  104: Unresolved reference: it
+  105: Unresolved reference: headers
+  124: None of the following functions can be called with the arguments supplied: 
+  125: Unresolved reference. None of the following candidates is applicable because of receiver type mismatch: 
+  145: None of the following functions can be called with the arguments supplied: 
+  146: Unresolved reference. None of the following candidates is applicable because of receiver type mismatch: 
+  147: Unresolved reference: contentType
+  148: Unresolved reference: body
+  162: None of the following functions can be called with the arguments supplied: 
+  163: Unresolved reference. None of the following candidates is applicable because of receiver type mismatch: 
+  164: Unresolved reference: contentType
+  165: Unresolved reference: body
+  179: None of the following functions can be called with the arguments supplied: 
+  180: Unresolved reference. None of the following candidates is applicable because of receiver type mismatch: 
+  181: Unresolved reference: contentType
+  182: Unresolved reference: body
+  196: None of the following functions can be called with the arguments supplied: 
+  197: Unresolved reference. None of the following candidates is applicable because of receiver type mismatch: 
+  198: Unresolved reference: contentType
+  199: Unresolved reference: body
+  201: Not enough information to infer type variable T
+  213: None of the following functions can be called with the arguments supplied: 
+  214: Unresolved reference. None of the following candidates is applicable because of receiver type mismatch: 
+  215: Unresolved reference: contentType
+  216: Unresolved reference: body
+  230: None of the following functions can be called with the arguments supplied: 
+  231: Unresolved reference. None of the following candidates is applicable because of receiver type mismatch: 
+  232: Unresolved reference: contentType
+  233: Unresolved reference: body
+  235: Not enough information to infer type variable T
+  249: None of the following functions can be called with the arguments supplied: 
+  250: Unresolved reference. None of the following candidates is applicable because of receiver type mismatch: 
+  251: Unresolved reference: contentType
+  252: Unresolved reference: body
+  266: None of the following functions can be called with the arguments supplied: 
+  267: Unresolved reference. None of the following candidates is applicable because of receiver type mismatch: 
+  268: Unresolved reference. None of the following candidates is applicable because of receiver type mismatch: 
+  269: Unresolved reference. None of the following candidates is applicable because of receiver type mismatch: 
+  283: None of the following functions can be called with the arguments supplied: 
+  284: Unresolved reference. None of the following candidates is applicable because of receiver type mismatch: 
+  300: None of the following functions can be called with the arguments supplied: 
+  301: Unresolved reference. None of the following candidates is applicable because of receiver type mismatch: 
+  315: None of the following functions can be called with the arguments supplied: 
+  316: Unresolved reference. None of the following candidates is applicable because of receiver type mismatch: 
+  317: Unresolved reference: contentType
+  318: Unresolved reference: body
+  320: Not enough information to infer type variable T
+  334: None of the following functions can be called with the arguments supplied: 
+  334: Unresolved reference: MembershipsResponse
+  335: Unresolved reference. None of the following candidates is applicable because of receiver type mismatch: 
+  337: Not enough information to infer type variable T
+  337: Unresolved reference: it
+  349: None of the following functions can be called with the arguments supplied: 
+  350: Unresolved reference. None of the following candidates is applicable because of receiver type mismatch: 
+  351: Unresolved reference: contentType
+  352: Unresolved reference: body
+  368: None of the following functions can be called with the arguments supplied: 
+  369: Unresolved reference. None of the following candidates is applicable because of receiver type mismatch: 
+  371: Not enough information to infer type variable T
+  371: Unresolved reference: it
+  383: None of the following functions can be called with the arguments supplied: 
+  384: Unresolved reference. None of the following candidates is applicable because of receiver type mismatch: 
+  385: Unresolved reference: contentType
+  387: Not enough information to infer type variable T
+  401: None of the following functions can be called with the arguments supplied: 
+  402: Unresolved reference. None of the following candidates is applicable because of receiver type mismatch: 
+  403: Unresolved reference: contentType
+  418: Cannot use 'T' as reified type parameter. Use a class instead.
 
-### ui/onboarding/LegacyAdoptionScreen.kt  (59)
-  13: Unresolved reference: ProgressIndicator
-  49: Unresolved reference: observeAsState
-  50: Unresolved reference: observeAsState
-  51: Unresolved reference: observeAsState
-  52: Unresolved reference: observeAsState
-  53: Unresolved reference: observeAsState
-  79: Unresolved reference: Download
-  81: Unresolved reference: size
-  90: Unresolved reference: TextAlign
-  98: Unresolved reference: TextAlign
-  99: Unresolved reference: fillMaxWidth
-  103: Cannot infer a type for this parameter. Please specify it explicitly.
-  104: @Composable invocations can only happen from the context of a @Composable function
-  105: Unresolved reference: fillMaxWidth
-  106: @Composable invocations can only happen from the context of a @Composable function
-  107: @Composable invocations can only happen from the context of a @Composable function
-  116: Unresolved reference: height
-  117: Unresolved reference: DataRow
-  118: Unresolved reference: DataRow
-  119: Unresolved reference: DataRow
-  120: Unresolved reference: DataRow
-  121: Unresolved reference: DataRow
-  122: Unresolved reference: DataRow
-  123: Unresolved reference: height
-  125: Unresolved reference: DataRow
-  137: Unresolved reference: fillMaxWidth
-  147: Unresolved reference: fillMaxWidth
-  153: Cannot infer a type for this parameter. Please specify it explicitly.
-  154: @Composable invocations can only happen from the context of a @Composable function
-  155: Unresolved reference: fillMaxWidth
-  156: @Composable invocations can only happen from the context of a @Composable function
-  157: @Composable invocations can only happen from the context of a @Composable function
-  160: Overload resolution ambiguity: 
-  166: Unresolved reference: fillMaxWidth
-  169: Suspend function 'adoptLegacyData' should be called only from a coroutine or another suspend function
-  172: Unresolved reference: fillMaxWidth
-  180: Unresolved reference: ProgressIndicator
-  180: Unresolved reference: size
-  181: Unresolved reference: width
-  191: Unresolved reference: fillMaxWidth
-  200: Unresolved reference: fillMaxWidth
-  220: Unresolved reference: fillMaxWidth
-  239: Unresolved reference: isAdopting
-  240: Function invocation 'error(...)' expected
-  240: No value passed for parameter 'message'
-  240: Null can not be a value of a non-null type Nothing
-  240: Variable expected
-  241: Unresolved reference: progress
-  242: Unresolved reference: progressMessage
-  250: Function invocation 'error(...)' expected
-  250: No value passed for parameter 'message'
-  250: Type mismatch: inferred type is String but Nothing was expected
-  250: Variable expected
-  251: Unresolved reference: isAdopting
-  253: Function invocation 'error(...)' expected
-  253: No value passed for parameter 'message'
-  253: Type mismatch: inferred type is String but Nothing was expected
-  253: Variable expected
-  254: Unresolved reference: isAdopting
-
-### ui/onboarding/RecoveryCodesScreen.kt  (34)
-  15: Unresolved reference: ProgressIndicator
-  47: Unresolved reference: observeAsState
-  56: Unresolved reference: LaunchedEffect
-  58: Unresolved reference: await
-  72: Unresolved reference: Security
-  74: Unresolved reference: size
-  77: Unresolved reference: height
-  83: Unresolved reference: height
-  88: Unresolved reference: TextAlign
-  89: Unresolved reference: fillMaxWidth
-  95: Unresolved reference: fillMaxWidth
-  104: Unresolved reference: Warning
-  123: Unresolved reference: fillMaxWidth
-  127: Unresolved reference: fillMaxWidth
-  132: Unresolved reference: fillMaxWidth
-  138: Unresolved reference: fillMaxWidth
-  148: Unresolved reference: fillMaxWidth
-  163: Unresolved reference: fillMaxWidth
-  177: @Composable invocations can only happen from the context of a @Composable function
-  178: Unresolved reference: fillMaxWidth
-  180: No value passed for parameter 'content'
-  183: Unresolved reference: fillMaxWidth
-  190: Unresolved reference: ContentCopy
-  202: Unresolved reference: fillMaxWidth
-  205: Cannot find a parameter with this name: onClick
-  206: Type mismatch: inferred type is () -> Unit but MutableInteractionSource was expected
-  207: @Composable invocations can only happen from the context of a @Composable function
-  208: Unresolved reference: fillMaxWidth
-  211: Unresolved reference: Check
-  229: Unresolved reference: await
-  234: Unresolved reference: fillMaxWidth
-  242: Unresolved reference: ProgressIndicator
-  242: Unresolved reference: size
-  243: Unresolved reference: width
+### data/auth/SessionManager.kt  (35)
+  153: Unresolved reference: needsBusinessSelection
+  155: Unresolved reference: account
+  156: Unresolved reference: account
+  157: Unresolved reference: account
+  158: Unresolved reference: account
+  160: Cannot infer a type for this parameter. Please specify it explicitly.
+  160: Unresolved reference: memberships
+  169: Not enough information to infer type variable T
+  172: Unresolved reference: tokens
+  173: Unresolved reference: tokens
+  174: Suspension functions can be called only within coroutine body
+  174: Unresolved reference: account
+  175: Suspension functions can be called only within coroutine body
+  176: Suspension functions can be called only within coroutine body
+  204: Suspension functions can be called only within coroutine body
+  205: Suspension functions can be called only within coroutine body
+  206: Suspension functions can be called only within coroutine body
+  207: Suspension functions can be called only within coroutine body
+  209: Unresolved reference: refreshTokenExpiry
+  229: Cannot infer a type for this parameter. Please specify it explicitly.
+  229: Unresolved reference: tokens
+  230: Suspension functions can be called only within coroutine body
+  230: Unresolved reference: account
+  231: Suspension functions can be called only within coroutine body
+  232: Suspension functions can be called only within coroutine body
+  256: Suspension functions can be called only within coroutine body
+  257: Suspension functions can be called only within coroutine body
+  258: Suspension functions can be called only within coroutine body
+  259: Suspension functions can be called only within coroutine body
+  261: Unresolved reference: refreshTokenExpiry
+  321: Suspension functions can be called only within coroutine body
+  326: 'break' or 'continue' jumps across a function or a class boundary
+  401: 'return' is not allowed here
+  402: 'return' is not allowed here
+  420: Unresolved reference: cancelChildren
 
 ### data/sync/SyncWorker.kt  (33)
   52: Unresolved reference: api
@@ -306,6 +155,41 @@
   267: Unresolved reference: setTag
   277: Unresolved reference: setTag
   281: Overload resolution ambiguity: 
+
+### ui/onboarding/LegacyAdoptionScreen.kt  (33)
+  20: Unresolved reference: ProgressIndicator
+  32: Unresolved reference: TextAlign
+  36: Unresolved reference: compose
+  59: Unresolved reference: observeAsState
+  60: Unresolved reference: observeAsState
+  61: Unresolved reference: observeAsState
+  62: Unresolved reference: observeAsState
+  63: Unresolved reference: observeAsState
+  89: Expression 'Download' cannot be invoked as a function. The function 'invoke()' is not found
+  89: Unresolved reference. None of the following candidates is applicable because of receiver type mismatch: 
+  91: Unresolved reference: size
+  100: Unresolved reference: TextAlign
+  108: Unresolved reference: TextAlign
+  113: Cannot infer a type for this parameter. Please specify it explicitly.
+  114: @Composable invocations can only happen from the context of a @Composable function
+  116: @Composable invocations can only happen from the context of a @Composable function
+  117: @Composable invocations can only happen from the context of a @Composable function
+  127: Unresolved reference: DataRow
+  128: Unresolved reference: DataRow
+  129: Unresolved reference: DataRow
+  130: Unresolved reference: DataRow
+  131: Unresolved reference: DataRow
+  132: Unresolved reference: DataRow
+  135: Unresolved reference: DataRow
+  163: Cannot infer a type for this parameter. Please specify it explicitly.
+  164: @Composable invocations can only happen from the context of a @Composable function
+  166: @Composable invocations can only happen from the context of a @Composable function
+  167: @Composable invocations can only happen from the context of a @Composable function
+  170: Overload resolution ambiguity: 
+  179: Suspend function 'adoptLegacyData' should be called only from a coroutine or another suspend function
+  190: Unresolved reference: size
+  196: Unresolved reference: OutlinedButton
+  204: @Composable invocations can only happen from the context of a @Composable function
 
 ### ui/screens/SyncStatusScreen.kt  (32)
   13: Unresolved reference: ProgressIndicator
@@ -421,6 +305,55 @@
   191: Unresolved reference: Error
   192: Unresolved reference: ErrorOutline
 
+### ui/onboarding/BusinessResolutionScreen.kt  (23)
+  18: Unresolved reference: ProgressIndicator
+  53: Unresolved reference: observeAsState
+  54: Unresolved reference: observeAsState
+  59: Unresolved reference: Authenticated
+  63: Unresolved reference. None of the following candidates is applicable because of receiver type mismatch: 
+  73: Destructuring declaration initializer of type Pair<Pair<Boolean, Nothing?>, List<MembershipInfo>> must have a 'component3()' function
+  74: Unresolved reference: NeedsBusinessSelection
+  91: Unresolved reference: !
+  97: Unresolved reference: ProgressIndicator
+  117: Unresolved reference: email
+  138: Type mismatch: inferred type is Int but MembershipInfo was expected
+  139: Unresolved reference: businessId
+  140: Unresolved reference: businessId
+  149: Unresolved reference: it
+  174: Unresolved reference: height
+  176: Unresolved reference: height
+  207: Unresolved reference: KeyboardOptions
+  261: Type mismatch: inferred type is com.example.sande.data.auth.BusinessRegistrationRequest but com.example.sande.data.remote.BusinessRegistrationRequest was expected
+  282: Unresolved reference: ProgressIndicator
+  283: Unresolved reference: width
+  313: Unresolved reference: Border
+  322: Unresolved reference: status
+  325: Unresolved reference: CheckCircle
+
+### ui/onboarding/RecoveryCodesScreen.kt  (22)
+  34: Unresolved reference: TextAlign
+  38: Unresolved reference: compose
+  58: Unresolved reference: observeAsState
+  69: Unresolved reference: await
+  83: Expression 'Security' cannot be invoked as a function. The function 'invoke()' is not found
+  83: Unresolved reference. None of the following candidates is applicable because of receiver type mismatch: 
+  85: Unresolved reference: size
+  99: Unresolved reference: TextAlign
+  115: Expression 'Warning' cannot be invoked as a function. The function 'invoke()' is not found
+  115: Unresolved reference. None of the following candidates is applicable because of receiver type mismatch: 
+  188: @Composable invocations can only happen from the context of a @Composable function
+  191: No value passed for parameter 'content'
+  201: Expression 'ContentCopy' cannot be invoked as a function. The function 'invoke()' is not found
+  201: Unresolved reference. None of the following candidates is applicable because of receiver type mismatch: 
+  216: Cannot find a parameter with this name: onClick
+  217: Type mismatch: inferred type is () -> Unit but MutableInteractionSource was expected
+  218: @Composable invocations can only happen from the context of a @Composable function
+  222: Expression 'Check' cannot be invoked as a function. The function 'invoke()' is not found
+  222: Unresolved reference. None of the following candidates is applicable because of receiver type mismatch: 
+  240: Unresolved reference: await
+  253: Unresolved reference: size
+  254: Unresolved reference: width
+
 ### ui/onboarding/InvitationAcceptScreen.kt  (21)
   14: Unresolved reference: ProgressIndicator
   61: Unresolved reference: Mail
@@ -443,28 +376,6 @@
   130: Unresolved reference: ProgressIndicator
   130: Unresolved reference: size
   131: Unresolved reference: width
-
-### ui/onboarding/BusinessResolutionScreen.kt  (20)
-  18: Unresolved reference: ProgressIndicator
-  53: Unresolved reference: observeAsState
-  54: Unresolved reference: observeAsState
-  63: Unresolved reference. None of the following candidates is applicable because of receiver type mismatch: 
-  73: Destructuring declaration initializer of type Pair<Pair<Boolean, Nothing?>, List<MembershipInfo>> must have a 'component3()' function
-  91: Unresolved reference: !
-  97: Unresolved reference: ProgressIndicator
-  117: Unresolved reference: email
-  138: Type mismatch: inferred type is Int but MembershipInfo was expected
-  139: Unresolved reference: businessId
-  140: Unresolved reference: businessId
-  149: Unresolved reference: it
-  174: Unresolved reference: height
-  176: Unresolved reference: height
-  207: Unresolved reference: KeyboardOptions
-  282: Unresolved reference: ProgressIndicator
-  283: Unresolved reference: width
-  313: Unresolved reference: Border
-  322: Unresolved reference: status
-  325: Unresolved reference: CheckCircle
 
 ### ui/viewmodel/ReportsViewModel.kt  (20)
   32: Type mismatch: inferred type is StateFlow<Date!> but StateFlow<Long> was expected
@@ -528,23 +439,6 @@
   142: Unresolved reference: wrapContentSize
   150: Type mismatch: inferred type is Int but StockMovement was expected
 
-### data/auth/LegacyAdoptionManager.kt  (15)
-  133: Unresolved reference: copy
-  147: Unresolved reference: copy
-  154: Unresolved reference: copy
-  174: Unresolved reference: id
-  176: Unresolved reference: entityType
-  177: Unresolved reference: entityId
-  178: Unresolved reference: operation
-  179: Unresolved reference: payload
-  181: Unresolved reference: attempts
-  183: Unresolved reference: createdAt
-  184: Unresolved reference: createdAt
-  185: Unresolved reference: synced
-  186: Unresolved reference: createdAt
-  186: Unresolved reference: synced
-  270: Type mismatch: inferred type is T but List<T> was expected
-
 ### ui/screens/ReportsScreen.kt  (14)
   43: Unresolved reference: KeyboardOptions
   45: Unresolved reference: VisualTransformationKt
@@ -600,23 +494,11 @@
   106: No value passed for parameter 'phone'
   106: No value passed for parameter 'receiptFooter'
 
-### ui/onboarding/GoogleSignInScreen.kt  (9)
-  13: Unresolved reference: ProgressIndicator
-  46: No value passed for parameter 'legacyAdoptionManager'
-  50: Unresolved reference: rememberCoroutineScope
-  94: Unresolved reference: sandelogo_foreground
-  124: Suspend function 'signInWithCredentialManager' should be called only from a coroutine or another suspend function
-  145: Unresolved reference: fillMaxWidth
-  160: Unresolved reference: ProgressIndicator
-  161: Unresolved reference: width
-  165: Unresolved reference: width
-
-### ui/viewmodel/OnboardingViewModel.kt  (8)
+### ui/viewmodel/OnboardingViewModel.kt  (7)
   27: Unresolved reference. None of the following candidates is applicable because of receiver type mismatch: 
   30: Unresolved reference. None of the following candidates is applicable because of receiver type mismatch: 
   103: Unresolved reference: await
   105: Unresolved reference: await
-  122: Type mismatch: inferred type is com.example.sande.data.auth.BusinessRegistrationRequest but com.example.sande.data.remote.BusinessRegistrationRequest was expected
   125: Unresolved reference: await
   127: Cannot infer a type for this parameter. Please specify it explicitly.
   129: Cannot infer a type for this parameter. Please specify it explicitly.
@@ -629,6 +511,14 @@
   51: Unresolved reference. None of the following candidates is applicable because of receiver type mismatch: 
   52: Unresolved reference: it
   53: Unresolved reference: it
+
+### ui/onboarding/GoogleSignInScreen.kt  (6)
+  14: Unresolved reference: ProgressIndicator
+  49: No value passed for parameter 'legacyAdoptionManager'
+  97: Unresolved reference: sandelogo_foreground
+  148: Unresolved reference: fillMaxWidth
+  164: Unresolved reference: width
+  168: Unresolved reference: width
 
 ### data/prefs/TokenManager.kt  (5)
   30: Unresolved reference: AES256_GCM_SPEC
@@ -714,4 +604,4 @@
 ### ui/screens/SettingsScreen.kt  (1)
   59: Unresolved reference: authRepository
 
-TOTAL distinct errors: 631
+TOTAL distinct errors: 523

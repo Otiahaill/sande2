@@ -1,6 +1,7 @@
 package com.example.sande.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.asFlow
 import androidx.lifecycle.viewModelScope
 import com.example.sande.data.auth.GoogleSignInResult
 import com.example.sande.data.remote.AcceptInvitationRequest
@@ -23,10 +24,10 @@ class OnboardingViewModel(
 ) : ViewModel() {
 
     // Expose session manager's auth state
-    val authState: StateFlow<SessionManager.AuthState> = sessionManager.authState
+    val authState: StateFlow<SessionManager.AuthState> = sessionManager.authState.asFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), SessionManager.AuthState.UNAUTHENTICATED)
 
-    val leaseState: StateFlow<SessionManager.LeaseState> = sessionManager.leaseState
+    val leaseState: StateFlow<SessionManager.LeaseState> = sessionManager.leaseState.asFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), SessionManager.LeaseState.UNKNOWN)
 
     // Pending business registration request (for legacy adoption)
@@ -100,9 +101,9 @@ class OnboardingViewModel(
 
     /** Checks for legacy data and loads counts. */
     suspend fun checkLegacyData() {
-        val hasData = legacyAdoptionManager.hasLegacyData().await()
+        val hasData = legacyAdoptionManager.hasLegacyData()
         if (hasData) {
-            val counts = legacyAdoptionManager.getLegacyDataCounts().await()
+            val counts = legacyAdoptionManager.getLegacyDataCounts()
             _legacyDataCounts.value = counts
         } else {
             _legacyDataCounts.value = null
@@ -122,7 +123,7 @@ class OnboardingViewModel(
         val result = legacyAdoptionManager.adoptLegacyData(request) { message, progress ->
             _adoptionMessage.value = message
             _adoptionProgress.value = progress
-        }.await()
+        }
 
         result.onSuccess { adoptionResult ->
             _adoptionComplete.value = true

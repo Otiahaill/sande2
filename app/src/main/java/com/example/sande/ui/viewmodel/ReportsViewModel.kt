@@ -11,10 +11,10 @@ import com.example.sande.data.repository.SaleSessionRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.TimeZone
 
@@ -28,9 +28,9 @@ class ReportsViewModel(
     val selectedPeriod: StateFlow<String> = _selectedPeriod
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), "Today")
 
-    private val _startDate = MutableStateFlow(getStartOfDay().time)
+    private val _startDate = MutableStateFlow(startOfToday())
     val startDate: StateFlow<Long> = _startDate
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), getStartOfDay().time)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), startOfToday())
 
     private val _endDate = MutableStateFlow(System.currentTimeMillis())
     val endDate: StateFlow<Long> = _endDate
@@ -39,18 +39,22 @@ class ReportsViewModel(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    val businessTimeZone: String
-        get() = businessProfile.value?.timezone ?: "Africa/Nairobi"
+    /**
+     * The business profile is read once and refreshed whenever the business
+     * changes. `getActiveById` is a suspend function, so it is wrapped in a flow
+     * instead of being called directly in the `stateIn` chain.
+     */
+    val businessProfile: StateFlow<BusinessProfile?> = flow {
+        emit(businessProfileRepository.getActiveById(DEFAULT_BUSINESS_ID))
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), null)
 
-    val businessProfile = businessProfileRepository.getActiveById("default-business")
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), null)
-
-    private val tz = TimeZone.getTimeZone(businessTimeZone)
+    private val tz: TimeZone
+        get() = TimeZone.getTimeZone(businessProfile.value?.timezone ?: "Africa/Nairobi")
 
     val reportData: StateFlow<ReportData> =
         combine(
-            saleSessionRepository.getByBusinessAndDateRange("default-business", startDate.value, endDate.value),
-            saleItemRepository.getByBusinessAndDateRange("default-business", startDate.value, endDate.value),
+            saleSessionRepository.getByBusinessAndDateRange(DEFAULT_BUSINESS_ID, startDate.value, endDate.value),
+            saleItemRepository.getByBusinessAndDateRange(DEFAULT_BUSINESS_ID, startDate.value, endDate.value),
             selectedPeriod
         ) { sessions, items, _ ->
             buildReport(sessions, items)
@@ -130,17 +134,17 @@ class ReportsViewModel(
                 cal.add(Calendar.MILLISECOND, -1)
                 start to cal.timeInMillis
             }
-            else -> getStartOfDay().time to now
+            else -> startOfToday() to now
         }
     }
 
-    private fun getStartOfDay(): Calendar {
+    private fun startOfToday(): Long {
         val cal = Calendar.getInstance(tz)
         cal.set(Calendar.HOUR_OF_DAY, 0)
         cal.set(Calendar.MINUTE, 0)
         cal.set(Calendar.SECOND, 0)
         cal.set(Calendar.MILLISECOND, 0)
-        return cal
+        return cal.timeInMillis
     }
 
     private fun buildReport(sessions: List<SaleSession>, items: List<SaleItem>): ReportData {
@@ -149,41 +153,61 @@ class ReportsViewModel(
         val totalSales = completedSessions.sumOf { it.totalCents }
         val transactionCount = completedSessions.size
 
-        // Top products
-        val productMap = items.groupBy { it.productId }
-            .mapValues { (_, its) ->
-                val first = its.first()
-                first.name to its.sumOf { it.totalCents } to its.sumOf { it.quantity }
+        // Top products, by revenue
+        val topProducts = items
+            .groupBy { it.productId }
+            .map { (productId, group) ->
+                val first = group.first()
+                TopProductData(
+                    productId = productId,
+                    name = first.productName,
+                    quantitySold = group.sumOf { it.quantity },
+                    revenue = group.sumOf { it.totalCents }
+                )
             }
-            .toList()
-            .sortedByDescending { it.second.first }
+            .sortedByDescending { it.revenue }
             .take(10)
-            .map { (name, pair) -> TopProductData(it.key, name, pair.second, pair.first) }
 
         // Sales by hour
-        val hourMap = completedSessions.groupBy { session ->
-            val cal = Calendar.getInstance(tz)
-            cal.timeInMillis = session.createdAt
-            cal.get(Calendar.HOUR_OF_DAY)
-        }.mapValues { (hour, sessions) ->
-            HourlySalesData(hour, sessions.size, sessions.sumOf { it.totalCents })
-        }.toList()
-        .sortedBy { it.hour }
+        val salesByHour = completedSessions
+            .groupBy { session ->
+                val cal = Calendar.getInstance(tz)
+                cal.timeInMillis = session.createdAt
+                cal.get(Calendar.HOUR_OF_DAY)
+            }
+            .map { (hour, hourSessions) ->
+                HourlySalesData(
+                    hour = hour,
+                    count = hourSessions.size,
+                    total = hourSessions.sumOf { it.totalCents }
+                )
+            }
+            .sortedBy { it.hour }
 
         // Sales by cashier
-        val cashierMap = completedSessions.groupBy { it.salespersonId }
-            .mapValues { (id, sessions) ->
-                CashierSalesData(id, sessions.first().salespersonRole, sessions.size, sessions.sumOf { it.totalCents })
-            }.toList()
-        .sortedByDescending { it.total }
+        val salesByCashier = completedSessions
+            .groupBy { it.salespersonId }
+            .map { (id, cashierSessions) ->
+                CashierSalesData(
+                    cashierId = id,
+                    role = cashierSessions.first().salespersonRole,
+                    count = cashierSessions.size,
+                    total = cashierSessions.sumOf { it.totalCents }
+                )
+            }
+            .sortedByDescending { it.total }
 
         return ReportData(
             totalSales = totalSales,
             transactionCount = transactionCount,
-            topProducts = productMap,
-            salesByHour = hourMap,
-            salesByCashier = cashierMap
+            topProducts = topProducts,
+            salesByHour = salesByHour,
+            salesByCashier = salesByCashier
         )
+    }
+
+    companion object {
+        const val DEFAULT_BUSINESS_ID = "default-business"
     }
 }
 

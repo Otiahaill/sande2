@@ -85,6 +85,8 @@ dependencies {
     implementation(libs.compose.icons.extended)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.livedata.ktx)
+    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.coroutines.android)
@@ -108,6 +110,7 @@ dependencies {
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.android)
     implementation(libs.ktor.client.json)
+    implementation(libs.ktor.client.logging)
     implementation(libs.ktor.serialization.kotlinx)
 
     // OkHttp (for Ktor engine)

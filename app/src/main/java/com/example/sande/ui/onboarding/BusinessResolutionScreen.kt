@@ -15,7 +15,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.ProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -35,6 +34,7 @@ import com.example.sande.ui.theme.SandeTheme
 import com.example.sande.ui.viewModelFactoryOf
 import com.example.sande.ui.viewmodel.OnboardingViewModel
 import kotlinx.coroutines.launch
+import androidx.compose.material3.CircularProgressIndicator
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -94,7 +94,7 @@ fun BusinessResolutionScreen(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            ProgressIndicator()
+            CircularProgressIndicator()
         }
         return@BusinessResolutionScreen
     }
@@ -279,7 +279,7 @@ fun BusinessResolutionScreen(
                 shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
             ) {
                 if (isRegistering) {
-                    ProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onSecondary)
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onSecondary)
                     androidx.compose.foundation.layout.Spacer(modifier = Modifier.width(8.dp))
                 }
                 Text(text = if (isRegistering) "Registering..." else "Register Business", fontSize = 16.sp, fontWeight = FontWeight.Medium)

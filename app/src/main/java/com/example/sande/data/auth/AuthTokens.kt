@@ -136,7 +136,14 @@ data class RefreshTokenRequest(
 
 /**
  * Sync push request.
+ *
+ * The wire-format DTOs live in `com.example.sande.data.remote`. These copies are
+ * deprecated; see the `remote` package for the canonical definitions.
  */
+@Deprecated(
+    "Use com.example.sande.data.remote.SyncPushRequest",
+    ReplaceWith("com.example.sande.data.remote.SyncPushRequest")
+)
 @Serializable
 @Keep
 data class SyncPushRequest(
@@ -144,6 +151,15 @@ data class SyncPushRequest(
     val entries: List<OutboxEntry>,
 )
 
+/**
+ * Wire format of an outbox entry.
+ *
+ * @see com.example.sande.data.remote.OutboxEntry
+ */
+@Deprecated(
+    "Use com.example.sande.data.remote.OutboxEntry",
+    ReplaceWith("com.example.sande.data.remote.OutboxEntry")
+)
 @Serializable
 @Keep
 data class OutboxEntry(

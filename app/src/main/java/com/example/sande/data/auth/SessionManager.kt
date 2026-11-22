@@ -3,19 +3,21 @@ package com.example.sande.data.auth
 import android.content.Context
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import com.example.sande.data.prefs.TokenManager
 import com.example.sande.data.prefs.StoredTokens
+import com.example.sande.data.prefs.TokenManager
 import com.example.sande.data.remote.AcceptInvitationRequest
 import com.example.sande.data.remote.ApiClient
 import com.example.sande.data.remote.ApiException
 import com.example.sande.data.remote.BusinessRegistrationRequest
 import com.example.sande.data.remote.DeviceRegistrationRequest
 import com.example.sande.data.remote.GoogleAuthRequest
+import com.example.sande.data.remote.RefreshTokenRequest
 import com.example.sande.data.remote.Result
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -107,17 +109,18 @@ class SessionManager(
                     updateLeaseState(tokens.refreshTokenExpiry)
                 } else {
                     // Access token expired, try refresh
-                    refreshAccessToken(tokens.refreshToken)
-                        .onSuccess { newTokens ->
-                            _authState.value = AuthState.AUTHENTICATED(newTokens)
-                            startTokenRefreshLoop(newTokens)
+                    when (val refreshed = refreshAccessToken(tokens.refreshToken)) {
+                        is Result.Success -> {
+                            _authState.value = AuthState.AUTHENTICATED(refreshed.value)
+                            startTokenRefreshLoop(refreshed.value)
                             startLeaseMonitoring()
-                            updateLeaseState(newTokens.refreshTokenExpiry)
+                            updateLeaseState(refreshed.value.refreshTokenExpiry)
                         }
-                        .onFailure { error ->
+                        is Result.Failure -> {
                             // Refresh failed, need full re-auth
                             _authState.value = AuthState.UNAUTHENTICATED
                         }
+                    }
                 }
             } else if (tokens != null && !tokens.isRefreshTokenValid()) {
                 // Lease expired
@@ -143,46 +146,56 @@ class SessionManager(
         scope.launch {
             _authState.value = AuthState.AUTHENTICATING
 
-            apiClient.googleAuth(GoogleAuthRequest(
+            when (val result = apiClient.googleAuth(GoogleAuthRequest(
                 idToken = idToken,
                 deviceCode = deviceCode,
                 deviceName = deviceName,
                 deviceType = deviceType,
-            )).onSuccess { response ->
-                when {
-                    response.needsBusinessSelection -> {
-                        val account = AccountInfo(
-                            id = response.account?.id ?: "",
-                            email = response.account?.email ?: "",
-                            displayName = response.account?.displayName,
-                            photoUrl = response.account?.photoUrl,
-                        )
-                        val memberships = response.memberships?.map { m ->
-                            MembershipInfo(
-                                id = m.id,
-                                businessId = m.businessId,
-                                businessName = m.businessName,
-                                role = m.role,
-                                status = m.status,
-                                deviceCode = m.deviceCode,
+            ))) {
+                is Result.Success -> {
+                    val data = result.value.data
+                    when {
+                        data == null ->
+                            _authState.value = AuthState.ERROR("Unexpected response from server")
+
+                        data.needsBusinessSelection -> {
+                            val account = AccountInfo(
+                                id = data.account?.id ?: "",
+                                email = data.account?.email ?: "",
+                                displayName = data.account?.displayName,
+                                photoUrl = data.account?.photoUrl,
                             )
-                        } ?: emptyList()
-                        _authState.value = AuthState.NEEDS_BUSINESS_SELECTION(account, memberships)
-                    }
-                    response.tokens != null -> {
-                        val tokens = response.tokens
-                        tokenManager.saveTokens(tokens, response.account?.id ?: "")
-                        _authState.value = AuthState.AUTHENTICATED(tokenManager.getTokens()!!)
-                        startTokenRefreshLoop(tokenManager.getTokens()!!)
-                        startLeaseMonitoring()
-                        updateLeaseState(tokens.refreshTokenExpiry)
-                    }
-                    else -> {
-                        _authState.value = AuthState.ERROR("Unexpected response from server")
+                            val memberships = data.memberships?.map { m ->
+                                MembershipInfo(
+                                    id = m.id,
+                                    businessId = m.businessId,
+                                    businessName = m.businessName,
+                                    role = m.role,
+                                    status = m.status,
+                                    deviceCode = m.deviceCode,
+                                )
+                            } ?: emptyList()
+                            _authState.value = AuthState.NEEDS_BUSINESS_SELECTION(account, memberships)
+                        }
+
+                        data.tokens != null -> {
+                            tokenManager.saveTokens(data.tokens, data.account?.id ?: "")
+                            val stored = tokenManager.getTokens()
+                            if (stored == null) {
+                                _authState.value = AuthState.ERROR("Could not store the session")
+                            } else {
+                                _authState.value = AuthState.AUTHENTICATED(stored)
+                                startTokenRefreshLoop(stored)
+                                startLeaseMonitoring()
+                                updateLeaseState(stored.refreshTokenExpiry)
+                            }
+                        }
+
+                        else -> _authState.value = AuthState.ERROR("Unexpected response from server")
                     }
                 }
-            }.onFailure { error ->
-                _authState.value = AuthState.ERROR(error.message ?: "Sign in failed")
+                is Result.Failure ->
+                    _authState.value = AuthState.ERROR(result.error.message ?: "Sign in failed")
             }
         }
     }
@@ -194,21 +207,27 @@ class SessionManager(
         scope.launch {
             _authState.value = AuthState.AUTHENTICATING
 
-            apiClient.registerBusiness(request).onSuccess { response ->
-                val data = response.data
-                if (data == null) {
-                    _authState.value = AuthState.ERROR("No data in registration response")
-                    return@onSuccess
+            when (val result = apiClient.registerBusiness(request)) {
+                is Result.Success -> {
+                    val data = result.value.data
+                    if (data == null) {
+                        _authState.value = AuthState.ERROR("No data in registration response")
+                        return@launch
+                    }
+                    tokenManager.saveTokens(data.tokens, data.accountId)
+                    tokenManager.saveRecoveryCodes(data.recoveryCodes)
+                    val stored = tokenManager.getTokens()
+                    if (stored == null) {
+                        _authState.value = AuthState.ERROR("Could not store the session")
+                    } else {
+                        _authState.value = AuthState.AUTHENTICATED(stored)
+                        startTokenRefreshLoop(stored)
+                        startLeaseMonitoring()
+                        updateLeaseState(stored.refreshTokenExpiry)
+                    }
                 }
-                val tokens = data.tokens
-                tokenManager.saveTokens(tokens, data.accountId)
-                tokenManager.saveRecoveryCodes(data.recoveryCodes)
-                _authState.value = AuthState.AUTHENTICATED(tokenManager.getTokens()!!)
-                startTokenRefreshLoop(tokenManager.getTokens()!!)
-                startLeaseMonitoring()
-                updateLeaseState(tokens.refreshTokenExpiry)
-            }.onFailure { error ->
-                _authState.value = AuthState.ERROR(error.message ?: "Registration failed")
+                is Result.Failure ->
+                    _authState.value = AuthState.ERROR(result.error.message ?: "Registration failed")
             }
         }
     }
@@ -220,21 +239,31 @@ class SessionManager(
         scope.launch {
             _authState.value = AuthState.AUTHENTICATING
 
-            apiClient.googleAuth(GoogleAuthRequest(
+            when (val result = apiClient.googleAuth(GoogleAuthRequest(
                 idToken = "", // Will be re-authed via refresh token
                 deviceCode = deviceCode,
                 deviceName = deviceName,
                 deviceType = deviceType,
-            )).onSuccess { response ->
-                response.tokens?.let { tokens ->
-                    tokenManager.saveTokens(tokens, response.account?.id ?: "")
-                    _authState.value = AuthState.AUTHENTICATED(tokenManager.getTokens()!!)
-                    startTokenRefreshLoop(tokenManager.getTokens()!!)
-                    startLeaseMonitoring()
-                    updateLeaseState(tokens.refreshTokenExpiry)
+            ))) {
+                is Result.Success -> {
+                    val tokens = result.value.data?.tokens
+                    if (tokens == null) {
+                        _authState.value = AuthState.ERROR("Unexpected response from server")
+                        return@launch
+                    }
+                    tokenManager.saveTokens(tokens, result.value.data?.account?.id ?: "")
+                    val stored = tokenManager.getTokens()
+                    if (stored == null) {
+                        _authState.value = AuthState.ERROR("Could not store the session")
+                    } else {
+                        _authState.value = AuthState.AUTHENTICATED(stored)
+                        startTokenRefreshLoop(stored)
+                        startLeaseMonitoring()
+                        updateLeaseState(stored.refreshTokenExpiry)
+                    }
                 }
-            }.onFailure { error ->
-                _authState.value = AuthState.ERROR(error.message ?: "Business selection failed")
+                is Result.Failure ->
+                    _authState.value = AuthState.ERROR(result.error.message ?: "Business selection failed")
             }
         }
     }
@@ -246,21 +275,27 @@ class SessionManager(
         scope.launch {
             _authState.value = AuthState.AUTHENTICATING
 
-            apiClient.acceptInvitation(request).onSuccess { response ->
-                val data = response.data
-                if (data == null) {
-                    _authState.value = AuthState.ERROR("No data in invitation response")
-                    return@onSuccess
+            when (val result = apiClient.acceptInvitation(request)) {
+                is Result.Success -> {
+                    val data = result.value.data
+                    if (data == null) {
+                        _authState.value = AuthState.ERROR("No data in invitation response")
+                        return@launch
+                    }
+                    tokenManager.saveTokens(data.tokens, data.accountId)
+                    tokenManager.saveRecoveryCodes(data.recoveryCodes)
+                    val stored = tokenManager.getTokens()
+                    if (stored == null) {
+                        _authState.value = AuthState.ERROR("Could not store the session")
+                    } else {
+                        _authState.value = AuthState.AUTHENTICATED(stored)
+                        startTokenRefreshLoop(stored)
+                        startLeaseMonitoring()
+                        updateLeaseState(stored.refreshTokenExpiry)
+                    }
                 }
-                val tokens = data.tokens
-                tokenManager.saveTokens(tokens, data.accountId)
-                tokenManager.saveRecoveryCodes(data.recoveryCodes)
-                _authState.value = AuthState.AUTHENTICATED(tokenManager.getTokens()!!)
-                startTokenRefreshLoop(tokenManager.getTokens()!!)
-                startLeaseMonitoring()
-                updateLeaseState(tokens.refreshTokenExpiry)
-            }.onFailure { error ->
-                _authState.value = AuthState.ERROR(error.message ?: "Invitation acceptance failed")
+                is Result.Failure ->
+                    _authState.value = AuthState.ERROR(result.error.message ?: "Invitation acceptance failed")
             }
         }
     }
@@ -270,8 +305,10 @@ class SessionManager(
      */
     fun registerDevice(request: DeviceRegistrationRequest) {
         scope.launch {
-            apiClient.registerDevice(request).onFailure { error ->
-                _authState.value = AuthState.ERROR(error.message ?: "Device registration failed")
+            when (val result = apiClient.registerDevice(request)) {
+                is Result.Failure ->
+                    _authState.value = AuthState.ERROR(result.error.message ?: "Device registration failed")
+                is Result.Success -> Unit
             }
         }
     }
@@ -279,21 +316,23 @@ class SessionManager(
     /**
      * Refreshes the access token using the refresh token.
      */
-    private suspend fun refreshAccessToken(refreshToken: String): Result<StoredTokens> = withContext(Dispatchers.IO) {
-        try {
-            val response = apiClient.refreshToken(
-                com.example.sande.data.remote.RefreshTokenRequest(refreshToken)
-            ).getOrThrow()
+    private suspend fun refreshAccessToken(refreshToken: String): Result<StoredTokens> =
+        withContext(Dispatchers.IO) {
+            try {
+                val response = apiClient.refreshToken(RefreshTokenRequest(refreshToken)).getOrThrow()
+                val data = response.data
+                    ?: return@withContext Result.failure(
+                        ApiException(response.error?.message ?: "Token refresh failed")
+                    )
 
-            val data = response.data
-                ?: return@withContext Result.failure(ApiException(response.error?.message ?: "Token refresh failed"))
-
-            tokenManager.updateTokensAfterRefresh(data.accessToken, data.refreshToken, data.expiresIn)
-            return@withContext Result.success(tokenManager.getTokens()!!)
-        } catch (e: Exception) {
-            return@withContext Result.failure(e)
+                tokenManager.updateTokensAfterRefresh(data.accessToken, data.refreshToken, data.expiresIn)
+                val stored = tokenManager.getTokens()
+                    ?: return@withContext Result.failure(ApiException("Could not store the refreshed token"))
+                Result.success(stored)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
         }
-    }
 
     /**
      * Starts the background token refresh loop.
@@ -314,9 +353,9 @@ class SessionManager(
                 val refreshedTokens = tokenManager.getTokens()
                 if (refreshedTokens == null || !refreshedTokens.isRefreshTokenValid()) break
 
-                refreshAccessToken(refreshedTokens.refreshToken)
-                    .onSuccess { _ -> }
-                    .onFailure { error ->
+                when (val refreshed = refreshAccessToken(refreshedTokens.refreshToken)) {
+                    is Result.Success -> Unit
+                    is Result.Failure -> {
                         // If refresh fails, check if lease expired
                         val latest = tokenManager.getTokens()
                         if (latest == null || !latest.isRefreshTokenValid()) {
@@ -325,6 +364,7 @@ class SessionManager(
                         }
                         break
                     }
+                }
             }
         }
     }
@@ -397,11 +437,10 @@ class SessionManager(
         }
 
         // Try refresh
-        refreshAccessToken(tokens.refreshToken)
-            .onSuccess { newTokens -> return@withContext newTokens.accessToken }
-            .onFailure { return@withContext null }
-
-        null
+        when (val refreshed = refreshAccessToken(tokens.refreshToken)) {
+            is Result.Success -> refreshed.value.accessToken
+            is Result.Failure -> null
+        }
     }
 
     /**

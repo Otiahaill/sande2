@@ -4,7 +4,6 @@ import com.example.sande.data.entities.BusinessProfile
 import com.example.sande.data.entities.Receipt
 import com.example.sande.data.entities.SaleItem
 import com.example.sande.data.entities.SaleSession
-import kotlinx.coroutines.tasks.await
 import java.io.ByteArrayOutputStream
 
 /**
@@ -14,11 +13,13 @@ import java.io.ByteArrayOutputStream
 class ThermalPrinterFormatter {
 
     companion object {
-        // ESC/POS command bytes
-        private const val ESC = 0x1B
-        private const val GS = 0x1D
-        private const val LF = 0x0A
-        private const val CR = 0x0D
+        // ESC/POS command bytes.
+        // These must be typed as Byte: an untyped `const val` is an Int, and
+        // byteArrayOf() expects Byte.
+        private const val ESC: Byte = 0x1B
+        private const val GS: Byte = 0x1D
+        private const val LF: Byte = 0x0A
+        private const val CR: Byte = 0x0D
 
         // Initialize printer
         private val INIT = byteArrayOf(ESC, 0x40)
@@ -199,10 +200,11 @@ class ThermalPrinterFormatter {
     }
 
     private fun padBoth(left: String, right: String): String {
-        val leftText = if (left.length > w - right.length - 1) {
-            left.substring(0, w - right.length - 1)
+        val width = profile.maxCharsPerLine
+        val leftText = if (left.length > width - right.length - 1) {
+            left.substring(0, width - right.length - 1)
         } else left
-        val spaces = w - leftText.length - right.length
+        val spaces = width - leftText.length - right.length
         return leftText + " ".repeat(maxOf(spaces, 0)) + right
     }
 

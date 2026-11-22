@@ -1,17 +1,17 @@
 package com.example.sande.data.sync
 
 import android.content.Context
-import androidx.annotation.WorkerThread
 import androidx.work.Worker
 import androidx.work.WorkerParameters
 import com.example.sande.data.remote.ApiClient
-import com.example.sande.data.db.AppDatabase
-import com.example.sande.data.entities.OutboxEntry
-import com.example.sande.data.entities.SyncCursor
-import com.example.sande.data.prefs.TokenManager
+import com.example.sande.data.remote.ChangeLogEntry
+import com.example.sande.data.remote.OutboxEntry
+import com.example.sande.data.remote.Result
+import com.example.sande.data.remote.SyncPushRequest
 import com.example.sande.data.repository.OutboxEntryRepository
 import com.example.sande.data.repository.SyncCursorRepository
 import com.example.sande.data.repository.SyncExceptionRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
@@ -32,9 +32,7 @@ class OutboxProcessor(
      * Pushes all unsynced outbox entries to the backend.
      * Returns the number of entries successfully pushed.
      */
-    @WorkerThread
-    suspend fun push(): Int {
-        // Get unsynced outbox entries in batches
+    suspend fun push(): Int = withContext(Dispatchers.IO) {
         val batchSize = 50
         var totalPushed = 0
 
@@ -49,7 +47,7 @@ class OutboxProcessor(
 
             // Convert to API format
             val apiEntries = unsynced.map { entry ->
-                com.example.sande.data.api.models.OutboxEntry(
+                OutboxEntry(
                     id = entry.id,
                     businessId = entry.businessId,
                     entityType = entry.entityType,
@@ -67,47 +65,46 @@ class OutboxProcessor(
             }
 
             // Push to backend
-            val result = apiClient.pushSync(
-                com.example.sande.data.api.models.SyncPushRequest(batchId = batchId, entries = apiEntries)
-            ).first()
+            when (val result = apiClient.pushSync(SyncPushRequest(batchId = batchId, entries = apiEntries))) {
+                is Result.Success -> {
+                    val data = result.value.data
+                    if (data == null) {
+                        // Nothing usable came back — treat as a failure and retry later.
+                        unsynced.forEach { entry ->
+                            outboxEntryRepository.recordAttempt(entry.id, "Empty response from server")
+                        }
+                        break
+                    }
 
-            if (result.isSuccessful) {
-                val response = result.getOrThrow()
-                val data = response.data
+                    // Mark successfully pushed entries as synced
+                    val syncedIds = unsynced.map { it.id }
+                    outboxEntryRepository.markSynced(syncedIds)
 
-                // Mark successfully pushed entries as synced
-                val syncedIds = unsynced.map { it.id }
-                outboxEntryRepository.markSynced(syncedIds)
+                    // Update sync cursor
+                    val cursor = syncCursorRepository.getByBusinessAndDevice(businessId, deviceCode)
+                    if (cursor != null) {
+                        syncCursorRepository.updateCursor(
+                            cursor.id,
+                            cursor.cursor + data.pushed,
+                            System.currentTimeMillis(),
+                            (cursor.pendingPushCount - data.pushed).coerceAtLeast(0)
+                        )
+                    }
 
-                // Update sync cursor
-                val cursor = syncCursorRepository.getByBusinessAndDevice(businessId, deviceCode)
-                    .firstOrNull()
-                if (cursor != null) {
-                    syncCursorRepository.updateCursor(
-                        cursor.id,
-                        cursor.cursor + data.processed,
-                        System.currentTimeMillis(),
-                        cursor.pendingPushCount - data.success
-                    )
+                    totalPushed += data.pushed
                 }
-
-                totalPushed += data.success
-
-                // Handle exceptions
-                data.errorDetails?.forEach { error ->
-                    android.util.Log.w("OutboxProcessor", "Sync error: $error")
+                is Result.Failure -> {
+                    // Push failed - record errors for retry
+                    val errorMsg = result.error.message ?: "Unknown error"
+                    unsynced.forEach { entry ->
+                        outboxEntryRepository.recordAttempt(entry.id, errorMsg)
+                    }
+                    break // Stop on error to avoid overwhelming the server
                 }
-            } else {
-                // Push failed - record errors for retry
-                val errorMsg = result.errorOrNull()?.message ?: "Unknown error"
-                unsynced.forEach { entry ->
-                    outboxEntryRepository.recordAttempt(entry.id, errorMsg)
-                }
-                break // Stop on error to avoid overwhelming the server
             }
         }
 
-        return totalPushed
+        return@withContext totalPushed
     }
 }
 
@@ -125,21 +122,17 @@ class PullApplier(
      * Pulls changes from the backend and applies them locally.
      * Returns the number of changes pulled.
      */
-    @WorkerThread
-    suspend fun pull(): Int {
+    suspend fun pull(): Int = withContext(Dispatchers.IO) {
         val cursor = syncCursorRepository.getByBusinessAndDevice(businessId, deviceCode)
-            .firstOrNull()
-
         val currentCursor = cursor?.cursor ?: 0L
         val limit = 100
 
-        val result = apiClient.pullSync(currentCursor, limit).first()
-
-        if (!result.isSuccessful) {
-            throw result.errorOrNull() ?: Exception("Pull failed")
+        val result = apiClient.pullSync(currentCursor, limit)
+        val response = when (result) {
+            is Result.Success -> result.value
+            is Result.Failure -> throw result.error
         }
-
-        val data = result.getOrThrow()!!
+        val data = response.data ?: return@withContext 0
         val changes = data.changes
 
         // Apply changes locally
@@ -149,22 +142,19 @@ class PullApplier(
 
         // Update cursor
         if (changes.isNotEmpty()) {
-            val maxSeq = changes.maxOf { it.serverSeq }
             val existingCursor = syncCursorRepository.getByBusinessAndDevice(businessId, deviceCode)
-                .firstOrNull()
             syncCursorRepository.updateCursor(
                 existingCursor?.id ?: "$businessId:$deviceCode",
-                maxSeq,
+                data.cursor,
                 System.currentTimeMillis(),
-                existingCursor?.lastPushAt ?: 0,
                 existingCursor?.pendingPushCount ?: 0
             )
         }
 
-        return changes.size
+        return@withContext changes.size
     }
 
-    private suspend fun applyChange(change: com.example.sande.data.api.models.ChangeLogEntry) {
+    private suspend fun applyChange(change: ChangeLogEntry) {
         // Apply the change to the local database based on entity type and operation
         when (change.entityType) {
             "product" -> applyProductChange(change)
@@ -177,27 +167,27 @@ class PullApplier(
         }
     }
 
-    private suspend fun applyProductChange(change: com.example.sande.data.api.models.ChangeLogEntry) {
+    private suspend fun applyProductChange(change: ChangeLogEntry) {
         android.util.Log.d("PullApplier", "Applying product change: ${change.operation} ${change.entityId}")
     }
 
-    private suspend fun applySaleSessionChange(change: com.example.sande.data.api.models.ChangeLogEntry) {
+    private suspend fun applySaleSessionChange(change: ChangeLogEntry) {
         android.util.Log.d("PullApplier", "Applying sale session change: ${change.operation} ${change.entityId}")
     }
 
-    private suspend fun applyStockMovementChange(change: com.example.sande.data.api.models.ChangeLogEntry) {
+    private suspend fun applyStockMovementChange(change: ChangeLogEntry) {
         android.util.Log.d("PullApplier", "Applying stock movement change: ${change.operation} ${change.entityId}")
     }
 
-    private suspend fun applyMembershipMirrorChange(change: com.example.sande.data.api.models.ChangeLogEntry) {
+    private suspend fun applyMembershipMirrorChange(change: ChangeLogEntry) {
         android.util.Log.d("PullApplier", "Applying membership mirror change: ${change.operation} ${change.entityId}")
     }
 
-    private suspend fun applyDeviceRegistrationChange(change: com.example.sande.data.api.models.ChangeLogEntry) {
+    private suspend fun applyDeviceRegistrationChange(change: ChangeLogEntry) {
         android.util.Log.d("PullApplier", "Applying device registration change: ${change.operation} ${change.entityId}")
     }
 
-    private suspend fun applyBusinessProfileChange(change: com.example.sande.data.api.models.ChangeLogEntry) {
+    private suspend fun applyBusinessProfileChange(change: ChangeLogEntry) {
         android.util.Log.d("PullApplier", "Applying business profile change: ${change.operation} ${change.entityId}")
     }
 }
@@ -208,8 +198,8 @@ class PullApplier(
  */
 class SyncWorker(
     context: Context,
-    workerParams: androidx.work.WorkerParameters
-) : androidx.work.Worker(context, workerParams) {
+    workerParams: WorkerParameters
+) : Worker(context, workerParams) {
 
     private val outboxProcessor: OutboxProcessor by lazy {
         val app = applicationContext as com.example.sande.di.SandeApplication
@@ -233,15 +223,16 @@ class SyncWorker(
         )
     }
 
-    override fun doWork(): androidx.work.Result {
+    override fun doWork(): Result {
         return try {
             // Check network availability
             val connectivityManager = applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE)
+                    as android.net.ConnectivityManager
             val activeNetwork = connectivityManager.activeNetwork
             if (activeNetwork == null || !connectivityManager.getNetworkCapabilities(activeNetwork).hasCapability(
                 android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET
             )) {
-                return androidx.work.Result.failure()
+                return Result.retry()
             }
 
             // Push local changes first
@@ -250,10 +241,10 @@ class SyncWorker(
             // Then pull remote changes
             pullApplier.pull()
 
-            androidx.work.Result.success()
+            Result.success()
         } catch (e: Exception) {
             android.util.Log.e("SyncWorker", "Sync failed", e)
-            androidx.work.Result.failure()
+            Result.retry()
         }
     }
 
@@ -262,19 +253,22 @@ class SyncWorker(
 
         fun enqueue(context: Context) {
             val request = androidx.work.PeriodicWorkRequestBuilder<SyncWorker>(
-                15, androidx.work.TimeUnit.MINUTES
+                15, java.util.concurrent.TimeUnit.MINUTES
             )
-                .setTag(WORKER_TAG)
-                .setExistingWorkPolicy(androidx.work.ExistingPeriodicWorkPolicy.KEEP)
+                .addTag(WORKER_TAG)
                 .build()
 
             androidx.work.WorkManager.getInstance(context)
-                .enqueueUniquePeriodicWork(WORKER_TAG, androidx.work.ExistingPeriodicWorkPolicy.KEEP, request)
+                .enqueueUniquePeriodicWork(
+                    WORKER_TAG,
+                    androidx.work.ExistingPeriodicWorkPolicy.KEEP,
+                    request
+                )
         }
 
         fun enqueueImmediate(context: Context) {
             val request = androidx.work.OneTimeWorkRequestBuilder<SyncWorker>()
-                .setTag(WORKER_TAG)
+                .addTag(WORKER_TAG)
                 .build()
 
             androidx.work.WorkManager.getInstance(context)

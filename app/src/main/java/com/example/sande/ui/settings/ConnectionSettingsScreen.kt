@@ -40,6 +40,7 @@ import com.example.sande.di.SandeApplication
 import com.example.sande.ui.viewModelFactoryOf
 import com.example.sande.ui.viewmodel.ConnectionViewModel
 import kotlinx.coroutines.launch
+import androidx.compose.material.icons.Icons
 
 /**
  * Connection settings screen — where the user points the app at a backend

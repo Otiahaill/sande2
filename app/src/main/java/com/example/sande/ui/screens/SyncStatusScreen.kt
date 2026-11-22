@@ -10,7 +10,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -33,6 +32,7 @@ import com.example.sande.ui.theme.SandeTheme
 import com.example.sande.ui.viewModelFactoryOf
 import com.example.sande.ui.viewmodel.SyncStatusViewModel
 import kotlinx.coroutines.launch
+import androidx.compose.material3.CircularProgressIndicator
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -120,7 +120,7 @@ fun SyncStatusScreen(
                 ) {
                     // Sync status icon
                     if (isSyncing) {
-                        ProgressIndicator(modifier = Modifier.size(48.dp))
+                        CircularProgressIndicator(modifier = Modifier.size(48.dp))
                     } else {
                         androidx.compose.material.icons.Icons.Default.CloudDone(
                             contentDescription = "Sync status",
@@ -225,7 +225,7 @@ fun SyncStatusScreen(
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
                 ) {
                     if (isSyncing) {
-                        ProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary)
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary)
                         androidx.compose.foundation.layout.Spacer(modifier = Modifier.width(8.dp))
                     }
                     Text(text = if (isSyncing) "Syncing..." else "Sync Now", fontSize = 16.sp, fontWeight = FontWeight.Medium)

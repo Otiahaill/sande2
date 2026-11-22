@@ -54,6 +54,13 @@ ROOM_SYMBOLS = [
 for _s in ROOM_SYMBOLS:
     SYMBOL_IMPORTS.setdefault(_s, "androidx.room." + _s)
 
+# Material 1 composables that do not exist in Material 3. Material 3 split
+# `ProgressIndicator` into `CircularProgressIndicator` and `LinearProgressIndicator`,
+# and `Icons` moved to the material-icons artifacts.
+M3_REMOVED = {
+    "ProgressIndicator": "CircularProgressIndicator",
+}
+
 # Symbols that must be imported, but only count as "used" in a type/expression
 # position that is not part of a declaration we own.
 USE_RE = re.compile(r"(?<![\w.])([A-Z][A-Za-z0-9_]*)")
@@ -95,7 +102,6 @@ def main():
             for sym, imp in SYMBOL_IMPORTS.items():
                 if sym in imported:
                     continue
-                # Wildcard imports of the owning package satisfy the requirement.
                 pkg = imp.rsplit(".", 1)[0]
                 if pkg in wildcards:
                     continue
@@ -110,6 +116,16 @@ def main():
                 if not re.search(typed, code):
                     continue
                 problems.append((path, sym, imp))
+
+            # Material 1 composables that do not exist in Material 3.
+            for removed, replacement in M3_REMOVED.items():
+                if removed in imported:
+                    problems.append((path, removed,
+                                    f"does not exist in Material 3 — use {replacement}"))
+                    continue
+                if re.search(r"(?<!Circular)(?<!Linear)" + removed + r"\b", code):
+                    problems.append((path, removed,
+                                    f"does not exist in Material 3 — use {replacement}"))
 
     if problems:
         print(f"=== {len(problems)} library symbol(s) used without an import ===")

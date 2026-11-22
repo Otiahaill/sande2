@@ -2,18 +2,15 @@ package com.example.sande.data.remote
 
 import android.content.Context
 import com.example.sande.data.auth.AuthTokens
-import com.example.sande.data.auth.OutboxEntry
 import com.example.sande.data.prefs.TokenManager
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.plugins.logging.LogLevel
-import io.ktor.client.plugins.logging.sanitizeHeader
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.HttpRequestPipeline
-import io.ktor.client.request.body
-import io.ktor.client.request.contentType
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
@@ -22,6 +19,7 @@ import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -93,22 +91,28 @@ class ApiClient(
             }
             sanitizeHeader { header -> header == HttpHeaders.Authorization }
         }
-        
+
         // Default request timeout
-        requestTimeout = 30_000
-        
-        // Add auth interceptor
-        intercept(HttpRequestPipeline.Render) {
-            val tokens = tokenManager.getCurrentTokens()
-            tokens?.let {
-                if (it.isAccessTokenValid()) {
-                    this.headers.append(HttpHeaders.Authorization, "[redacted]")
-                }
-            }
+        install(HttpTimeout) {
+            requestTimeoutMillis = 30_000
         }
-        
+
         // Response validation
         expectSuccess = false
+    }
+
+    init {
+        // Attach the bearer token to every request.
+        //
+        // Ktor 2.x removed `HttpClientConfig.intercept`; the request pipeline is
+        // configured on the client instance instead. The interceptor block is
+        // suspend, so the token can be read straight from the token manager.
+        client.requestPipeline.intercept(HttpRequestPipeline.Render) {
+            val tokens = tokenManager.getTokens()
+            if (tokens != null && tokens.isAccessTokenValid()) {
+                headers.append(HttpHeaders.Authorization, "[redacted]")
+            }
+        }
     }
 
     // ===== Health Check =====
@@ -574,6 +578,30 @@ data class DeviceRegistrationRequest(
 data class SyncPushRequest(
     val batchId: String,
     val entries: List<OutboxEntry>,
+)
+
+/**
+ * Wire format of an outbox entry.
+ *
+ * The Room entity with the same name lives in
+ * `com.example.sande.data.entities.OutboxEntry`; this one is the JSON shape
+ * sent to the backend.
+ */
+@Serializable
+data class OutboxEntry(
+    val id: String,
+    val businessId: String,
+    val entityType: String,
+    val entityId: String,
+    val operation: String, // "create" | "update" | "delete"
+    val payloadJson: String,
+    val batchId: String? = null,
+    val attemptCount: Int = 0,
+    val lastError: String? = null,
+    val createdAt: Long,
+    val updatedAt: Long,
+    val synced: Boolean = false,
+    val syncedAt: Long = 0,
 )
 
 @Serializable
