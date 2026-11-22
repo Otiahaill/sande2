@@ -8,15 +8,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProgressIndicator
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,7 +28,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.sande.data.auth.GoogleSignInClient
+import com.example.sande.data.auth.GoogleAuthManager
 import com.example.sande.data.auth.GoogleSignInResult
 import com.example.sande.di.SandeApplication
 import com.example.sande.ui.theme.SandeTheme
@@ -46,13 +49,13 @@ fun GoogleSignInScreen(
         factory = viewModelFactoryOf { OnboardingViewModel(app.tokenManager, app.sessionManager) }
     )
 
-    val googleSignInClient = remember { GoogleSignInClient(context, app.connectionResolver.googleClientId()) }
+    val googleAuthManager = remember { GoogleAuthManager(context, app.connectionResolver.googleClientId()) }
     val scope = rememberCoroutineScope()
 
     var isSigningIn by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
-    // Activity result launcher for Google Sign-In
+    // Activity result launcher for Google Sign-In (legacy fallback)
     val signInLauncher = remember {
         activity.registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == android.app.Activity.RESULT_OK) {
@@ -121,7 +124,7 @@ fun GoogleSignInScreen(
                     error = null
                     try {
                         // Try Credential Manager first (modern)
-                        val result = googleSignInClient.signInWithCredentialManager(activity)
+                        val result = googleAuthManager.signInWithCredentialManager(activity)
                         result.onSuccess { googleResult: GoogleSignInResult ->
                             vm.handleGoogleSignIn(
                                 idToken = googleResult.idToken,
@@ -131,7 +134,7 @@ fun GoogleSignInScreen(
                             )
                         }.onFailure { e ->
                             // Fallback to traditional Google Sign-In
-                            val signInIntent = googleSignInClient.getLegacySignInIntent()
+                            val signInIntent = googleAuthManager.getLegacySignInIntent()
                             signInLauncher.launch(signInIntent)
                         }
                     } catch (e: Exception) {
@@ -153,11 +156,11 @@ fun GoogleSignInScreen(
         ) {
             androidx.compose.foundation.layout.Row(
                 modifier = Modifier.fillMaxSize(),
-                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
+                horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (isSigningIn) {
-                    ProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.primary)
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.primary)
                     androidx.compose.foundation.layout.Spacer(modifier = Modifier.width(12.dp))
                 }
                 // Google logo would go here - using text for now
@@ -177,7 +180,7 @@ fun GoogleSignInScreen(
         }
 
         // Back button
-        androidx.compose.material3.TextButton(onClick = onBack) {
+        TextButton(onClick = onBack) {
             Text(text = "Back", fontSize = 16.sp)
         }
     }

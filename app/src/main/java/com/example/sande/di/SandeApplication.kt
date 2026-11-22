@@ -3,7 +3,7 @@ package com.example.sande.di
 import android.app.Application
 import com.example.sande.data.AppSettings
 import com.example.sande.data.auth.ConnectionResolver
-import com.example.sande.data.auth.GoogleSignInClient
+import com.example.sande.data.auth.GoogleAuthManager
 import com.example.sande.data.auth.LegacyAdoptionManager
 import com.example.sande.data.auth.SessionManager
 import com.example.sande.data.backup.BackupManager
@@ -51,10 +51,10 @@ class SandeApplication : Application() {
     val connectionResolver: ConnectionResolver by lazy {
         ConnectionResolver(this, connectionSettings, tokenManager, settings)
     }
-    val googleSignInClient: GoogleSignInClient by lazy {
+    val googleAuthManager: GoogleAuthManager by lazy {
         // Client ID resolved at construction; if the user changes it in
         // Connection settings, the app recreates this on next launch.
-        GoogleSignInClient(this, connectionResolver.googleClientId())
+        GoogleAuthManager(this, connectionResolver.googleClientId())
     }
     val apiClient: ApiClient by lazy {
         ApiClient(this, tokenManager, connectionResolver.apiBaseUrl())

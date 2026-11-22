@@ -23,7 +23,7 @@ import kotlinx.coroutines.withContext
  * part of `androidx.credentials`. `androidx.credentials:credentials-play-services-auth`
  * only ships the Play Services credential *providers*.
  */
-class GoogleSignInClient(
+class GoogleAuthManager(
     private val context: Context,
     private val serverClientId: String,
 ) {
@@ -104,6 +104,31 @@ class GoogleSignInClient(
                 )
             )
         }
+
+    /**
+     * Converts the result of a legacy Google Sign-In intent into the app's own
+     * result type.
+     */
+    fun handleSignInResult(resultCode: Int, data: android.content.Intent?): Result<GoogleSignInResult> {
+        return try {
+            val account = GoogleSignIn.getSignedInAccountFromIntent(data).getResult(
+                com.google.android.gms.common.api.ApiException::class.java
+            )
+            Result.success(
+                GoogleSignInResult(
+                    idToken = account.idToken
+                        ?: return Result.failure(Exception("No ID token in Google Sign-In result")),
+                    email = account.email ?: "",
+                    displayName = account.displayName,
+                    photoUrl = account.photoUrl?.toString(),
+                )
+            )
+        } catch (e: com.google.android.gms.common.api.ApiException) {
+            Result.failure(e)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 
     /**
      * Intent for the legacy Google Sign-In flow.
