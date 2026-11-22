@@ -74,7 +74,9 @@ class GoogleSignInClient(
                 Result.success(
                     GoogleSignInResult(
                         idToken = credential.idToken,
-                        email = credential.email,
+                        // googleid 1.1.0 does not expose the email, so it is read
+                        // from the ID token itself.
+                        email = IdTokenClaims.decode(credential.idToken)?.email ?: "",
                         displayName = credential.displayName,
                         photoUrl = credential.profilePictureUri?.toString(),
                     )

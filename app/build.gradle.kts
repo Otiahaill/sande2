@@ -25,10 +25,9 @@ fun configValue(key: String, fallback: String = ""): String =
 
 android {
     namespace = "com.example.sande"
-    // compileSdk 35 is required by androidx.credentials 1.6.0 (and therefore by
-    // com.google.android.libraries.identity.googleid:googleid, which the Google
-    // Sign-In flow uses). targetSdk stays at 34 so runtime behaviour is unchanged.
-    compileSdk = 35
+    // androidx.credentials 1.3.0 (and googleid 1.1.0) are the newest releases
+    // built with Kotlin 1.8 metadata, so compileSdk stays at 34.
+    compileSdk = 34
     defaultConfig {
         applicationId = "com.example.sande"
         minSdk = 26

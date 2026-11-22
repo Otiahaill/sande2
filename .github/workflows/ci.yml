@@ -29,23 +29,6 @@ jobs:
           mkdir -p "$ANDROID_HOME/licenses"
           printf '24333f8a63b6825ea9c5514f83c2829b004d1fee\n' > "$ANDROID_HOME/licenses/android-sdk-license"
 
-      # compileSdk 35 is required by androidx.credentials 1.6.0.
-      # The runner already ships the Android SDK, but sdkmanager is not on PATH,
-      # so locate it under $ANDROID_HOME instead of relying on a fixed version.
-      - name: Install Android SDK platform 35
-        run: |
-          if [ -d "$ANDROID_HOME/platforms/android-35" ]; then
-            echo "android-35 is already installed"
-            exit 0
-          fi
-          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f 2>/dev/null | head -1)"
-          if [ -z "$SDKMANAGER" ]; then
-            echo "::error::sdkmanager not found under $ANDROID_HOME/cmdline-tools"
-            exit 1
-          fi
-          chmod +x "$SDKMANAGER"
-          "$SDKMANAGER" "platforms;android-35"
-
       # Secrets are passed as Gradle project properties (-P) instead of being written
       # into local.properties, because local.properties also carries `sdk.dir` for the
       # Android SDK and overwriting it breaks the build.
