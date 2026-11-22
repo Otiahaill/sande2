@@ -34,7 +34,7 @@ interface ReceiptDao {
     @Query("SELECT * FROM receipts WHERE businessId = :businessId AND createdAt BETWEEN :startDate AND :endDate ORDER BY createdAt DESC")
     fun getByBusinessAndDateRange(businessId: String, startDate: Long, endDate: Long): Flow<List<Receipt>>
 
-    @Query("SELECT MAX(counter) FROM counters WHERE businessId = :businessId AND deviceCode = :deviceCode AND counterType = 'receipt'")
+    @Query("SELECT MAX(currentValue) FROM counters WHERE businessId = :businessId AND deviceCode = :deviceCode AND counterType = 'receipt'")
     suspend fun getMaxReceiptCounter(businessId: String, deviceCode: String): Long?
 
     @Query("SELECT COUNT(*) FROM receipts WHERE businessId = :businessId")

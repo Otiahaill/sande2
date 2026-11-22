@@ -78,5 +78,3 @@ export async function tenantIsolationMiddleware(c: Context<{ Bindings: Cloudflar
 
   await next();
 }
-
-export { minVersionMiddleware, securityHeadersMiddleware, tenantIsolationMiddleware };

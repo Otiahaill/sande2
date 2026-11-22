@@ -38,6 +38,6 @@ interface MembershipMirrorDao {
     @Query("SELECT * FROM membership_mirrors WHERE deviceCode = :deviceCode")
     suspend fun getByDeviceCode(deviceCode: String): MembershipMirror?
 
-    @Query("SELECT * FROM membership_mirrors WHERE syncedAt < :threshold")
+    @Query("SELECT * FROM membership_mirrors WHERE lastSyncedAt < :threshold")
     fun getStale(threshold: Long): Flow<List<MembershipMirror>>
 }

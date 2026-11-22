@@ -2,6 +2,7 @@ package com.example.sande.data.daos
 
 import androidx.room.Dao
 import androidx.room.Insert
+import androidx.room.MapColumn
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
@@ -54,9 +55,11 @@ interface StockMovementDao {
     @Query("SELECT COALESCE(SUM(quantityDelta), 0) FROM stock_movements WHERE productId = :productId")
     suspend fun getStockBalance(productId: String): Long
 
-    // Real-time balance for all products in a business
-    @Query("SELECT productId, COALESCE(SUM(quantityDelta), 0) as balance FROM stock_movements WHERE businessId = :businessId GROUP BY productId")
-    fun observeBalances(businessId: String): Flow<Map<String, Long>>
+    // Real-time balance for all products in a business.
+    // Room cannot infer which column is the Map key and which is the value,
+    // so both type arguments carry @MapColumn naming the source column.
+    @Query("SELECT productId, COALESCE(SUM(quantityDelta), 0) AS balance FROM stock_movements WHERE businessId = :businessId GROUP BY productId")
+    fun observeBalances(businessId: String): Flow<Map<@MapColumn("productId") String, @MapColumn("balance") Long>>
 
     @Query("SELECT COUNT(*) FROM stock_movements WHERE businessId = :businessId")
     suspend fun countByBusiness(businessId: String): Int
