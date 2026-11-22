@@ -131,7 +131,7 @@ fun GoogleSignInScreen(
                             )
                         }.onFailure { e ->
                             // Fallback to traditional Google Sign-In
-                            val signInIntent = googleSignInClient.googleSignInClient.signInIntent
+                            val signInIntent = googleSignInClient.getLegacySignInIntent()
                             signInLauncher.launch(signInIntent)
                         }
                     } catch (e: Exception) {

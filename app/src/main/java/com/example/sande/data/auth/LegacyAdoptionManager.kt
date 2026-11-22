@@ -72,10 +72,10 @@ class LegacyAdoptionManager(
             onProgress("Registering business...", 0.1f)
             val registerResponse = apiClient.registerBusiness(registrationRequest).getOrThrow()
             val registration = registerResponse.data
-                ?: return Result.failure(Exception("No data in registration response"))
+                ?: return@withContext Result.failure(Exception("No data in registration response"))
             val newBusinessId = registration.tokens.membership.businessId
             if (newBusinessId.isBlank()) {
-                return Result.failure(Exception("No business ID in response"))
+                return@withContext Result.failure(Exception("No business ID in response"))
             }
 
             // Save tokens
@@ -109,14 +109,14 @@ class LegacyAdoptionManager(
             onProgress("Finalizing...", 1.0f)
             markAdoptionComplete(newBusinessId)
 
-            return Result.success(
+            return@withContext Result.success(
                 AdoptionResult(
                     businessId = newBusinessId,
                     accountId = registration.accountId,
                 )
             )
         } catch (e: Exception) {
-            return Result.failure(e)
+            return@withContext Result.failure(e)
         }
     }
 

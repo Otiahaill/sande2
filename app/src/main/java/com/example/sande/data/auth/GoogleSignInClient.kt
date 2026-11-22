@@ -2,31 +2,26 @@ package com.example.sande.data.auth
 
 import android.app.Activity
 import android.content.Context
-import android.content.IntentSender
 import androidx.credentials.CredentialManager
-import androidx.credentials.CredentialManagerCallback
 import androidx.credentials.GetCredentialRequest
-import androidx.credentials.GetCredentialResponse
 import androidx.credentials.exceptions.GetCredentialException
-import androidx.credentials.google.GetGoogleIdOption
-import androidx.credentials.google.GoogleIdTokenCredential
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.LifecycleOwner
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import com.google.android.gms.common.api.ApiException
-import com.google.android.gms.tasks.Task
-import com.google.android.gms.tasks.Tasks
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.CoroutineScope
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * Handles Google Sign-In using Credential Manager (modern) with fallback to GoogleSignInClient.
+ * Handles Google Sign-In using Credential Manager (modern), with a fallback to the
+ * legacy [GoogleSignInClient].
+ *
+ * The Google ID credential classes live in the
+ * `com.google.android.libraries.identity.googleid:googleid` artifact — they are NOT
+ * part of `androidx.credentials`. `androidx.credentials:credentials-play-services-auth`
+ * only ships the Play Services credential *providers*.
  */
 class GoogleSignInClient(
     private val context: Context,
@@ -42,83 +37,79 @@ class GoogleSignInClient(
             .requestEmail()
             .requestProfile()
             .build()
-        return GoogleSignIn.getClient(context, gso)
+        return GoogleSignInClient.getClient(context, gso)
     }
 
     /**
-     * Starts Google Sign-In flow using Credential Manager (preferred on Android 14+).
-     * Returns the Google ID token.
+     * Signs in with Google using Credential Manager.
+     *
+     * [serverClientId] must be the **Web** OAuth client ID — the ID token returned
+     * by Google is intended for that client, and the backend exchanges it.
      */
-    suspend fun signInWithCredentialManager(activity: Activity): Result<GoogleSignInResult> = withContext(Dispatchers.IO) {
-        val deferred = CompletableDeferred<Result<GoogleSignInResult>>()
+    suspend fun signInWithCredentialManager(activity: Activity): Result<GoogleSignInResult> =
+        withContext(Dispatchers.IO) {
+            try {
+                val googleIdOption = GetGoogleIdOption.Builder()
+                    .setServerClientId(serverClientId)
+                    .setFilterByAuthorizedAccounts(false)
+                    .setAutoSelectEnabled(false)
+                    .build()
 
-        val getCredentialRequest = GetCredentialRequest.Builder()
-            .addCredentialOption(GetGoogleIdOption.Builder()
-                .setServerClientId(serverClientId)
-                .setFilterByAuthorizedAccounts(false)
-                .build())
-            .build()
+                val request = GetCredentialRequest.Builder()
+                    .addCredentialOption(googleIdOption)
+                    .build()
 
-        credentialManager.getCredentialAsync(
-            context,
-            getCredentialRequest,
-            object : CredentialManagerCallback<GetCredentialResponse> {
-                override fun onResult(result: GetCredentialResponse) {
-                    val credential = result.credential
-                    if (credential is GoogleIdTokenCredential) {
-                        val idToken = credential.idToken
-                        if (idToken == null) {
-                            return@onResult deferred.complete(Result.failure(Exception("No ID token")))
-                        }
-                        deferred.complete(Result.success(GoogleSignInResult(
-                            idToken = idToken,
-                            email = credential.id ?: "",
-                            displayName = credential.name,
-                            photoUrl = credential.pictureUri?.toString(),
-                        )))
-                    } else {
-                        deferred.complete(Result.failure(Exception("Unexpected credential type")))
-                    }
+                val response = credentialManager.getCredential(
+                    context = context,
+                    request = request,
+                )
+
+                val credential = response.credential
+                if (credential !is GoogleIdTokenCredential) {
+                    return@withContext Result.failure(
+                        Exception("Unexpected credential type: ${credential::class.java.simpleName}")
+                    )
                 }
 
-                override fun onError(e: GetCredentialException) {
-                    deferred.complete(Result.failure(e))
-                }
+                Result.success(
+                    GoogleSignInResult(
+                        idToken = credential.idToken,
+                        email = credential.email,
+                        displayName = credential.displayName,
+                        photoUrl = credential.profilePictureUri?.toString(),
+                    )
+                )
+            } catch (e: GetCredentialException) {
+                Result.failure(e)
+            } catch (e: Exception) {
+                Result.failure(e)
             }
-        )
-
-        deferred.await()
-    }
-
-    /**
-     * Fallback to traditional GoogleSignInClient for older devices or when Credential Manager fails.
-     */
-    suspend fun signInWithGoogleSignInClient(activity: Activity): Result<GoogleSignInResult> = withContext(Dispatchers.IO) {
-        val deferred = CompletableDeferred<Result<GoogleSignInResult>>()
-
-        val signInIntent = googleSignInClient.signInIntent
-        val requestCode = 9001 // Unique request code
-
-        // We need to handle the activity result - this is simplified
-        // In practice, you'd use ActivityResultContracts.StartActivityForResult
-        // For now, we'll use the blocking approach with a custom callback
-        
-        // This is a simplified version - real implementation needs ActivityResult API
-        try {
-            val task: Task<GoogleSignInAccount> = googleSignInClient.signInIntent
-                .let { intent -> 
-                    // This won't work directly - need proper activity result handling
-                    // Placeholder for actual implementation
-                    throw UnsupportedOperationException("Use ActivityResult API")
-                }
-            
-            deferred.complete(Result.failure(Exception("Use ActivityResult API for Google Sign-In")))
-        } catch (e: Exception) {
-            deferred.complete(Result.failure(e))
         }
 
-        deferred.await()
-    }
+    /**
+     * Fallback to traditional GoogleSignInClient for older devices or when
+     * Credential Manager fails.
+     *
+     * The legacy flow needs an Activity result, which this class cannot receive on
+     * its own; callers should use the ActivityResult API and drive
+     * [handleSignInResult] instead.
+     */
+    suspend fun signInWithGoogleSignInClient(activity: Activity): Result<GoogleSignInResult> =
+        withContext(Dispatchers.IO) {
+            Result.failure(
+                UnsupportedOperationException(
+                    "Use the ActivityResult API with GoogleSignInClient and call handleSignInResult()"
+                )
+            )
+        }
+
+    /**
+     * Intent for the legacy Google Sign-In flow.
+     *
+     * Exposed so the sign-in screen can launch it as a fallback when Credential
+     * Manager fails, and receive the result through the Activity Result API.
+     */
+    fun getLegacySignInIntent(): android.content.Intent = googleSignInClient.signInIntent
 
     /**
      * Signs out from Google.
@@ -149,13 +140,3 @@ class GoogleSignInClient(
         return GoogleSignIn.getLastSignedInAccount(context)
     }
 }
-
-/**
- * Wrapper for Google Sign-In result.
- */
-data class GoogleSignInResult(
-    val idToken: String,
-    val email: String,
-    val displayName: String?,
-    val photoUrl: String?,
-)
