@@ -124,7 +124,8 @@ fun SyncStatusScreen(
                     if (isSyncing) {
                         CircularProgressIndicator(modifier = Modifier.size(48.dp))
                     } else {
-                        androidx.compose.material.icons.Icon(Icons.Filled.CloudDone, contentDescription = null)
+                        androidx.compose.material.icons.Icon(
+                            imageVector = Icons.Filled.CloudDone,
                             contentDescription = "Sync status",
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(48.dp)
@@ -189,7 +190,8 @@ fun SyncStatusScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        androidx.compose.material.icons.Icon(Icons.Filled.Info, contentDescription = null)
+                        androidx.compose.material.icons.Icon(
+                            imageVector = Icons.Filled.Info,
                             contentDescription = "Info",
                             tint = MaterialTheme.colorScheme.onSecondaryContainer
                         )
