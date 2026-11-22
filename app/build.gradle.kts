@@ -25,7 +25,10 @@ fun configValue(key: String, fallback: String = ""): String =
 
 android {
     namespace = "com.example.sande"
-    compileSdk = 34
+    // compileSdk 35 is required by androidx.credentials 1.6.0 (and therefore by
+    // com.google.android.libraries.identity.googleid:googleid, which the Google
+    // Sign-In flow uses). targetSdk stays at 34 so runtime behaviour is unchanged.
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.example.sande"

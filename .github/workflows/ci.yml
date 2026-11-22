@@ -29,6 +29,10 @@ jobs:
           mkdir -p "$ANDROID_HOME/licenses"
           printf '24333f8a63b6825ea9c5514f83c2829b004d1fee\n' > "$ANDROID_HOME/licenses/android-sdk-license"
 
+      # compileSdk 35 is required by androidx.credentials 1.6.0.
+      - name: Install Android SDK platform 35
+        run: sdkmanager "platforms;android-35" "platforms;android-34"
+
       # Secrets are passed as Gradle project properties (-P) instead of being written
       # into local.properties, because local.properties also carries `sdk.dir` for the
       # Android SDK and overwriting it breaks the build.
