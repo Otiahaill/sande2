@@ -2,7 +2,7 @@ import { Context } from 'hono';
 import { CloudflareBindings, OutboxEntry, SyncException } from '../types';
 import { createTenantDB, createPlatformDB } from '../db/tenant';
 import { hashToken } from '../middleware/auth';
-import { ChangeLogRow, StockMovementRow, SyncCursorRow } from './db/rows';
+import { ChangeLogRow, StockMovementRow, SyncCursorRow } from '../db/rows';
 
 
 /**
@@ -465,6 +465,9 @@ export async function exceptions(c: Context<{ Bindings: CloudflareBindings; Vari
  */
 export async function resolveException(c: Context<{ Bindings: CloudflareBindings; Variables: { businessContext: any } }>) {
   const exceptionId = c.req.param('exceptionId');
+  if (!exceptionId) {
+    return c.json({ success: false, error: { code: '400', message: 'exceptionId is required' } }, 400);
+  }
   const body = await c.req.json<{ resolution: 'local_wins' | 'server_wins' | 'manual' | 'pending' }>();
   const context = c.get('businessContext');
   const tenantDB = createTenantDB(c.env.DB, context);

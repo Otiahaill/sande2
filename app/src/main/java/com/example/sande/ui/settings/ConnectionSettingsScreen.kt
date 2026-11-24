@@ -126,9 +126,9 @@ fun ConnectionSettingsScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = if (vm.isReady.value) Icons.Filled.CheckCircle else Icons.Filled.Warning,
+                        imageVector = if (isReady) Icons.Filled.CheckCircle else Icons.Filled.Warning,
                         contentDescription = null,
-                        tint = if (vm.isReady.value) {
+                        tint = if (isReady) {
                             MaterialTheme.colorScheme.onPrimaryContainer
                         } else {
                             MaterialTheme.colorScheme.onSecondaryContainer
@@ -136,23 +136,23 @@ fun ConnectionSettingsScreen(
                     )
                     Column {
                         Text(
-                            text = if (vm.isReady.value) "Connected" else "Setup required",
+                            text = if (isReady) "Connected" else "Setup required",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = if (vm.isReady.value) {
+                            color = if (isReady) {
                                 MaterialTheme.colorScheme.onPrimaryContainer
                             } else {
                                 MaterialTheme.colorScheme.onSecondaryContainer
                             }
                         )
                         Text(
-                            text = if (vm.isReady.value) {
+                            text = if (isReady) {
                                 "Backend and Google sign-in are configured"
                             } else {
                                 "Fill in the fields below to connect"
                             },
                             style = MaterialTheme.typography.bodySmall,
-                            color = if (vm.isReady.value) {
+                            color = if (isReady) {
                                 MaterialTheme.colorScheme.onPrimaryContainer
                             } else {
                                 MaterialTheme.colorScheme.onSecondaryContainer

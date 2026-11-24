@@ -1,7 +1,7 @@
 import { Context } from 'hono';
 import { CloudflareBindings } from '../types';
 import { createPlatformDB } from '../db/tenant';
-import { AccountRow } from './db/rows';
+import { AccountRow } from '../db/rows';
 
 
 /**
@@ -129,6 +129,9 @@ export async function register(c: Context<{ Bindings: CloudflareBindings; Variab
  */
 export async function update(c: Context<{ Bindings: CloudflareBindings; Variables: { businessContext: any; platformDB: any } }>) {
   const deviceCode = c.req.param('deviceCode');
+  if (!deviceCode) {
+    return c.json({ success: false, error: { code: '400', message: 'deviceCode is required' } }, 400);
+  }
   const body = await c.req.json<{ deviceName?: string; pushToken?: string }>();
   const context = c.get('businessContext');
   const platformDB = c.get('platformDB');
@@ -178,6 +181,9 @@ export async function update(c: Context<{ Bindings: CloudflareBindings; Variable
  */
 export async function approve(c: Context<{ Bindings: CloudflareBindings; Variables: { businessContext: any; platformDB: any } }>) {
   const deviceCode = c.req.param('deviceCode');
+  if (!deviceCode) {
+    return c.json({ success: false, error: { code: '400', message: 'deviceCode is required' } }, 400);
+  }
   const context = c.get('businessContext');
   const platformDB = c.get('platformDB');
   const now = Date.now();
@@ -231,6 +237,9 @@ export async function approve(c: Context<{ Bindings: CloudflareBindings; Variabl
  */
 export async function revoke(c: Context<{ Bindings: CloudflareBindings; Variables: { businessContext: any; platformDB: any } }>) {
   const deviceCode = c.req.param('deviceCode');
+  if (!deviceCode) {
+    return c.json({ success: false, error: { code: '400', message: 'deviceCode is required' } }, 400);
+  }
   const context = c.get('businessContext');
   const platformDB = c.get('platformDB');
   const now = Date.now();

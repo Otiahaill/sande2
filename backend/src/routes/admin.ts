@@ -1,7 +1,7 @@
 import { Context } from 'hono';
 import { CloudflareBindings } from '../types';
 import { createPlatformDB } from '../db/tenant';
-import { AccountRow, BackupRow, DeviceRow, SyncBatchRow, SyncCursorRow, SyncExceptionRow } from './db/rows';
+import { AccountRow, BackupRow, DeviceRow, SyncBatchRow, SyncCursorRow, SyncExceptionRow } from '../db/rows';
 
 
 /**
@@ -51,6 +51,9 @@ export async function listBusinesses(c: Context<{ Bindings: CloudflareBindings }
  */
 export async function getBusiness(c: Context<{ Bindings: CloudflareBindings }>) {
   const businessId = c.req.param('businessId');
+  if (!businessId) {
+    return c.json({ success: false, error: { code: '400', message: 'businessId is required' } }, 400);
+  }
   const platformDB = createPlatformDB(c.env.DB);
 
   const business = await platformDB.getBusiness(businessId);
@@ -112,6 +115,9 @@ export async function getBusiness(c: Context<{ Bindings: CloudflareBindings }>) 
  */
 export async function updateBusinessStatus(c: Context<{ Bindings: CloudflareBindings }>) {
   const businessId = c.req.param('businessId');
+  if (!businessId) {
+    return c.json({ success: false, error: { code: '400', message: 'businessId is required' } }, 400);
+  }
   const body = await c.req.json<{ status: 'active' | 'suspended' | 'deleted'; reason?: string }>();
   const platformDB = createPlatformDB(c.env.DB);
 
@@ -163,6 +169,9 @@ export async function updateBusinessStatus(c: Context<{ Bindings: CloudflareBind
  */
 export async function listBusinessDevices(c: Context<{ Bindings: CloudflareBindings }>) {
   const businessId = c.req.param('businessId');
+  if (!businessId) {
+    return c.json({ success: false, error: { code: '400', message: 'businessId is required' } }, 400);
+  }
   const platformDB = createPlatformDB(c.env.DB);
 
   const devices = await platformDB.getDevicesByBusiness(businessId);
@@ -189,7 +198,13 @@ export async function listBusinessDevices(c: Context<{ Bindings: CloudflareBindi
  */
 export async function adminDeviceAction(c: Context<{ Bindings: CloudflareBindings }>) {
   const businessId = c.req.param('businessId');
+  if (!businessId) {
+    return c.json({ success: false, error: { code: '400', message: 'businessId is required' } }, 400);
+  }
   const deviceCode = c.req.param('deviceCode');
+  if (!deviceCode) {
+    return c.json({ success: false, error: { code: '400', message: 'deviceCode is required' } }, 400);
+  }
   const body = await c.req.json<{ action: 'revoke' | 'force_approve' | 'replace'; reason?: string }>();
 
   const platformDB = createPlatformDB(c.env.DB);
@@ -241,6 +256,9 @@ export async function adminDeviceAction(c: Context<{ Bindings: CloudflareBinding
  */
 export async function getSyncHealth(c: Context<{ Bindings: CloudflareBindings }>) {
   const businessId = c.req.param('businessId');
+  if (!businessId) {
+    return c.json({ success: false, error: { code: '400', message: 'businessId is required' } }, 400);
+  }
   const now = Date.now();
   const dayAgo = now - 24 * 60 * 60 * 1000;
 
@@ -285,6 +303,9 @@ export async function getSyncHealth(c: Context<{ Bindings: CloudflareBindings }>
  */
 export async function getBusinessExceptions(c: Context<{ Bindings: CloudflareBindings }>) {
   const businessId = c.req.param('businessId');
+  if (!businessId) {
+    return c.json({ success: false, error: { code: '400', message: 'businessId is required' } }, 400);
+  }
   const status = c.req.query('status') || 'open';
   const limit = Math.min(parseInt(c.req.query('limit') || '100', 10), 500);
 

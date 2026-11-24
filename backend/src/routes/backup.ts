@@ -1,7 +1,7 @@
 import { Context } from 'hono';
 import { CloudflareBindings } from '../types';
 import { createTenantDB, createPlatformDB } from '../db/tenant';
-import { BackupRow } from './db/rows';
+import { BackupRow } from '../db/rows';
 
 
 /**
