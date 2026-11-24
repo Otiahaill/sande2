@@ -1,5 +1,8 @@
 package com.example.sande.ui.screens
 
+import android.content.Context
+import android.content.Intent
+import androidx.core.content.FileProvider
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -31,6 +34,7 @@ import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,7 +47,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardOptions
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.input.VisualTransformationKt
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -51,11 +55,17 @@ import com.example.sande.di.SandeApplication
 import com.example.sande.ui.ScreenHeader
 import com.example.sande.ui.theme.SandeTheme
 import com.example.sande.ui.viewModelFactoryOf
+import com.example.sande.ui.viewmodel.CashierSalesData
+import com.example.sande.ui.viewmodel.HourlySalesData
 import com.example.sande.ui.viewmodel.ReportsViewModel
+import com.example.sande.ui.viewmodel.TopProductData
 import kotlinx.coroutines.launch
+import java.io.File
 import java.util.Calendar
 import java.util.TimeZone
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.foundation.layout.weight
+import androidx.compose.foundation.layout.wrapContentSize
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,16 +76,19 @@ fun ReportsScreen(
     val context = LocalContext.current
     val app = context.applicationContext as SandeApplication
     val vm: ReportsViewModel = viewModel(
-        factory = viewModelFactoryOf { ReportsViewModel(app.saleSessionRepository, app.saleItemRepository, app.businessProfileRepository) }
+        factory = viewModelFactoryOf { ReportsViewModel(context, app.saleSessionRepository, app.saleItemRepository, app.businessProfileRepository) }
     )
 
     val reportData by vm.reportData.collectAsState()
     val isLoading by vm.isLoading.collectAsState()
-    val selectedPeriod by vm.selectedPeriod
-    val startDate by vm.startDate
-    val endDate by vm.endDate
+    val selectedPeriod by vm.selectedPeriod.collectAsState()
+    val startDate by vm.startDate.collectAsState()
+    val endDate by vm.endDate.collectAsState()
 
     val scope = rememberCoroutineScope()
+
+    // One-off message for the export action (success or failure).
+    var exportMessage by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
         topBar = {
@@ -87,7 +100,21 @@ fun ReportsScreen(
                     }
                 },
                 actions = {
-                    androidx.compose.material3.IconButton(onClick = { vm.exportCsv() }) {
+                    androidx.compose.material3.IconButton(
+                        onClick = {
+                            scope.launch {
+                                when (val result = vm.exportCsvToCache()) {
+                                    is ReportsViewModel.CsvExportResult.Success -> {
+                                        exportMessage = "Exported to ${File(result.filePath).name}"
+                                        shareCsv(context, result.filePath)
+                                    }
+                                    is ReportsViewModel.CsvExportResult.Failure -> {
+                                        exportMessage = "Export failed: ${result.message}"
+                                    }
+                                }
+                            }
+                        }
+                    ) {
                         Icon(Icons.Filled.Download, contentDescription = "Export CSV")
                     }
                 },
@@ -113,6 +140,16 @@ fun ReportsScreen(
             )
 
             androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(16.dp))
+
+            // Result of the last CSV export.
+            exportMessage?.let { message ->
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(8.dp))
+            }
 
             if (isLoading) {
                 androidx.compose.material3.CircularProgressIndicator(
@@ -357,23 +394,29 @@ private fun formatCurrency(cents: Long): String {
     return java.text.NumberFormat.getCurrencyInstance(java.util.Locale.getDefault()).format(amount)
 }
 
-// Data classes for report display
-data class TopProductData(
-    val productId: String,
-    val name: String,
-    val quantitySold: Long,
-    val revenue: Long
-)
-
-data class HourlySalesData(
-    val hour: Int,
-    val count: Int,
-    val total: Long
-)
-
-data class CashierSalesData(
-    val cashierId: String,
-    val role: String,
-    val count: Int,
-    val total: Long
-)
+/**
+ * Shares an exported CSV file with other apps.
+ *
+ * The file lives in the app cache, so it has to be exposed through the
+ * app's FileProvider (authority `${applicationId}.fileprovider`) rather than
+ * handed out as a `file://` URI.
+ */
+private fun shareCsv(context: Context, filePath: String) {
+    try {
+        val file = File(filePath)
+        val uri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            file
+        )
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/csv"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            putExtra(Intent.EXTRA_SUBJECT, "SANDE report")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(Intent.createChooser(intent, "Share report"))
+    } catch (e: Exception) {
+        android.util.Log.e("Reports", "Could not share the CSV file", e)
+    }
+}

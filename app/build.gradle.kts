@@ -78,6 +78,50 @@ ksp {
     arg("room.incremental", "true")
 }
 
+// Static checks that the Kotlin compiler cannot do.
+//
+// This project is developed on a phone without a local Gradle build, so the
+// CI build is the only compiler. These checks catch the mistakes that are
+// invisible to the compiler — unresolved project symbols, DAO calls that do
+// not exist, and Room migration SQL that would abort on a real device.
+//
+// They run before every build, so a mistake fails fast and loudly.
+val staticChecks by tasks.registering {
+    group = "verification"
+    description = "Runs the static analysis scripts in tools/."
+    doLast {
+        val tools = rootProject.file("tools")
+        val scripts = listOf(
+            "check_imports.py",
+            "check_missing_imports.py",
+            "check_dao_calls.py",
+            "check_room_queries.py",
+            "check_await.py",
+            "check_migration_schema.py",
+            "check_migration_sql.py"
+        )
+        scripts.forEach { script ->
+            val file = tools.resolve(script)
+            if (!file.exists()) {
+                logger.warn("Skipping $script — not found")
+                return@forEach
+            }
+            val result = providers.exec {
+                workingDir = rootProject.projectDir
+                commandLine("python3", file.absolutePath)
+                isIgnoreExitValue = true
+            }.result.get()
+            if (result.exitValue != 0) {
+                throw GradleException("$script failed with exit code ${result.exitValue}")
+            }
+        }
+    }
+}
+
+tasks.named("preBuild") {
+    dependsOn(staticChecks)
+}
+
 dependencies {
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.material3)

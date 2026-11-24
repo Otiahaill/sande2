@@ -10,6 +10,7 @@ import com.example.sande.data.repository.DraftSaleRepository
 import com.example.sande.data.repository.ProductRepository
 import com.example.sande.data.repository.SaleHeaderRepository
 import com.example.sande.data.repository.SaleLineItem
+import com.example.sande.data.repository.StockMovementRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -18,7 +19,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import java.util.UUID
@@ -28,6 +28,7 @@ class SalesViewModel(
     productRepository: ProductRepository,
     private val draftSaleRepository: DraftSaleRepository,
     private val saleHeaderRepository: SaleHeaderRepository,
+    private val stockMovementRepository: StockMovementRepository,
     private val settings: AppSettings
 ) : ViewModel() {
 
@@ -54,7 +55,9 @@ class SalesViewModel(
 
     private fun loadDraftSale() {
         viewModelScope.launch {
-            val draft = draftSaleRepository.getById(draftSaleKey).await()
+            // The repository function is already a suspend function, so the
+            // draft is read directly — there is no Task to await.
+            val draft = draftSaleRepository.getById(draftSaleKey)
             if (draft != null) {
                 try {
                     val items = kotlinx.serialization.json.Json.decodeFromString<List<CartItem>>(draft.cartItems)
@@ -152,9 +155,12 @@ class SalesViewModel(
             try {
                 val items = _cart.value
                 val shortfalls = items.mapNotNull { line ->
-                    // TODO: Use StockMovementRepository to get balance
-                    // For now, skip stock check or use a simpler approach
-                    null
+                    val balance = stockMovementRepository.getStockBalance(line.productId)
+                    if (balance < line.quantity) {
+                        "${line.productName}: need ${line.quantity}, available $balance"
+                    } else {
+                        null
+                    }
                 }
                 if (shortfalls.isNotEmpty()) {
                     val detail = shortfalls.joinToString("\n")
@@ -210,11 +216,50 @@ class SalesViewModel(
     }
 
     /**
-     * Voids a previously recorded sale by creating VOID movements for each line item.
-     * Clears the cart on success.
+     * Voids a previously recorded sale.
+     *
+     * The work happens inside [CheckoutRepository.voidSaleAtomic]: the sale
+     * session is marked `voided`, a reversing stock movement is written for
+     * every line item, and an audit event plus an outbox entry are created so
+     * the void reaches the other devices.
+     *
+     * [referenceId] is the id of the `sale_sessions` row to void. The cart is
+     * only cleared when the void actually succeeded.
+     *
+     * @return true when the sale was voided, false when it was already voided
+     *         or could not be found.
      */
-    suspend fun voidSale(saleItems: List<CartItem>, referenceId: String, deviceId: String = "local") {
-        // TODO: Implement using CheckoutRepository.voidSaleAtomic
-        _cart.value = emptyList()
+    suspend fun voidSale(
+        saleItems: List<CartItem>,
+        referenceId: String,
+        businessId: String = "default-business",
+        deviceCode: String = "LOC",
+        actorId: String = "local-owner",
+        actorRole: String = "owner",
+        reason: String = "Voided by user"
+    ): Boolean {
+        return try {
+            val voided = checkoutRepository.voidSaleAtomic(
+                sessionId = referenceId,
+                businessId = businessId,
+                deviceCode = deviceCode,
+                actorId = actorId,
+                actorRole = actorRole,
+                reason = reason
+            )
+            if (voided) {
+                _cart.value = emptyList()
+                saveDraftSale(emptyList())
+                _notice.value = "Sale voided"
+            } else {
+                _notice.value = "Sale could not be voided"
+            }
+            voided
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            _notice.value = "Could not void the sale: ${e.message ?: "unknown error"}"
+            false
+        }
     }
 }

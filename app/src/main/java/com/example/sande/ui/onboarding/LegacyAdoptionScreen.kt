@@ -43,6 +43,8 @@ import kotlinx.coroutines.launch
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.DataRow
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -179,7 +181,7 @@ fun LegacyAdoptionScreen(
             Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
                     onClick = {
-                        vm.adoptLegacyData()
+                        scope.launch { vm.adoptLegacyData() }
                     },
                     enabled = adoptionProgress.value == 0f || adoptionProgress.value == 1f,
                     modifier = Modifier.fillMaxWidth(),

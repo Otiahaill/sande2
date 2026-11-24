@@ -46,7 +46,7 @@ fun ReceiveStockScreen(
     val context = LocalContext.current
     val app = context.applicationContext as SandeApplication
     val vm: StockViewModel = viewModel(
-        factory = viewModelFactoryOf { StockViewModel(app.movementRepository, app.productRepository) }
+        factory = viewModelFactoryOf { StockViewModel(app.stockMovementRepository, app.productRepository) }
     )
     val rows by vm.rows.collectAsState()
     val session by app.authRepository.session.collectAsState()

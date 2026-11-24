@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -35,6 +36,12 @@ import kotlinx.coroutines.launch
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Icon
+import androidx.compose.ui.unit.sp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -154,7 +161,7 @@ fun SyncStatusScreen(
                     // Last sync
                     if (lastSyncAt > 0) {
                         Text(
-                            text = "Last synced: ${android.text.format.DateFormat.format("MMM dd, HH:mm", lastSyncAt)}",
+                            text = "Last synced: ${android.text.format.DateFormat.format("MMM dd, HH:mm", java.util.Date(lastSyncAt))}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -190,7 +197,7 @@ fun SyncStatusScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        androidx.compose.material.icons.Icon(
+                        androidx.compose.material3.Icon(
                             imageVector = Icons.Filled.Info,
                             contentDescription = "Info",
                             tint = MaterialTheme.colorScheme.onSecondaryContainer

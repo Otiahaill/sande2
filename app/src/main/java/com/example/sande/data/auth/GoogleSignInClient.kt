@@ -11,6 +11,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import com.example.sande.data.remote.Result
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -37,7 +38,9 @@ class GoogleAuthManager(
             .requestEmail()
             .requestProfile()
             .build()
-        return GoogleSignInClient.getClient(context, gso)
+        // Fully qualified: this class has the same name as the Google one, so
+        // the short name would resolve to this class instead.
+        return com.google.android.gms.auth.api.signin.GoogleSignInClient.getClient(context, gso)
     }
 
     /**

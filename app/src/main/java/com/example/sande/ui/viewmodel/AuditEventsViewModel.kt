@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.asStateFlow
 
 class AuditEventsViewModel(
     private val auditEventRepository: AuditEventRepository
@@ -47,7 +48,7 @@ class AuditEventsViewModel(
                     event.entityType.lowercase().contains(lowerQuery) ||
                     event.entityId.lowercase().contains(lowerQuery) ||
                     event.action.lowercase().contains(lowerQuery) ||
-                    event.actorId.lowercase().contains(lowerQuery) ||
+                    event.actorId?.lowercase()?.contains(lowerQuery) == true ||
                     event.metadataJson?.lowercase().contains(lowerQuery) == true
                 }
             }

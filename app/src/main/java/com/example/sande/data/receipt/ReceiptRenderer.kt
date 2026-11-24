@@ -116,6 +116,7 @@ fun renderReceiptHtml(data: ReceiptData): String {
     val business = data.business
     val session = data.session
     val items = data.items
+    val receipt = data.receipt
 
     val itemsHtml = items.map { item ->
         """

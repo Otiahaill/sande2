@@ -11,6 +11,7 @@ import com.example.sande.data.entities.SaleItem
 import com.example.sande.data.entities.SaleSession
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 
 /**
@@ -92,19 +93,43 @@ class ReceiptRepository constructor(
         }
     }
 
-    private fun loadReceiptData(receipt: Receipt): ReceiptData? {
-        val session = sessionDao.getById(receipt.sessionId).firstOrNull() ?: return null
+    /**
+     * Loads the session, line items and business that belong to a receipt.
+     *
+     * This is `suspend` because it reads from three DAOs: [SaleSessionDao.getById]
+     * and [BusinessProfileDao.getActiveById] are suspend functions, and
+     * [SaleItemDao.getBySession] returns a [Flow] that has to be collected.
+     *
+     * Returns `null` when the receipt has been voided. A voided sale is kept
+     * in the database for the audit trail, but it is no longer part of the
+     * receipt history, so the list queries drop it.
+     */
+    private suspend fun loadReceiptData(receipt: Receipt): ReceiptData? {
+        val session = sessionDao.getById(receipt.sessionId) ?: return null
+        if (session.status == STATUS_VOIDED) return null
         val items = itemDao.getBySession(receipt.sessionId).first()
         val business = businessDao.getActiveById(receipt.businessId) ?: BusinessProfile(
             id = receipt.businessId,
             name = "Unknown Business",
             category = "retail",
+            phone = null,
             countryCode = "KE",
             currencyCode = "KES",
             timezone = "Africa/Nairobi",
+            address = null,
+            logoUri = null,
+            negativeStockPolicy = "warn",
+            receiptFooter = null,
             createdAt = System.currentTimeMillis(),
-            updatedAt = System.currentTimeMillis()
+            updatedAt = System.currentTimeMillis(),
+            deletedAt = 0L,
+            schemaVersion = 1
         )
         return ReceiptData(session, items, business, receipt)
+    }
+
+    companion object {
+        /** Matches the status written by `CheckoutRepository.voidSaleAtomic`. */
+        const val STATUS_VOIDED = "voided"
     }
 }

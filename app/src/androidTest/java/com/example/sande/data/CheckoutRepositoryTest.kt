@@ -19,7 +19,7 @@ import com.example.sande.data.repository.SaleLineItem
 import com.example.sande.data.repository.SaleSessionRepository
 import com.example.sande.data.repository.SaleItemRepository
 import com.example.sande.data.repository.StockMovementRepository
-import com.example.sande.data.repository.ReceiptRepository
+import com.example.sande.data.receipt.ReceiptRepository
 import com.example.sande.data.repository.CounterRepository
 import com.example.sande.data.repository.AuditEventRepository
 import com.example.sande.data.repository.OutboxEntryRepository
@@ -153,9 +153,10 @@ class CheckoutRepositoryTest {
         assertThat(move2.quantityDelta).isEqualTo(-2L)
 
         // Verify Receipt
-        val receipt = receiptRepository.getBySession(result.sessionId).first()
-        assertThat(receipt).isNotNull()
-        assertThat(receipt!!.receiptNumber).isEqualTo(receiptNumber)
+        val receiptData = receiptRepository.getReceiptDataBySession(result.sessionId)
+        assertThat(receiptData).isNotNull()
+        val receipt = receiptData!!.receipt
+        assertThat(receipt.receiptNumber).isEqualTo(receiptNumber)
         assertThat(receipt.counter).isEqualTo(1L)
         assertThat(receipt.contentHash).isNotEmpty()
 

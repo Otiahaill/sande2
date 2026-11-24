@@ -14,6 +14,7 @@ import com.example.sande.data.repository.SyncExceptionRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.runBlocking
 
 /**
  * Pushes pending outbox entries to the backend in batches.

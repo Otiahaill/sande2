@@ -26,7 +26,7 @@ class ConnectionSettings(private val context: Context) {
             masterKeyAlias,
             context,
             EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM_SPEC
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
         )
     } catch (e: Exception) {
         // Fall back to plain prefs if the keystore is unavailable (rare, but
@@ -60,9 +60,25 @@ class ConnectionSettings(private val context: Context) {
         prefs.edit().putString(KEY_GOOGLE_CLIENT_ID, clientId).apply()
     }
 
-    /** Base URL of the SANDE backend Worker. */
+    /**
+     * Base URL of the SANDE backend Worker.
+     *
+     * Resolution order:
+     *   1. the URL the user saved on the Connection screen (runtime override),
+     *   2. the URL baked in at build time from `BuildConfig.API_BASE_URL`
+     *      (injected by CI from the `API_BASE_URL` secret),
+     *   3. the placeholder below, which only exists so the Connection screen
+     *      has something to show.
+     *
+     * Step 2 used to be missing: this method always returned a non-blank
+     * placeholder, so `ConnectionResolver.apiBaseUrl()` never fell through to
+     * `AppSettings.apiBaseUrl` and the build-time URL was ignored.
+     */
     suspend fun getApiBaseUrl(): String = withContext(Dispatchers.IO) {
-        prefs.getString(KEY_API_BASE_URL, DEFAULT_API_BASE_URL) ?: DEFAULT_API_BASE_URL
+        prefs.getString(KEY_API_BASE_URL, null)
+            ?.takeIf { it.isNotBlank() }
+            ?: com.example.sande.BuildConfig.API_BASE_URL.takeIf { it.isNotBlank() }
+            ?: DEFAULT_API_BASE_URL
     }
 
     suspend fun setApiBaseUrl(url: String) = withContext(Dispatchers.IO) {

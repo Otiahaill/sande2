@@ -17,6 +17,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -28,13 +29,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.sande.data.auth.MembershipInfo
 import com.example.sande.di.SandeApplication
+import androidx.compose.foundation.BorderStroke
 import com.example.sande.ui.theme.SandeTheme
 import com.example.sande.ui.viewModelFactoryOf
 import com.example.sande.ui.viewmodel.OnboardingViewModel
 import kotlinx.coroutines.launch
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.filled.CheckCircle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,7 +61,7 @@ fun BusinessResolutionScreen(
 
     // Navigate when registration completes
     androidx.compose.runtime.LaunchedEffect(authState.value) {
-        if (authState.value is com.example.sande.data.auth.SessionManager.AuthState.Authenticated) {
+        if (authState.value is com.example.sande.data.auth.SessionManager.AuthState.AUTHENTICATED) {
             // Check if there's legacy data to adopt
             scope.launch {
                 vm.checkLegacyData()
@@ -71,10 +76,10 @@ fun BusinessResolutionScreen(
     }
 
     val (needsBusinessSelection, account, memberships) = when (val state = authState.value) {
-        is com.example.sande.data.auth.SessionManager.AuthState.NeedsBusinessSelection -> {
+        is com.example.sande.data.auth.SessionManager.AuthState.NEEDS_BUSINESS_SELECTION -> {
             true to state.account to state.memberships
         }
-        else -> false to null to emptyList<MembershipInfo>()
+        else -> false to null to emptyList<com.example.sande.data.auth.SessionManager.MembershipInfo>()
     }
 
     var selectedBusinessId by remember { mutableStateOf<String?>(null) }
@@ -258,7 +263,7 @@ fun BusinessResolutionScreen(
                         isRegistering = true
                         registerError = null
                         vm.registerBusiness(
-                            com.example.sande.data.auth.BusinessRegistrationRequest(
+                            com.example.sande.data.remote.BusinessRegistrationRequest(
                                 name = businessName,
                                 category = businessCategory,
                                 phone = businessPhone.takeIf { it.isNotBlank() },
@@ -295,7 +300,7 @@ fun BusinessResolutionScreen(
 
 @Composable
 fun BusinessCard(
-    membership: MembershipInfo,
+    membership: com.example.sande.data.auth.SessionManager.MembershipInfo,
     isSelected: Boolean,
     onClick: () -> Unit,
 ) {
@@ -310,7 +315,7 @@ fun BusinessCard(
             contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
         ),
         shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-        border = if (isSelected) androidx.compose.ui.graphics.Outline.Border(2.dp, MaterialTheme.colorScheme.primary, androidx.compose.foundation.shape.RoundedCornerShape(12.dp)) else null
+        border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
     ) {
         androidx.compose.foundation.layout.Row(
             modifier = Modifier.padding(16.dp),

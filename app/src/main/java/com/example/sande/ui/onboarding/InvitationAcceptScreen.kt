@@ -31,6 +31,12 @@ import com.example.sande.ui.viewModelFactoryOf
 import com.example.sande.ui.viewmodel.OnboardingViewModel
 import kotlinx.coroutines.launch
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.filled.Mail
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,6 +56,29 @@ fun InvitationAcceptScreen(
     var isAccepting by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
+    // Accepts the invitation with the code the user typed.
+    fun acceptInvitation() {
+        if (isAccepting) return
+        isAccepting = true
+        error = null
+        scope.launch {
+            try {
+                vm.acceptInvitation(
+                    com.example.sande.data.remote.AcceptInvitationRequest(
+                        code = invitationCode.trim(),
+                        deviceCode = vm.generateDeviceCode(),
+                        deviceName = android.os.Build.MODEL ?: "Android Device",
+                        deviceType = "android"
+                    )
+                )
+            } catch (e: Exception) {
+                error = e.message ?: "Could not accept the invitation"
+            } finally {
+                isAccepting = false
+            }
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -58,7 +87,8 @@ fun InvitationAcceptScreen(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Icon
-        androidx.compose.material.icons.filled.Mail(
+        Icon(
+            imageVector = androidx.compose.material.icons.filled.Mail,
             contentDescription = "Invitation",
             modifier = Modifier.size(64.dp),
             tint = MaterialTheme.colorScheme.primary
@@ -99,9 +129,13 @@ fun InvitationAcceptScreen(
                     imeAction = androidx.compose.ui.text.input.ImeAction.Done
                 ),
                 visualTransformation = androidx.compose.ui.text.input.VisualTransformation { text ->
-                    // Auto-format as groups of 3
+                    // Auto-format as groups of 3.
+                    // Compose UI 1.6.8 still uses the TransformedText shape.
                     val formatted = text.text.replace(" ", "").chunked(3).joinToString(" ")
-                    androidx.compose.ui.text.AnnotatedString(formatted)
+                    androidx.compose.ui.text.input.TransformedText(
+                        androidx.compose.ui.text.AnnotatedString(formatted),
+                        androidx.compose.ui.text.input.OffsetMapping.Identity
+                    )
                 },
                 onKeyboardAction = { _ ->
                     if (invitationCode.replace(" ", "").length == 6) {

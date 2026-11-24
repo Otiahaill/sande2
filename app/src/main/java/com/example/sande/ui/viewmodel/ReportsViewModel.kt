@@ -1,5 +1,6 @@
 package com.example.sande.ui.viewmodel
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.sande.data.entities.BusinessProfile
@@ -8,6 +9,7 @@ import com.example.sande.data.entities.SaleSession
 import com.example.sande.data.repository.BusinessProfileRepository
 import com.example.sande.data.repository.SaleItemRepository
 import com.example.sande.data.repository.SaleSessionRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -15,10 +17,16 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 import java.util.TimeZone
 
 class ReportsViewModel(
+    private val context: Context,
     private val saleSessionRepository: SaleSessionRepository,
     private val saleItemRepository: SaleItemRepository,
     private val businessProfileRepository: BusinessProfileRepository
@@ -51,6 +59,10 @@ class ReportsViewModel(
     private val tz: TimeZone
         get() = TimeZone.getTimeZone(businessProfile.value?.timezone ?: "Africa/Nairobi")
 
+    /** The timezone the report is grouped by, shown in the UI. */
+    val businessTimeZone: String
+        get() = tz.id
+
     val reportData: StateFlow<ReportData> =
         combine(
             saleSessionRepository.getByBusinessAndDateRange(DEFAULT_BUSINESS_ID, startDate.value, endDate.value),
@@ -73,9 +85,96 @@ class ReportsViewModel(
         _endDate.value = end
     }
 
-    fun exportCsv() {
-        // TODO: Implement CSV export
-        // Would generate CSV and share via intent
+    /**
+     * Result of a CSV export attempt.
+     *
+     * The UI needs to tell the user whether the file was written and where it
+     * went, or explain why the export failed.
+     */
+    sealed class CsvExportResult {
+        data class Success(val filePath: String, val rowCount: Int) : CsvExportResult()
+        data class Failure(val message: String) : CsvExportResult()
+    }
+
+    /**
+     * Exports the current report data as CSV into the app cache and returns
+     * where it was written.
+     *
+     * The file is written under `cacheDir/exports` so it can be handed to
+     * other apps through the app's FileProvider (see `res/xml/file_paths.xml`).
+     */
+    suspend fun exportCsvToCache(): CsvExportResult = withContext(Dispatchers.IO) {
+        val data = reportData.value
+        try {
+            val dir = File(context.cacheDir, "exports").apply { mkdirs() }
+            val stamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
+            val file = File(dir, "sande-report-$stamp.csv")
+
+            val csv = buildCsv(data)
+            file.writeText(csv)
+
+            CsvExportResult.Success(file.absolutePath, data.transactionCount)
+        } catch (e: Exception) {
+            CsvExportResult.Failure(e.message ?: "Could not write the CSV file")
+        }
+    }
+
+    /**
+     * Builds the CSV body.
+     *
+     * Three blocks are written: a summary, the top products and the hourly
+     * breakdown. Fields are quoted so that product names containing commas
+     * or quotes do not break the column layout.
+     */
+    private fun buildCsv(data: ReportData): String {
+        val sb = StringBuilder()
+
+        sb.append("SANDE Report\n")
+        sb.append("Period,").append(csvEscape(selectedPeriod.value)).append('\n')
+        sb.append("Total sales (cents),").append(data.totalSales).append('\n')
+        sb.append("Transactions,").append(data.transactionCount).append('\n')
+        sb.append("Generated,").append(csvEscape(SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date()))).append('\n')
+        sb.append('\n')
+
+        sb.append("Top products\n")
+        sb.append("Product ID,Name,Quantity sold,Revenue (cents)\n")
+        data.topProducts.forEach { p ->
+            sb.append(csvEscape(p.productId)).append(',')
+            sb.append(csvEscape(p.name)).append(',')
+            sb.append(p.quantitySold).append(',')
+            sb.append(p.revenue).append('\n')
+        }
+        sb.append('\n')
+
+        sb.append("Sales by hour\n")
+        sb.append("Hour,Transactions,Total (cents)\n")
+        data.salesByHour.forEach { h ->
+            sb.append(h.hour).append(',')
+            sb.append(h.count).append(',')
+            sb.append(h.total).append('\n')
+        }
+        sb.append('\n')
+
+        sb.append("Sales by cashier\n")
+        sb.append("Cashier ID,Role,Transactions,Total (cents)\n")
+        data.salesByCashier.forEach { c ->
+            sb.append(csvEscape(c.cashierId)).append(',')
+            sb.append(csvEscape(c.role)).append(',')
+            sb.append(c.count).append(',')
+            sb.append(c.total).append('\n')
+        }
+
+        return sb.toString()
+    }
+
+    /** Quotes a CSV field when it contains a separator, a quote or a newline. */
+    private fun csvEscape(value: String): String {
+        val needsQuotes = value.any { it == ',' || it == '"' || it == '\n' || it == '\r' }
+        return if (needsQuotes) {
+            "\"" + value.replace("\"", "\"\"") + "\""
+        } else {
+            value
+        }
     }
 
     private fun calculateDateRange(period: String): Pair<Long, Long> {

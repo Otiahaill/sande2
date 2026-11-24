@@ -7,6 +7,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.pdf.PdfDocument
 import android.os.CancellationSignal
+import android.print.PageRange
 import android.print.PrintAttributes
 import android.print.PrintDocumentAdapter
 import android.print.PrintDocumentInfo
@@ -17,7 +18,6 @@ import com.example.sande.data.entities.BusinessProfile
 import com.example.sande.data.entities.Receipt
 import com.example.sande.data.entities.SaleItem
 import com.example.sande.data.entities.SaleSession
-import kotlinx.coroutines.tasks.await
 
 /**
  * PDF receipt renderer using Android's PdfDocument API.
@@ -305,7 +305,7 @@ class PdfReceiptRenderer(private val context: Context) {
         }
 
         override fun onWrite(
-            pageRanges: Array<PrintAttributes.PageRange>,
+            pageRanges: Array<PageRange>,
             destination: android.os.ParcelFileDescriptor,
             cancellationSignal: CancellationSignal,
             callback: WriteResultCallback
@@ -317,11 +317,11 @@ class PdfReceiptRenderer(private val context: Context) {
                 drawReceipt(page.canvas, pageInfo, session, items, business, receipt, paperSize)
                 document.finishPage(page)
 
-                document.writeTo(destination.fileDescriptor)
+                document.writeTo(java.io.FileOutputStream(destination.fileDescriptor))
                 document.close()
                 pdfDocument = null
 
-                callback.onWriteFinished(arrayOf(PrintAttributes.PageRange.ALL_PAGES))
+                callback.onWriteFinished(arrayOf(PageRange.ALL_PAGES))
             } catch (e: Exception) {
                 callback.onWriteFailed(e.message)
             }

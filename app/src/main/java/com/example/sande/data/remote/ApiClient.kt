@@ -27,6 +27,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import java.util.concurrent.TimeUnit
+import io.ktor.client.request.body
 
 /**
  * Result type used by the API layer.
@@ -73,8 +74,27 @@ sealed class Result<out T> {
 class ApiClient(
     private val context: Context,
     private val tokenManager: TokenManager,
-    private val baseUrl: String = "https://sande-backend.your-domain.workers.dev", // Configure via BuildConfig
+    baseUrl: String = com.example.sande.BuildConfig.API_BASE_URL,
 ) {
+
+    /**
+     * The resolved backend base URL, without a trailing slash.
+     *
+     * May be blank when no backend has been configured yet — the app is
+     * offline-first, so that must not be a crash. Requests then fail with an
+     * explanatory error instead of a confusing "relative URL" parse failure.
+     */
+    private val baseUrl: String = baseUrl.trim().trimEnd('/')
+
+    /** Builds an absolute endpoint, or explains that no backend is configured. */
+    private fun apiUrl(path: String): String {
+        if (baseUrl.isBlank()) {
+            throw ApiException(
+                "No backend URL is configured. Set it in Settings → Connection."
+            )
+        }
+        return baseUrl + path
+    }
 
     private val client = HttpClient(Android) {
         install(ContentNegotiation) {
@@ -109,7 +129,7 @@ class ApiClient(
         client.requestPipeline.intercept(HttpRequestPipeline.Render) {
             val tokens = tokenManager.getTokens()
             if (tokens != null && tokens.isAccessTokenValid()) {
-                subject.headers.append(HttpHeaders.Authorization, "[redacted]")
+                context.headers.append(HttpHeaders.Authorization, "Bearer ${tokens.accessToken}")
             }
         }
     }
@@ -124,12 +144,13 @@ class ApiClient(
     suspend fun healthCheck(baseUrl: String): String = withContext(Dispatchers.IO) {
         try {
             val url = baseUrl.trimEnd('/')
-            val response = client.get<HealthResponse>("$url/health") {
+            val response = client.get("$url/health") {
             }
-            if (response.status == "healthy") {
-                "OK — backend is healthy (${response.latencyMs}ms)"
+            val health = Json.decodeFromString<HealthResponse>(response.bodyAsText())
+            if (health.status == "healthy") {
+                "OK — backend is healthy (${health.latencyMs}ms)"
             } else {
-                "Reachable but degraded — D1: ${response.checks?.d1}, R2: ${response.checks?.r2}, KV: ${response.checks?.kv}"
+                "Reachable but degraded — D1: ${health.checks?.d1}, R2: ${health.checks?.r2}, KV: ${health.checks?.kv}"
             }
         } catch (e: Exception) {
             throw Exception("Could not reach $baseUrl — ${e.message}")
@@ -144,11 +165,11 @@ class ApiClient(
      */
     suspend fun googleAuth(request: GoogleAuthRequest): Result<AuthResponse> = withContext(Dispatchers.IO) {
         try {
-            val response = client.post<AuthResponse> ("$baseUrl/auth/google") {
+            val response = client.post(apiUrl("/auth/google")) {
                 contentType(io.ktor.http.ContentType.Application.Json)
                 body = request
             }
-            handleResponse(response)
+            handleResponse<AuthResponse>(response)
         } catch (e: Exception) {
             Result.failure(ApiException("Network error: ${e.message}", e))
         }
@@ -160,11 +181,11 @@ class ApiClient(
      */
     suspend fun registerBusiness(request: BusinessRegistrationRequest): Result<BusinessRegistrationResponse> = withContext(Dispatchers.IO) {
         try {
-            val response = client.post<BusinessRegistrationResponse> ("$baseUrl/api/business/register") {
+            val response = client.post(apiUrl("/api/business/register")) {
                 contentType(io.ktor.http.ContentType.Application.Json)
                 body = request
             }
-            handleResponse(response)
+            handleResponse<BusinessRegistrationResponse>(response)
         } catch (e: Exception) {
             Result.failure(ApiException("Network error: ${e.message}", e))
         }
@@ -176,11 +197,11 @@ class ApiClient(
      */
     suspend fun refreshToken(request: RefreshTokenRequest): Result<RefreshTokenResponse> = withContext(Dispatchers.IO) {
         try {
-            val response = client.post<RefreshTokenResponse> ("$baseUrl/auth/refresh") {
+            val response = client.post(apiUrl("/auth/refresh")) {
                 contentType(io.ktor.http.ContentType.Application.Json)
                 body = request
             }
-            handleResponse(response)
+            handleResponse<RefreshTokenResponse>(response)
         } catch (e: Exception) {
             Result.failure(ApiException("Network error: ${e.message}", e))
         }
@@ -192,11 +213,11 @@ class ApiClient(
      */
     suspend fun logout(request: RefreshTokenRequest): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val response = client.post<String> ("$baseUrl/auth/logout") {
+            val response = client.post(apiUrl("/auth/logout")) {
                 contentType(io.ktor.http.ContentType.Application.Json)
                 body = request
             }
-            handleResponse(response).map { Unit }
+            handleResponse<String>(response).map { Unit }
         } catch (e: Exception) {
             Result.failure(ApiException("Network error: ${e.message}", e))
         }
@@ -208,11 +229,11 @@ class ApiClient(
      */
     suspend fun acceptInvitation(request: AcceptInvitationRequest): Result<InvitationAcceptResponse> = withContext(Dispatchers.IO) {
         try {
-            val response = client.post<InvitationAcceptResponse> ("$baseUrl/api/memberships/accept") {
+            val response = client.post(apiUrl("/api/memberships/accept")) {
                 contentType(io.ktor.http.ContentType.Application.Json)
                 body = request
             }
-            handleResponse(response)
+            handleResponse<InvitationAcceptResponse>(response)
         } catch (e: Exception) {
             Result.failure(ApiException("Network error: ${e.message}", e))
         }
@@ -224,11 +245,11 @@ class ApiClient(
      */
     suspend fun registerDevice(request: DeviceRegistrationRequest): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val response = client.post<String> ("$baseUrl/api/devices/register") {
+            val response = client.post(apiUrl("/api/devices/register")) {
                 contentType(io.ktor.http.ContentType.Application.Json)
                 body = request
             }
-            handleResponse(response).map { Unit }
+            handleResponse<String>(response).map { Unit }
         } catch (e: Exception) {
             Result.failure(ApiException("Network error: ${e.message}", e))
         }
@@ -242,11 +263,11 @@ class ApiClient(
      */
     suspend fun pushSync(request: SyncPushRequest): Result<SyncPushResponse> = withContext(Dispatchers.IO) {
         try {
-            val response = client.post<SyncPushResponse> ("$baseUrl/api/sync/push") {
+            val response = client.post(apiUrl("/api/sync/push")) {
                 contentType(io.ktor.http.ContentType.Application.Json)
                 body = request
             }
-            handleResponse(response)
+            handleResponse<SyncPushResponse>(response)
         } catch (e: Exception) {
             Result.failure(ApiException("Network error: ${e.message}", e))
         }
@@ -258,11 +279,11 @@ class ApiClient(
      */
     suspend fun pullSync(cursor: Long, limit: Int): Result<SyncPullResponse> = withContext(Dispatchers.IO) {
         try {
-            val response = client.get<SyncPullResponse> ("$baseUrl/api/sync/pull") {
+            val response = client.get(apiUrl("/api/sync/pull")) {
                 parameter("cursor", cursor.toString())
                 parameter("limit", limit.toString())
             }
-            handleResponse(response)
+            handleResponse<SyncPullResponse>(response)
         } catch (e: Exception) {
             Result.failure(ApiException("Network error: ${e.message}", e))
         }
@@ -274,9 +295,9 @@ class ApiClient(
      */
     suspend fun getSyncStatus(): Result<SyncStatusResponse> = withContext(Dispatchers.IO) {
         try {
-            val response = client.get<SyncStatusResponse> ("$baseUrl/api/sync/status") {
+            val response = client.get(apiUrl("/api/sync/status")) {
             }
-            handleResponse(response)
+            handleResponse<SyncStatusResponse>(response)
         } catch (e: Exception) {
             Result.failure(ApiException("Network error: ${e.message}", e))
         }
@@ -290,9 +311,9 @@ class ApiClient(
      */
     suspend fun getMyBusiness(): Result<BusinessInfoResponse> = withContext(Dispatchers.IO) {
         try {
-            val response = client.get<BusinessInfoResponse> ("$baseUrl/api/business/me") {
+            val response = client.get(apiUrl("/api/business/me")) {
             }
-            handleResponse(response)
+            handleResponse<BusinessInfoResponse>(response)
         } catch (e: Exception) {
             Result.failure(ApiException("Network error: ${e.message}", e))
         }
@@ -304,11 +325,11 @@ class ApiClient(
      */
     suspend fun updateProfile(request: ProfileUpdateRequest): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val response = client.post<String> ("$baseUrl/api/business/me/profile") {
+            val response = client.post(apiUrl("/api/business/me/profile")) {
                 contentType(io.ktor.http.ContentType.Application.Json)
                 body = request
             }
-            handleResponse(response).map { Unit }
+            handleResponse<String>(response).map { Unit }
         } catch (e: Exception) {
             Result.failure(ApiException("Network error: ${e.message}", e))
         }
@@ -320,11 +341,11 @@ class ApiClient(
      * GET /api/memberships
      * List memberships (owner only).
      */
-    suspend fun listMemberships(): Result<List<MembershipInfo>> = withContext(Dispatchers.IO) {
+    suspend fun listMemberships(): Result<List<MembershipSummary>> = withContext(Dispatchers.IO) {
         try {
-            val response = client.get<MembershipsResponse> ("$baseUrl/api/memberships") {
+            val response = client.get(apiUrl("/api/memberships")) {
             }
-            handleResponse(response).map { it.memberships }
+            handleResponse<MembershipsResponse>(response).map { it.memberships }
         } catch (e: Exception) {
             Result.failure(ApiException("Network error: ${e.message}", e))
         }
@@ -336,11 +357,11 @@ class ApiClient(
      */
     suspend fun inviteStaff(request: InviteStaffRequest): Result<InviteStaffResponse> = withContext(Dispatchers.IO) {
         try {
-            val response = client.post<InviteStaffResponse> ("$baseUrl/api/memberships/invite") {
+            val response = client.post(apiUrl("/api/memberships/invite")) {
                 contentType(io.ktor.http.ContentType.Application.Json)
                 body = request
             }
-            handleResponse(response)
+            handleResponse<InviteStaffResponse>(response)
         } catch (e: Exception) {
             Result.failure(ApiException("Network error: ${e.message}", e))
         }
@@ -354,9 +375,9 @@ class ApiClient(
      */
     suspend fun listDevices(): Result<List<DeviceInfo>> = withContext(Dispatchers.IO) {
         try {
-            val response = client.get<DevicesResponse> ("$baseUrl/api/devices") {
+            val response = client.get(apiUrl("/api/devices")) {
             }
-            handleResponse(response).map { it.devices }
+            handleResponse<DevicesResponse>(response).map { it.devices }
         } catch (e: Exception) {
             Result.failure(ApiException("Network error: ${e.message}", e))
         }
@@ -368,10 +389,10 @@ class ApiClient(
      */
     suspend fun approveDevice(deviceCode: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val response = client.post<String> ("$baseUrl/api/devices/$deviceCode/approve") {
+            val response = client.post(apiUrl("/api/devices/$deviceCode/approve")) {
                 contentType(io.ktor.http.ContentType.Application.Json)
             }
-            handleResponse(response).map { Unit }
+            handleResponse<String>(response).map { Unit }
         } catch (e: Exception) {
             Result.failure(ApiException("Network error: ${e.message}", e))
         }
@@ -385,10 +406,10 @@ class ApiClient(
      */
     suspend fun createBackup(): Result<BackupCreateResponse> = withContext(Dispatchers.IO) {
         try {
-            val response = client.post<BackupCreateResponse> ("$baseUrl/api/backup/create") {
+            val response = client.post(apiUrl("/api/backup/create")) {
                 contentType(io.ktor.http.ContentType.Application.Json)
             }
-            handleResponse(response)
+            handleResponse<BackupCreateResponse>(response)
         } catch (e: Exception) {
             Result.failure(ApiException("Network error: ${e.message}", e))
         }
@@ -481,6 +502,42 @@ data class MembershipInfo(
     val status: String,
     @SerialName("device_code") val deviceCode: String?,
 )
+
+/**
+ * One entry of `GET /api/memberships`.
+ *
+ * The backend returns the member list in `data`, enriched with the account
+ * and device details.
+ */
+@Serializable
+data class MembershipSummary(
+    val id: String,
+    @SerialName("account_id") val accountId: String,
+    val email: String? = null,
+    @SerialName("display_name") val displayName: String? = null,
+    @SerialName("photo_url") val photoUrl: String? = null,
+    val role: String,
+    val status: String,
+    @SerialName("invited_by") val invitedBy: String? = null,
+    @SerialName("invited_at") val invitedAt: Long? = null,
+    @SerialName("accepted_at") val acceptedAt: Long? = null,
+    @SerialName("device_code") val deviceCode: String? = null,
+    @SerialName("device_name") val deviceName: String? = null,
+    @SerialName("device_status") val deviceStatus: String? = null,
+    @SerialName("last_seen_at") val lastSeenAt: Long? = null,
+    @SerialName("last_sync_at") val lastSyncAt: Long? = null,
+    @SerialName("created_at") val createdAt: Long? = null,
+)
+
+/** Response of `GET /api/memberships`. */
+@Serializable
+data class MembershipsResponse(
+    val success: Boolean = false,
+    val data: List<MembershipSummary>? = null,
+    val error: ApiError? = null,
+) {
+    val memberships: List<MembershipSummary> get() = data ?: emptyList()
+}
 
 @Serializable
 data class BusinessRegistrationRequest(

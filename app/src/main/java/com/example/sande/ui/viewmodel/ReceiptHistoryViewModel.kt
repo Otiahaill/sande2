@@ -2,20 +2,26 @@ package com.example.sande.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.sande.data.AppSettings
+import com.example.sande.data.receipt.BluetoothPrinterHelper
 import com.example.sande.data.receipt.ReceiptData
 import com.example.sande.data.receipt.ReceiptRepository
 import com.example.sande.data.receipt.ThermalPrinterFormatter
 import com.example.sande.data.receipt.PdfReceiptRenderer
+import com.example.sande.data.repository.CheckoutRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.File
 
 class ReceiptHistoryViewModel(
-    private val receiptRepository: ReceiptRepository
+    private val receiptRepository: ReceiptRepository,
+    private val checkoutRepository: CheckoutRepository,
+    private val appSettings: AppSettings
 ) : ViewModel() {
 
     private val _receipts = MutableStateFlow<List<ReceiptData>>(emptyList())
@@ -23,6 +29,12 @@ class ReceiptHistoryViewModel(
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    /** One-off message for the UI (success or failure of the last action). */
+    private val _notice = MutableStateFlow<String?>(null)
+    val notice: StateFlow<String?> = _notice.asStateFlow()
+
+    fun consumeNotice() { _notice.value = null }
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery
@@ -75,10 +87,17 @@ class ReceiptHistoryViewModel(
         }
     }
 
-    fun reprint(receiptData: ReceiptData) {
+    /**
+     * Reprints a receipt on the configured Bluetooth thermal printer.
+     *
+     * The printer address comes from the app settings (Settings → Connection).
+     * When no printer is configured, the formatted receipt is only logged so
+     * the user gets a clear "no printer configured" message instead of a
+     * silent no-op.
+     */
+    fun reprint(receiptData: ReceiptData, context: android.content.Context) {
         viewModelScope.launch {
             try {
-                // Print using thermal formatter
                 val formatter = ThermalPrinterFormatter()
                 val bytes = formatter.formatReceipt(
                     receiptData.session,
@@ -86,11 +105,27 @@ class ReceiptHistoryViewModel(
                     receiptData.business,
                     receiptData.receipt
                 )
-                // TODO: Send to Bluetooth printer via BluetoothPrinterHelper
-                // For now, just log
-                android.util.Log.d("ReceiptHistory", "Reprint: ${bytes.size} bytes")
+
+                val address = appSettings.printerAddress
+                if (address.isNullOrBlank()) {
+                    android.util.Log.d("ReceiptHistory", "Reprint: ${bytes.size} bytes (no printer configured)")
+                    _notice.value = "No printer configured. Set one in Settings → Connection."
+                    return@launch
+                }
+
+                val helper = BluetoothPrinterHelper(context.applicationContext)
+                when (val result = helper.printToBluetooth(address, bytes)) {
+                    is BluetoothPrinterHelper.PrintResult.Success -> {
+                        _notice.value = "Sent ${result.bytesWritten} bytes to the printer"
+                    }
+                    is BluetoothPrinterHelper.PrintResult.Failure -> {
+                        android.util.Log.e("ReceiptHistory", "Reprint failed: ${result.reason}")
+                        _notice.value = "Print failed: ${result.reason}"
+                    }
+                }
             } catch (e: Exception) {
                 android.util.Log.e("ReceiptHistory", "Reprint failed", e)
+                _notice.value = "Print failed: ${e.message}"
             }
         }
     }
@@ -156,10 +191,37 @@ class ReceiptHistoryViewModel(
         }
     }
 
+    /**
+     * Voids a receipt.
+     *
+     * The receipt row itself is kept for the audit trail; the sale session is
+     * marked `voided`, the stock movements are reversed and an audit event is
+     * written by [com.example.sande.data.repository.CheckoutRepository].
+     * The voided receipt then drops out of the receipt history.
+     */
     fun delete(receiptData: ReceiptData) {
-        // TODO: Implement receipt deletion (soft delete or mark voided)
-        // For now, just remove from local list
-        _receipts.value = _receipts.value.filterNot { it.receipt.id == receiptData.receipt.id }
+        viewModelScope.launch {
+            try {
+                val session = receiptData.session
+                val voided = checkoutRepository.voidSaleAtomic(
+                    sessionId = session.id,
+                    businessId = session.businessId,
+                    deviceCode = session.deviceCode,
+                    actorId = session.salespersonId,
+                    actorRole = session.salespersonRole,
+                    reason = "Receipt voided from receipt history"
+                )
+                if (voided) {
+                    _receipts.value = _receipts.value.filterNot { it.receipt.id == receiptData.receipt.id }
+                    _notice.value = "Receipt ${session.receiptNumber} voided"
+                } else {
+                    _notice.value = "Receipt ${session.receiptNumber} could not be voided"
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("ReceiptHistory", "Void failed", e)
+                _notice.value = "Could not void the receipt: ${e.message}"
+            }
+        }
     }
 
     private fun buildWhatsAppText(data: ReceiptData): String {

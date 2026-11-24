@@ -25,7 +25,7 @@ import com.example.sande.data.repository.OutboxEntryRepository
 import com.example.sande.data.repository.OutboxRepository
 import com.example.sande.data.repository.ProductPriceHistoryRepository
 import com.example.sande.data.repository.ProductRepository
-import com.example.sande.data.repository.ReceiptRepository
+import com.example.sande.data.receipt.ReceiptRepository
 import com.example.sande.data.repository.SaleHeaderRepository
 import com.example.sande.data.repository.SaleItemRepository
 import com.example.sande.data.repository.SaleSessionRepository

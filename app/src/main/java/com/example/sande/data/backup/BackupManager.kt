@@ -21,6 +21,7 @@ import java.io.File
 import java.security.MessageDigest
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
+import androidx.room.withTransaction
 
 /**
  * Manifest describing a backup archive.
@@ -298,12 +299,15 @@ class BackupManager(
 
         database.compileStatement(sql).use { statement ->
             values.forEachIndexed { index, value ->
+                if (value === org.json.JSONObject.NULL) {
+                    statement.bindNull(index + 1)
+                    return@forEachIndexed
+                }
                 when (value) {
                     is Boolean -> statement.bindLong(index + 1, if (value) 1L else 0L)
                     is Int -> statement.bindLong(index + 1, value.toLong())
                     is Long -> statement.bindLong(index + 1, value)
                     is Double -> statement.bindDouble(index + 1, value)
-                    is org.json.JSONObject.NULL -> statement.bindNull(index + 1)
                     else -> statement.bindString(index + 1, value.toString())
                 }
             }

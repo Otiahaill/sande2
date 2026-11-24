@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,7 +45,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardOptions
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.input.VisualTransformationKt
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -58,6 +59,8 @@ import kotlinx.coroutines.launch
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,8 +76,8 @@ fun AuditEventsScreen(
 
     val events by vm.events.collectAsState()
     val isLoading by vm.isLoading.collectAsState()
-    val filterSeverity by vm.filterSeverity
-    val searchQuery by vm.searchQuery
+    val filterSeverity by vm.filterSeverity.collectAsState()
+    val searchQuery by vm.searchQuery.collectAsState()
     var searchText by remember { mutableStateOf("") }
 
     val scope = rememberCoroutineScope()
@@ -95,7 +98,7 @@ fun AuditEventsScreen(
                         label = { Text("Search...") },
                         leadingIcon = { Icon(Icons.Filled.Search, contentDescription = "Search") },
                         keyboardOptions = KeyboardOptions.Default,
-                        visualTransformation = VisualTransformationKt.None,
+                        visualTransformation = VisualTransformation.None,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(16.dp)

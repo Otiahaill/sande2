@@ -454,6 +454,9 @@ abstract class AppDatabase : RoomDatabase() {
                         m.id,
                         m.productId,
                         m.businessId,
+                        -- `movements.type` holds the MovementType name as TEXT
+                        -- (see Converters). Casting it to an integer would turn
+                        -- 'SALE' into 0, so it is copied through unchanged.
                         m.type as movementType,
                         CASE m.type
                             WHEN 'RECEIVE' THEN m.quantity
@@ -556,7 +559,44 @@ abstract class AppDatabase : RoomDatabase() {
                     FROM outbox
                 """)
 
-                // 5. Initialize counters for each business/device from existing data
+                // 5. Migrate sale_headers -> receipts
+                // Every legacy sale had a receipt, but the `receipts` table only
+                // exists from v5 onwards. Without this copy the receipt history
+                // would come up empty after the upgrade.
+                //
+                // The per-device counter is the position of the sale within its
+                // (business, device) group, ordered by creation time. A
+                // correlated subquery is used instead of ROW_NUMBER() because
+                // window functions need SQLite 3.25 (API 28) and the app
+                // supports API 26.
+                // The content hash is a placeholder: the original rendered
+                // receipt is not recoverable, but the column is NOT NULL.
+                database.execSQL("""
+                    INSERT OR REPLACE INTO receipts (id, sessionId, businessId, deviceCode, counter, receiptNumber, format, contentHash, createdAt)
+                    SELECT
+                        'rcpt_legacy_' || sh.id,
+                        sh.id,
+                        sh.businessId,
+                        COALESCE(sh.deviceId, 'legacy'),
+                        (
+                            SELECT COUNT(*)
+                            FROM sale_headers prev
+                            WHERE prev.businessId = sh.businessId
+                              AND COALESCE(prev.deviceId, 'legacy') = COALESCE(sh.deviceId, 'legacy')
+                              AND (
+                                    prev.createdAt < sh.createdAt
+                                    OR (prev.createdAt = sh.createdAt AND prev.id <= sh.id)
+                              )
+                        ),
+                        sh.receiptNumber,
+                        'thermal_58mm',
+                        'legacy-' || sh.id,
+                        sh.createdAt
+                    FROM sale_headers sh
+                    WHERE sh.receiptNumber IS NOT NULL AND sh.receiptNumber != ''
+                """)
+
+                // 6. Initialize counters for each business/device from existing data
                 // Receipt counters
                 database.execSQL("""
                     INSERT OR IGNORE INTO counters (id, businessId, deviceCode, counterType, currentValue, updatedAt)
@@ -572,7 +612,7 @@ abstract class AppDatabase : RoomDatabase() {
                     GROUP BY businessId, deviceId
                 """)
 
-                // 6. Create default business_profile from existing business
+                // 7. Create default business_profile from existing business
                 database.execSQL("""
                     INSERT OR IGNORE INTO business_profiles (id, name, category, countryCode, currencyCode, timezone, createdAt, updatedAt)
                     SELECT
