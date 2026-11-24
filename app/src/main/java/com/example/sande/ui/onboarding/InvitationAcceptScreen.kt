@@ -139,8 +139,8 @@ fun InvitationAcceptScreen(
                 keyboardActions = KeyboardActions(onDone = {
                     if (invitationCode.replace(" ", "").length == 6) {
                         acceptInvitation()
-                    })
-                }
+                    }
+                })
             )
         }
 
