@@ -1,7 +1,7 @@
 import { Context } from 'hono';
 import { CloudflareBindings } from '../types';
 import { createTenantDB, createPlatformDB } from '../db/tenant';
-import { BackupRow } from './db/rows.ts';
+import { BackupRow } from './db/rows';
 
 
 /**
@@ -56,9 +56,9 @@ export async function create(c: Context<{ Bindings: CloudflareBindings; Variable
       `SELECT * FROM ${table} WHERE business_id = ?`
     ).bind(context.businessId).all());
 
-    backupData[table] = result.results;
-    rowCounts[table] = result.results.length;
-    totalRows += result.results.length;
+    backupData[table] = result;
+    rowCounts[table] = result.length;
+    totalRows += result.length;
   }
 
   // Create NDJSON content
@@ -139,7 +139,7 @@ async function enforceRetentionPolicy(r2: R2Bucket, db: any, businessId: string)
 
   const toDelete: string[] = [];
 
-  for (const backup of backups.results) {
+  for (const backup of backups) {
     const createdAt = backup.created_at;
     const date = new Date(createdAt);
     const isFirstOfMonth = date.getDate() === 1;
@@ -182,7 +182,7 @@ export async function list(c: Context<{ Bindings: CloudflareBindings; Variables:
 
   return c.json({
     success: true,
-    data: backups.results.map((b: any) => ({
+    data: backups.map((b: any) => ({
       ...b,
       row_counts: JSON.parse(b.row_counts_json),
     }))

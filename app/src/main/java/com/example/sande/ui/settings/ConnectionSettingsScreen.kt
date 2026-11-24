@@ -25,6 +25,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -62,6 +63,10 @@ fun ConnectionSettingsScreen(
     )
 
     val scope = rememberCoroutineScope()
+
+    // Collected as state — reading StateFlow.value directly in composition is
+    // flagged by lint and does not trigger recomposition.
+    val isReady by vm.isReady.collectAsState()
 
     var googleClientId by remember { mutableStateOf("") }
     var apiBaseUrl by remember { mutableStateOf("") }
@@ -108,7 +113,7 @@ fun ConnectionSettingsScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
-                    containerColor = if (vm.isReady.value) {
+                    containerColor = if (isReady) {
                         MaterialTheme.colorScheme.primaryContainer
                     } else {
                         MaterialTheme.colorScheme.secondaryContainer

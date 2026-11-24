@@ -1,7 +1,7 @@
 import { Context } from 'hono';
 import { CloudflareBindings } from '../types';
 import { createPlatformDB } from '../db/tenant';
-import { AccountRow } from './db/rows.ts';
+import { AccountRow } from './db/rows';
 
 
 /**

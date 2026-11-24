@@ -52,9 +52,9 @@ async function runNightlyBackups(env: CloudflareBindings): Promise<void> {
     `SELECT id, name FROM businesses WHERE status = 'active' AND deleted_at = 0`
   ).all<{ id: string; name: string }>();
 
-  console.log(`[backup] creating backups for ${businesses.results.length} business(es)`);
+  console.log(`[backup] creating backups for ${businesses.length} business(es)`);
 
-  for (const business of businesses.results) {
+  for (const business of businesses) {
     try {
       const result = await createBusinessBackup(env, business.id);
       console.log(`[backup] ${business.id}: ${result.rowCount} rows → ${result.r2Key}`);
@@ -98,10 +98,10 @@ async function createBusinessBackup(
       `SELECT * FROM ${table} WHERE business_id = ?`
     ).bind(businessId).all());
 
-    rowCounts[table] = rows.results.length;
-    totalRows += rows.results.length;
+    rowCounts[table] = rows.length;
+    totalRows += rows.length;
 
-    for (const row of rows.results) {
+    for (const row of rows) {
       ndjson += JSON.stringify({ table, ...row }) + '\n';
     }
   }
@@ -160,7 +160,7 @@ async function enforceRetention(env: CloudflareBindings, businessId: string): Pr
 
   const toDelete: string[] = [];
 
-  for (const backup of backups.results) {
+  for (const backup of backups) {
     const date = new Date(backup.created_at);
     const isFirstOfMonth = date.getUTCDate() === 1;
 

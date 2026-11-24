@@ -1,7 +1,7 @@
 import { Context } from 'hono';
 import { CloudflareBindings } from '../types';
 import { createPlatformDB } from '../db/tenant';
-import { AccountRow, BackupRow, DeviceRow, SyncBatchRow, SyncCursorRow, SyncExceptionRow } from './db/rows.ts';
+import { AccountRow, BackupRow, DeviceRow, SyncBatchRow, SyncCursorRow, SyncExceptionRow } from './db/rows';
 
 
 /**
@@ -31,7 +31,7 @@ export async function listBusinesses(c: Context<{ Bindings: CloudflareBindings }
   const businesses = await platformDB.listBusinesses(status);
 
   // Apply pagination manually (D1 doesn't support OFFSET in all cases)
-  const paginated = businesses.results.slice(offset, offset + limit);
+  const paginated = businesses.slice(offset, offset + limit);
 
   return c.json({
     success: true,
@@ -39,8 +39,8 @@ export async function listBusinesses(c: Context<{ Bindings: CloudflareBindings }
     pagination: {
       limit,
       offset,
-      total: businesses.results.length,
-      hasMore: offset + limit < businesses.results.length,
+      total: businesses.length,
+      hasMore: offset + limit < businesses.length,
     }
   });
 }
@@ -98,10 +98,10 @@ export async function getBusiness(c: Context<{ Bindings: CloudflareBindings }>) 
     data: {
       business,
       memberships: enrichedMemberships,
-      devices: devices.results,
-      recent_sync_batches: syncBatches.results,
-      open_exceptions: exceptions.results,
-      recent_backups: backups.results,
+      devices: devices,
+      recent_sync_batches: syncBatches,
+      open_exceptions: exceptions,
+      recent_backups: backups,
     }
   });
 }
@@ -260,8 +260,8 @@ export async function getSyncHealth(c: Context<{ Bindings: CloudflareBindings }>
   ).bind(businessId).all<SyncCursorRow>());
 
   // Calculate health metrics
-  const totalBatches = batches.results.length;
-  const failedBatches = batches.results.filter((b: any) => b.status === 'failed').length;
+  const totalBatches = batches.length;
+  const failedBatches = batches.filter((b: any) => b.status === 'failed').length;
   const successRate = totalBatches > 0 ? ((totalBatches - failedBatches) / totalBatches * 100).toFixed(1) : '100';
 
   return c.json({
@@ -272,8 +272,8 @@ export async function getSyncHealth(c: Context<{ Bindings: CloudflareBindings }>
         total_batches_24h: totalBatches,
         failed_batches_24h: failedBatches,
         success_rate: `${successRate}%`,
-        open_exceptions: exceptions.results,
-        device_cursors: cursors.results,
+        open_exceptions: exceptions,
+        device_cursors: cursors,
       }
     }
   });
@@ -294,7 +294,7 @@ export async function getBusinessExceptions(c: Context<{ Bindings: CloudflareBin
 
   return c.json({
     success: true,
-    data: exceptions.results
+    data: exceptions
   });
 }
 
@@ -351,8 +351,8 @@ export async function getPlatformMonitoring(c: Context<{ Bindings: CloudflareBin
   return c.json({
     success: true,
     data: {
-      sync_errors_24h: errors.results,
-      exception_types_24h: exceptionTypes.results,
+      sync_errors_24h: errors,
+      exception_types_24h: exceptionTypes,
       // These would come from Cloudflare Analytics API in production
       d1_storage_mb: 'N/A (via Cloudflare API)',
       d1_rows_read_24h: 'N/A (via Cloudflare API)',
@@ -388,7 +388,7 @@ export async function getAuditLog(c: Context<{ Bindings: CloudflareBindings }>) 
 
   return c.json({
     success: true,
-    data: audit.results,
+    data: audit,
     pagination: { limit, offset }
   });
 }

@@ -1,6 +1,6 @@
 import { D1Database, D1PreparedStatement } from '@cloudflare/workers-types';
 import { BusinessContext, OutboxEntry, SyncCursor, SyncException, ChangeLogEntry } from '../types';
-import { AccountRow, AppVersionRow, BusinessRow, DeviceRow, InvitationRow, MembershipRow, PlatformAdminRow, RecoveryCodeRow, RefreshTokenRow, SaleItemRow, SaleSessionRow, SupportAccessGrantRow } from './db/rows.ts';
+import { AccountRow, AppVersionRow, BusinessRow, DeviceRow, InvitationRow, MembershipRow, PlatformAdminRow, RecoveryCodeRow, RefreshTokenRow, SaleItemRow, SaleSessionRow, SupportAccessGrantRow } from './db/rows';
 
 
 /**

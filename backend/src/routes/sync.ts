@@ -2,7 +2,7 @@ import { Context } from 'hono';
 import { CloudflareBindings, OutboxEntry, SyncException } from '../types';
 import { createTenantDB, createPlatformDB } from '../db/tenant';
 import { hashToken } from '../middleware/auth';
-import { ChangeLogRow, StockMovementRow, SyncCursorRow } from './db/rows.ts';
+import { ChangeLogRow, StockMovementRow, SyncCursorRow } from './db/rows';
 
 
 /**
@@ -335,7 +335,7 @@ async function updateRunningBalances(db: any, businessId: string, productId: str
   ).bind(businessId, productId).all<StockMovementRow>());
 
   let runningBalance = 0;
-  for (const movement of movements.results) {
+  for (const movement of movements) {
     const m = await db.prepare(
       `SELECT quantity_delta FROM stock_movements WHERE id = ?`
     ).bind(movement.id).first<{ quantity_delta: number }>();
@@ -365,8 +365,8 @@ export async function pull(c: Context<{ Bindings: CloudflareBindings; Variables:
   ).bind(context.businessId, cursor, limit).all<ChangeLogRow>());
 
   // Update cursor
-  const newCursor = changes.results.length > 0
-    ? Math.max(...changes.results.map((c: any) => c.server_seq))
+  const newCursor = changes.length > 0
+    ? Math.max(...changes.map((c: any) => c.server_seq))
     : cursor;
 
   await tenantDB.upsertSyncCursor({
@@ -382,8 +382,8 @@ export async function pull(c: Context<{ Bindings: CloudflareBindings; Variables:
     success: true,
     data: {
       cursor: newCursor,
-      changes: changes.results,
-      hasMore: changes.results.length === limit,
+      changes: changes,
+      hasMore: changes.length === limit,
     }
   });
 }
