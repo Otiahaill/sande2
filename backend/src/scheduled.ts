@@ -1,6 +1,20 @@
 import { Context, ScheduledEvent } from '@cloudflare/workers-types';
 
 /**
+ * Unwraps the rows from a D1 result.
+ *
+ * `D1PreparedStatement.all()` resolves to a `D1Result`; the rows themselves
+ * are in `.results`. Code that wants the rows uses this helper so the
+ * distinction is explicit.
+ */
+export async function rows<T = Record<string, unknown>>(
+  result: Promise<D1Result<T>>
+): Promise<T[]> {
+  return (await result).results;
+}
+
+
+/**
  * Scheduled handler for the nightly backup cron.
  *
  * Creates a logical export (NDJSON per table) of every active business and
@@ -80,9 +94,9 @@ async function createBusinessBackup(
   let ndjson = '';
 
   for (const table of BACKUP_TABLES) {
-    const rows = await env.DB.prepare(
+    const rows = await rows( env.DB.prepare(
       `SELECT * FROM ${table} WHERE business_id = ?`
-    ).bind(businessId).all();
+    ).bind(businessId).all());
 
     rowCounts[table] = rows.results.length;
     totalRows += rows.results.length;

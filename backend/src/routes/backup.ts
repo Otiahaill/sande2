@@ -3,6 +3,20 @@ import { CloudflareBindings } from '../types';
 import { createTenantDB, createPlatformDB } from '../db/tenant';
 
 /**
+ * Unwraps the rows from a D1 result.
+ *
+ * `D1PreparedStatement.all()` resolves to a `D1Result`; the rows themselves
+ * are in `.results`. Code that wants the rows uses this helper so the
+ * distinction is explicit.
+ */
+export async function rows<T = Record<string, unknown>>(
+  result: Promise<D1Result<T>>
+): Promise<T[]> {
+  return (await result).results;
+}
+
+
+/**
  * POST /api/backup/create
  * Create a backup of the business data (owner only)
  */
@@ -36,9 +50,9 @@ export async function create(c: Context<{ Bindings: CloudflareBindings; Variable
   const rowCounts: Record<string, number> = {};
 
   for (const table of tables) {
-    const result = await c.env.DB.prepare(
+    const result = await rows( c.env.DB.prepare(
       `SELECT * FROM ${table} WHERE business_id = ?`
-    ).bind(context.businessId).all();
+    ).bind(context.businessId).all());
 
     backupData[table] = result.results;
     rowCounts[table] = result.results.length;
@@ -109,9 +123,9 @@ export async function create(c: Context<{ Bindings: CloudflareBindings; Variable
  * Enforces backup retention policy
  */
 async function enforceRetentionPolicy(r2: R2Bucket, db: any, businessId: string) {
-  const backups = await db.prepare(
+  const backups = await rows( db.prepare(
     `SELECT id, r2_key, created_at FROM backups WHERE business_id = ? ORDER BY created_at DESC`
-  ).bind(businessId).all();
+  ).bind(businessId).all());
 
   const now = Date.now();
   const dailyCutoff = now - 30 * 24 * 60 * 60 * 1000; // 30 days
@@ -159,10 +173,10 @@ async function enforceRetentionPolicy(r2: R2Bucket, db: any, businessId: string)
 export async function list(c: Context<{ Bindings: CloudflareBindings; Variables: { businessContext: any } }>) {
   const context = c.get('businessContext');
 
-  const backups = await c.env.DB.prepare(
+  const backups = await rows( c.env.DB.prepare(
     `SELECT id, r2_key, size_bytes, row_counts_json, schema_version, status, error, created_at
      FROM backups WHERE business_id = ? ORDER BY created_at DESC LIMIT 100`
-  ).bind(context.businessId).all();
+  ).bind(context.businessId).all());
 
   return c.json({
     success: true,

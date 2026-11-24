@@ -4,6 +4,20 @@ import { createTenantDB, createPlatformDB } from '../db/tenant';
 import { hashToken } from '../middleware/auth';
 
 /**
+ * Unwraps the rows from a D1 result.
+ *
+ * `D1PreparedStatement.all()` resolves to a `D1Result`; the rows themselves
+ * are in `.results`. Code that wants the rows uses this helper so the
+ * distinction is explicit.
+ */
+export async function rows<T = Record<string, unknown>>(
+  result: Promise<D1Result<T>>
+): Promise<T[]> {
+  return (await result).results;
+}
+
+
+/**
  * POST /api/sync/push
  * Push outbox entries to server
  */
@@ -314,9 +328,9 @@ async function applyCounter(db: any, businessId: string, operation: string, payl
 
 async function updateRunningBalances(db: any, businessId: string, productId: string) {
   // Recalculate running balances for all movements of this product
-  const movements = await db.prepare(
+  const movements = await rows( db.prepare(
     `SELECT id FROM stock_movements WHERE business_id = ? AND product_id = ? ORDER BY created_at ASC`
-  ).bind(businessId, productId).all();
+  ).bind(businessId, productId).all());
 
   let runningBalance = 0;
   for (const movement of movements.results) {
@@ -344,9 +358,9 @@ export async function pull(c: Context<{ Bindings: CloudflareBindings; Variables:
   const now = Date.now();
 
   // Get changes from change_log since cursor
-  const changes = await c.env.DB.prepare(
+  const changes = await rows( c.env.DB.prepare(
     `SELECT * FROM change_log WHERE business_id = ? AND server_seq > ? ORDER BY server_seq ASC LIMIT ?`
-  ).bind(context.businessId, cursor, limit).all();
+  ).bind(context.businessId, cursor, limit).all());
 
   // Update cursor
   const newCursor = changes.results.length > 0

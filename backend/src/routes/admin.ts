@@ -3,6 +3,20 @@ import { CloudflareBindings } from '../types';
 import { createPlatformDB } from '../db/tenant';
 
 /**
+ * Unwraps the rows from a D1 result.
+ *
+ * `D1PreparedStatement.all()` resolves to a `D1Result`; the rows themselves
+ * are in `.results`. Code that wants the rows uses this helper so the
+ * distinction is explicit.
+ */
+export async function rows<T = Record<string, unknown>>(
+  result: Promise<D1Result<T>>
+): Promise<T[]> {
+  return (await result).results;
+}
+
+
+/**
  * GET /admin/businesses
  * List all businesses (with pagination)
  */
@@ -60,22 +74,22 @@ export async function getBusiness(c: Context<{ Bindings: CloudflareBindings }>) 
   }));
 
   // Get devices
-  const devices = await c.env.DB.prepare('SELECT * FROM devices WHERE business_id = ?').bind(businessId).all();
+  const devices = await rows( c.env.DB.prepare('SELECT * FROM devices WHERE business_id = ?').bind(businessId).all());
 
   // Get sync health
-  const syncBatches = await c.env.DB.prepare(
+  const syncBatches = await rows( c.env.DB.prepare(
     `SELECT * FROM sync_batches WHERE business_id = ? ORDER BY started_at DESC LIMIT 10`
-  ).bind(businessId).all();
+  ).bind(businessId).all());
 
   // Get open exceptions
-  const exceptions = await c.env.DB.prepare(
+  const exceptions = await rows( c.env.DB.prepare(
     `SELECT * FROM sync_exceptions WHERE business_id = ? AND status = 'open' ORDER BY created_at DESC LIMIT 20`
-  ).bind(businessId).all();
+  ).bind(businessId).all());
 
   // Get backup status
-  const backups = await c.env.DB.prepare(
+  const backups = await rows( c.env.DB.prepare(
     `SELECT * FROM backups WHERE business_id = ? ORDER BY created_at DESC LIMIT 5`
-  ).bind(businessId).all();
+  ).bind(businessId).all());
 
   return c.json({
     success: true,
@@ -229,19 +243,19 @@ export async function getSyncHealth(c: Context<{ Bindings: CloudflareBindings }>
   const dayAgo = now - 24 * 60 * 60 * 1000;
 
   // Recent sync batches
-  const batches = await c.env.DB.prepare(
+  const batches = await rows( c.env.DB.prepare(
     `SELECT * FROM sync_batches WHERE business_id = ? AND started_at > ? ORDER BY started_at DESC`
-  ).bind(businessId, dayAgo).all();
+  ).bind(businessId, dayAgo).all());
 
   // Sync exceptions
-  const exceptions = await c.env.DB.prepare(
+  const exceptions = await rows( c.env.DB.prepare(
     `SELECT exception_type, COUNT(*) as count FROM sync_exceptions WHERE business_id = ? AND status = 'open' GROUP BY exception_type`
-  ).bind(businessId).all();
+  ).bind(businessId).all());
 
   // Devices with pending push
-  const cursors = await c.env.DB.prepare(
+  const cursors = await rows( c.env.DB.prepare(
     `SELECT device_code, cursor, last_pull_at, last_push_at, pending_push_count FROM sync_cursors WHERE business_id = ?`
-  ).bind(businessId).all();
+  ).bind(businessId).all());
 
   // Calculate health metrics
   const totalBatches = batches.results.length;
@@ -272,9 +286,9 @@ export async function getBusinessExceptions(c: Context<{ Bindings: CloudflareBin
   const status = c.req.query('status') || 'open';
   const limit = Math.min(parseInt(c.req.query('limit') || '100', 10), 500);
 
-  const exceptions = await c.env.DB.prepare(
+  const exceptions = await rows( c.env.DB.prepare(
     `SELECT * FROM sync_exceptions WHERE business_id = ? AND status = ? ORDER BY created_at DESC LIMIT ?`
-  ).bind(businessId, status, limit).all();
+  ).bind(businessId, status, limit).all());
 
   return c.json({
     success: true,
@@ -324,13 +338,13 @@ export async function getPlatformMonitoring(c: Context<{ Bindings: CloudflareBin
   // D1 doesn't expose storage metrics directly via SQL
   // This would typically come from Cloudflare API or be tracked separately
 
-  const errors = await c.env.DB.prepare(
+  const errors = await rows( c.env.DB.prepare(
     `SELECT operation, COUNT(*) as count FROM sync_batches WHERE status = 'failed' AND started_at > ? GROUP BY operation`
-  ).bind(Date.now() - 24 * 60 * 60 * 1000).all();
+  ).bind(Date.now() - 24 * 60 * 60 * 1000).all());
 
-  const exceptionTypes = await c.env.DB.prepare(
+  const exceptionTypes = await rows( c.env.DB.prepare(
     `SELECT exception_type, COUNT(*) as count FROM sync_exceptions WHERE status = 'open' AND created_at > ? GROUP BY exception_type`
-  ).bind(Date.now() - 24 * 60 * 60 * 1000).all();
+  ).bind(Date.now() - 24 * 60 * 60 * 1000).all());
 
   return c.json({
     success: true,
@@ -368,7 +382,7 @@ export async function getAuditLog(c: Context<{ Bindings: CloudflareBindings }>) 
   query += ' ORDER BY server_seq DESC LIMIT ? OFFSET ?';
   params.push(limit, offset);
 
-  const audit = await c.env.DB.prepare(query).bind(...params).all();
+  const audit = await rows( c.env.DB.prepare(query).bind(...params).all());
 
   return c.json({
     success: true,

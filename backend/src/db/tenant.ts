@@ -2,6 +2,20 @@ import { D1Database, D1PreparedStatement } from '@cloudflare/workers-types';
 import { BusinessContext, OutboxEntry, SyncCursor, SyncException, ChangeLogEntry } from '../types';
 
 /**
+ * Unwraps the rows from a D1 result.
+ *
+ * `D1PreparedStatement.all()` resolves to a `D1Result`; the rows themselves
+ * are in `.results`. Code that wants the rows uses this helper so the
+ * distinction is explicit.
+ */
+export async function rows<T = Record<string, unknown>>(
+  result: Promise<D1Result<T>>
+): Promise<T[]> {
+  return (await result).results;
+}
+
+
+/**
  * Tenant-scoped database access layer.
  * All queries automatically inject business_id from context.
  * This is the ONLY way to access business-scoped D1 tables.
@@ -75,7 +89,7 @@ export class TenantDB {
     if (activeOnly) {
       query = query.bind('is_active = 1 AND deleted_at = 0');
     }
-    return query.all();
+    return rows( query.all());
   }
 
   async createProduct(data: {
@@ -222,7 +236,7 @@ export class TenantDB {
       query = query.bind(`OFFSET ${filters.offset}`);
     }
 
-    return query.all();
+    return rows( query.all());
   }
 
   // Sale Sessions
@@ -296,7 +310,7 @@ export class TenantDB {
       query = query.bind(`OFFSET ${filters.offset}`);
     }
 
-    return query.all();
+    return rows( query.all());
   }
 
   // Sale Items
@@ -324,7 +338,7 @@ export class TenantDB {
   }
 
   async getSaleItems(sessionId: string) {
-    return this.select('*', 'sale_items').bind('session_id = ?', sessionId).all();
+    return rows( this.select('*', 'sale_items').bind('session_id = ?', sessionId).all());
   }
 
   // Receipts
@@ -455,7 +469,7 @@ export class TenantDB {
       query = query.bind(`OFFSET ${filters.offset}`);
     }
 
-    return query.all();
+    return rows( query.all());
   }
 
   // Outbox Entries
@@ -471,17 +485,17 @@ export class TenantDB {
   }
 
   async getUnsyncedOutboxEntries(limit = 100) {
-    return this.select('*', 'outbox_entries')
+    return rows( this.select('*', 'outbox_entries')
       .bind('synced = 0')
       .bind('ORDER BY created_at ASC')
       .bind(`LIMIT ${limit}`)
-      .all();
+      .all());
   }
 
   async getOutboxEntriesByBatch(batchId: string) {
-    return this.select('*', 'outbox_entries')
+    return rows( this.select('*', 'outbox_entries')
       .bind('batch_id = ?', batchId)
-      .all();
+      .all());
   }
 
   async markOutboxSynced(ids: string[]) {
@@ -570,7 +584,7 @@ export class TenantDB {
       query = query.bind(`OFFSET ${filters.offset}`);
     }
 
-    return query.all();
+    return rows( query.all());
   }
 
   async resolveSyncException(id: string, resolution: 'local_wins' | 'server_wins' | 'manual' | 'pending', resolvedBy: string) {
@@ -639,7 +653,7 @@ export class TenantDB {
       query = query.bind(`LIMIT ${filters.limit}`);
     }
 
-    return query.all();
+    return rows( query.all());
   }
 
   // Reports
@@ -654,7 +668,7 @@ export class TenantDB {
   }
 
   async getTopProducts(startDate: number, endDate: number, limit = 10) {
-    return this.db.prepare(`
+    return rows( this.db.prepare(`
       SELECT si.product_id, si.product_name, SUM(si.quantity) as quantity_sold, SUM(si.total_cents) as revenue
       FROM sale_items si
       JOIN sale_sessions ss ON si.session_id = ss.id
@@ -662,11 +676,11 @@ export class TenantDB {
       GROUP BY si.product_id, si.product_name
       ORDER BY revenue DESC
       LIMIT ?
-    `).bind(this.context.businessId, startDate, endDate, limit).all();
+    `).bind(this.context.businessId, startDate, endDate, limit).all());
   }
 
   async getSalesByHour(startDate: number, endDate: number) {
-    return this.db.prepare(`
+    return rows( this.db.prepare(`
       SELECT
         CAST(strftime('%H', datetime(created_at / 1000, 'unixepoch', '${this.getTimezone()}')) AS INTEGER) as hour,
         COUNT(*) as count,
@@ -675,17 +689,17 @@ export class TenantDB {
       WHERE business_id = ? AND status = 'completed' AND created_at BETWEEN ? AND ?
       GROUP BY hour
       ORDER BY hour
-    `).bind(this.context.businessId, startDate, endDate).all();
+    `).bind(this.context.businessId, startDate, endDate).all());
   }
 
   async getSalesByCashier(startDate: number, endDate: number) {
-    return this.db.prepare(`
+    return rows( this.db.prepare(`
       SELECT salesperson_id, salesperson_role, COUNT(*) as count, COALESCE(SUM(total_cents), 0) as total
       FROM sale_sessions
       WHERE business_id = ? AND status = 'completed' AND created_at BETWEEN ? AND ?
       GROUP BY salesperson_id, salesperson_role
       ORDER BY total DESC
-    `).bind(this.context.businessId, startDate, endDate).all();
+    `).bind(this.context.businessId, startDate, endDate).all());
   }
 
   private getTimezone(): string {
@@ -738,7 +752,7 @@ export class PlatformDB {
     if (status) {
       query = query.bind('WHERE status = ?', status);
     }
-    return query.bind('ORDER BY created_at DESC').all();
+    return rows( query.bind('ORDER BY created_at DESC').all());
   }
 
   async updateBusinessStatus(id: string, status: string) {
@@ -784,11 +798,11 @@ export class PlatformDB {
   }
 
   async getMembershipsByBusiness(businessId: string) {
-    return this.db.prepare('SELECT * FROM memberships WHERE business_id = ?').bind(businessId).all();
+    return rows( this.db.prepare('SELECT * FROM memberships WHERE business_id = ?').bind(businessId).all());
   }
 
   async getMembershipsByAccount(accountId: string) {
-    return this.db.prepare('SELECT * FROM memberships WHERE account_id = ?').bind(accountId).all();
+    return rows( this.db.prepare('SELECT * FROM memberships WHERE account_id = ?').bind(accountId).all());
   }
 
   async updateMembershipStatus(businessId: string, accountId: string, status: string) {
@@ -818,7 +832,7 @@ export class PlatformDB {
   }
 
   async getDevicesByBusiness(businessId: string) {
-    return this.db.prepare('SELECT * FROM devices WHERE business_id = ?').bind(businessId).all();
+    return rows( this.db.prepare('SELECT * FROM devices WHERE business_id = ?').bind(businessId).all());
   }
 
   async getActiveDeviceCount(businessId: string) {
@@ -979,7 +993,7 @@ export class PlatformDB {
   }
 
   async getSupportAccessGrants(businessId: string) {
-    return this.db.prepare('SELECT * FROM support_access_grants WHERE business_id = ? AND revoked_at IS NULL AND expires_at > ?').bind(businessId, Date.now()).all();
+    return rows( this.db.prepare('SELECT * FROM support_access_grants WHERE business_id = ? AND revoked_at IS NULL AND expires_at > ?').bind(businessId, Date.now()).all());
   }
 
   async revokeSupportAccessGrant(id: string, revokedBy: string) {
@@ -989,7 +1003,7 @@ export class PlatformDB {
 
   // App versions
   async getAppVersions(platform: string) {
-    return this.db.prepare('SELECT * FROM app_versions WHERE platform = ? ORDER BY version_code DESC').bind(platform).all();
+    return rows( this.db.prepare('SELECT * FROM app_versions WHERE platform = ? ORDER BY version_code DESC').bind(platform).all());
   }
 
   async getMinSupportedVersion(platform: string) {
