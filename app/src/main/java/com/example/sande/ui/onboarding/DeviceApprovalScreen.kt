@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Phishing
 import androidx.compose.material3.Icon
 
@@ -64,7 +65,7 @@ fun DeviceApprovalScreen(
     ) {
         // Icon
         Icon(
-            imageVector = androidx.compose.material.icons.filled.Phishing,
+            imageVector = Icons.Filled.Phishing,
             contentDescription = "Device pending",
             modifier = Modifier.size(80.dp),
             tint = MaterialTheme.colorScheme.secondary

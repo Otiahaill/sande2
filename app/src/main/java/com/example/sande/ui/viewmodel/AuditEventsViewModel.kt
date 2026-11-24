@@ -49,7 +49,7 @@ class AuditEventsViewModel(
                     event.entityId.lowercase().contains(lowerQuery) ||
                     event.action.lowercase().contains(lowerQuery) ||
                     event.actorId?.lowercase()?.contains(lowerQuery) == true ||
-                    event.metadataJson?.lowercase().contains(lowerQuery) == true
+                    event.metadataJson?.lowercase()?.contains(lowerQuery) == true
                 }
             }
 

@@ -42,12 +42,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardOptions
-import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.sande.data.receipt.PdfReceiptRenderer
 import com.example.sande.data.receipt.ReceiptData
@@ -241,12 +239,18 @@ fun ReceiptHistoryItem(
                 horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)
             ) {
                 Button(onClick = onReprint) {
-                    androidx.compose.material.icons.filled.Print
+                    androidx.compose.material3.Icon(
+                        imageVector = Icons.Filled.Print,
+                        contentDescription = "Reprint"
+                    )
                     androidx.compose.foundation.layout.Spacer(modifier = Modifier.width(8.dp))
                     Text("Reprint")
                 }
                 Button(onClick = onShare) {
-                    androidx.compose.material.icons.filled.Share
+                    androidx.compose.material3.Icon(
+                        imageVector = Icons.Filled.Share,
+                        contentDescription = "Share"
+                    )
                     androidx.compose.foundation.layout.Spacer(modifier = Modifier.width(8.dp))
                     Text("Share")
                 }

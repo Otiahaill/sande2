@@ -45,7 +45,9 @@ class ReceiptRepository constructor(
      * Loads complete receipt data by receipt number.
      */
     suspend fun getReceiptDataByNumber(businessId: String, receiptNumber: String): ReceiptData? {
-        val receipt = receiptDao.searchByNumber(businessId, receiptNumber).firstOrNull() ?: return null
+        // The DAO returns a list; take the first matching receipt.
+        val receipt = receiptDao.searchByNumber(businessId, receiptNumber).first().firstOrNull()
+            ?: return null
         return loadReceiptData(receipt)
     }
 

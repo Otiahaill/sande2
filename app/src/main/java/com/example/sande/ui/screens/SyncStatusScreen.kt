@@ -75,7 +75,10 @@ fun SyncStatusScreen(
                 title = { Text("Sync Status") },
                 navigationIcon = {
                     androidx.compose.material3.IconButton(onClick = onOpenDrawer) {
-                        androidx.compose.material.icons.Icons.Filled.Menu
+                        Icon(
+                            imageVector = Icons.Filled.Menu,
+                            contentDescription = "Open drawer"
+                        )
                     }
                 },
                 actions = {
@@ -98,7 +101,10 @@ fun SyncStatusScreen(
                         ),
                         shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
                     ) {
-                        androidx.compose.material.icons.Icons.Filled.Refresh
+                        Icon(
+                            imageVector = Icons.Filled.Refresh,
+                            contentDescription = "Sync now"
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -131,7 +137,7 @@ fun SyncStatusScreen(
                     if (isSyncing) {
                         CircularProgressIndicator(modifier = Modifier.size(48.dp))
                     } else {
-                        androidx.compose.material.icons.Icon(
+                        Icon(
                             imageVector = Icons.Filled.CloudDone,
                             contentDescription = "Sync status",
                             tint = MaterialTheme.colorScheme.primary,

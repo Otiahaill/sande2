@@ -34,7 +34,6 @@ import com.example.sande.ui.theme.SandeTheme
 import com.example.sande.ui.viewModelFactoryOf
 import com.example.sande.ui.viewmodel.StockViewModel
 import kotlinx.coroutines.launch
-import androidx.compose.material3.ExposedDropdownMenu
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

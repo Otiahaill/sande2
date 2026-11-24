@@ -145,7 +145,6 @@ dependencies {
     implementation(libs.androidx.credential.manager.play.services)
     // GetGoogleIdOption / GoogleIdTokenCredential live here, not in androidx.credentials.
     implementation(libs.google.identity.signin)
-    implementation(libs.google.play.services.auth)
 
     // WorkManager
     implementation(libs.androidx.work.runtime)

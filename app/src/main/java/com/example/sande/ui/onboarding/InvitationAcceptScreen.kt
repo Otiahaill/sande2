@@ -36,6 +36,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mail
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -56,29 +57,6 @@ fun InvitationAcceptScreen(
     var isAccepting by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
-    // Accepts the invitation with the code the user typed.
-    fun acceptInvitation() {
-        if (isAccepting) return
-        isAccepting = true
-        error = null
-        scope.launch {
-            try {
-                vm.acceptInvitation(
-                    com.example.sande.data.remote.AcceptInvitationRequest(
-                        code = invitationCode.trim(),
-                        deviceCode = vm.generateDeviceCode(),
-                        deviceName = android.os.Build.MODEL ?: "Android Device",
-                        deviceType = "android"
-                    )
-                )
-            } catch (e: Exception) {
-                error = e.message ?: "Could not accept the invitation"
-            } finally {
-                isAccepting = false
-            }
-        }
-    }
-
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -88,7 +66,7 @@ fun InvitationAcceptScreen(
     ) {
         // Icon
         Icon(
-            imageVector = androidx.compose.material.icons.filled.Mail,
+            imageVector = Icons.Filled.Mail,
             contentDescription = "Invitation",
             modifier = Modifier.size(64.dp),
             tint = MaterialTheme.colorScheme.primary
@@ -124,7 +102,7 @@ fun InvitationAcceptScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                keyboardOptions = androidx.compose.ui.text.input.KeyboardOptions(
+                keyboardOptions = KeyboardOptions(
                     keyboardType = androidx.compose.ui.text.input.KeyboardType.Number,
                     imeAction = androidx.compose.ui.text.input.ImeAction.Done
                 ),

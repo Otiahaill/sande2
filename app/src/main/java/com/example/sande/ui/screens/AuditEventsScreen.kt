@@ -43,8 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardOptions
-import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -178,9 +177,9 @@ fun SeverityFilterChip(
         modifier = Modifier.padding(4.dp),
         colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
             selectedContainerColor = color.copy(alpha = 0.2f),
-            unselectedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             selectedLabelColor = color,
-            unselectedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+            labelColor = MaterialTheme.colorScheme.onSurfaceVariant
         )
     )
 }

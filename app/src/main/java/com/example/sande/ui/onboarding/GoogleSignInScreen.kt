@@ -35,6 +35,7 @@ import com.example.sande.ui.viewModelFactoryOf
 import com.example.sande.ui.viewmodel.OnboardingViewModel
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,36 +56,6 @@ fun GoogleSignInScreen(
 
     var isSigningIn by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-
-    // Activity result launcher for Google Sign-In (legacy fallback)
-    val signInLauncher = remember {
-        activity.registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            if (result.resultCode == android.app.Activity.RESULT_OK) {
-                result.data?.let { data ->
-                    // Handle Google Sign-In result
-                    scope.launch {
-                        isSigningIn = true
-                        error = null
-                        try {
-                            val account = com.google.android.gms.auth.api.signin.GoogleSignIn.getSignedInAccountFromIntent(data).getResult(com.google.android.gms.common.api.ApiException::class.java)
-                            account.idToken?.let { idToken ->
-                                vm.handleGoogleSignIn(
-                                    idToken = idToken,
-                                    deviceCode = app.connectionResolver.deviceCode(),
-                                    deviceName = "Android Device",
-                                    deviceType = "android",
-                                )
-                            }
-                        } catch (e: Exception) {
-                            error = "Sign in failed: ${e.message}"
-                        } finally {
-                            isSigningIn = false
-                        }
-                    }
-                }
-            }
-        }
-    }
 
     Column(
         modifier = modifier
@@ -134,9 +105,11 @@ fun GoogleSignInScreen(
                                 deviceType = "android",
                             )
                         }.onFailure { e ->
-                            // Fallback to traditional Google Sign-In
-                            val signInIntent = googleAuthManager.getLegacySignInIntent()
-                            signInLauncher.launch(signInIntent)
+                            // Credential Manager is the only supported flow —
+                            // the legacy GoogleSignInClient facade was removed
+                            // in play-services-auth 21.x.
+                            error = "Sign in failed: ${e.message}"
+                            isSigningIn = false
                         }
                     } catch (e: Exception) {
                         error = "Sign in failed: ${e.message}"

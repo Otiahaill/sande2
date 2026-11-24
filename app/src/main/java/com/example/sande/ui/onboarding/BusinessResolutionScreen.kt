@@ -34,12 +34,13 @@ import androidx.compose.foundation.BorderStroke
 import com.example.sande.ui.theme.SandeTheme
 import com.example.sande.ui.viewModelFactoryOf
 import com.example.sande.ui.viewmodel.OnboardingViewModel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.filled.CheckCircle
+import Icons.Filled.CheckCircle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,12 +76,19 @@ fun BusinessResolutionScreen(
         }
     }
 
-    val (needsBusinessSelection, account, memberships) = when (val state = authState.value) {
+    val selection = when (val state = authState.value) {
         is com.example.sande.data.auth.SessionManager.AuthState.NEEDS_BUSINESS_SELECTION -> {
-            true to state.account to state.memberships
+            Triple(true, state.account, state.memberships)
         }
-        else -> false to null to emptyList<com.example.sande.data.auth.SessionManager.MembershipInfo>()
+        else -> Triple(
+            false,
+            null,
+            emptyList<com.example.sande.data.auth.SessionManager.MembershipInfo>()
+        )
     }
+    val needsBusinessSelection = selection.first
+    val account = selection.second
+    val memberships = selection.third
 
     var selectedBusinessId by remember { mutableStateOf<String?>(null) }
     var isRegistering by remember { mutableStateOf(false) }
@@ -209,7 +217,7 @@ fun BusinessResolutionScreen(
                 onValueChange = { businessPhone = it },
                 label = { Text("Phone (optional)") },
                 singleLine = true,
-                keyboardOptions = androidx.compose.ui.text.input.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone),
+                keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone),
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -327,7 +335,7 @@ fun BusinessCard(
                 Text(text = "${membership.role.capitalize()} • ${membership.status}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (isSelected) {
-                androidx.compose.material.icons.filled.CheckCircle(
+                Icons.Filled.CheckCircle(
                     contentDescription = "Selected",
                     tint = MaterialTheme.colorScheme.primary
                 )

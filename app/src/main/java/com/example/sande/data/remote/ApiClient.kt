@@ -27,7 +27,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import java.util.concurrent.TimeUnit
-import io.ktor.client.request.body
+import io.ktor.client.request.setBody
 
 /**
  * Result type used by the API layer.
@@ -167,7 +167,7 @@ class ApiClient(
         try {
             val response = client.post(apiUrl("/auth/google")) {
                 contentType(io.ktor.http.ContentType.Application.Json)
-                body = request
+                setBody(request)
             }
             handleResponse<AuthResponse>(response)
         } catch (e: Exception) {
@@ -183,7 +183,7 @@ class ApiClient(
         try {
             val response = client.post(apiUrl("/api/business/register")) {
                 contentType(io.ktor.http.ContentType.Application.Json)
-                body = request
+                setBody(request)
             }
             handleResponse<BusinessRegistrationResponse>(response)
         } catch (e: Exception) {
@@ -199,7 +199,7 @@ class ApiClient(
         try {
             val response = client.post(apiUrl("/auth/refresh")) {
                 contentType(io.ktor.http.ContentType.Application.Json)
-                body = request
+                setBody(request)
             }
             handleResponse<RefreshTokenResponse>(response)
         } catch (e: Exception) {
@@ -215,7 +215,7 @@ class ApiClient(
         try {
             val response = client.post(apiUrl("/auth/logout")) {
                 contentType(io.ktor.http.ContentType.Application.Json)
-                body = request
+                setBody(request)
             }
             handleResponse<String>(response).map { Unit }
         } catch (e: Exception) {
@@ -231,7 +231,7 @@ class ApiClient(
         try {
             val response = client.post(apiUrl("/api/memberships/accept")) {
                 contentType(io.ktor.http.ContentType.Application.Json)
-                body = request
+                setBody(request)
             }
             handleResponse<InvitationAcceptResponse>(response)
         } catch (e: Exception) {
@@ -247,7 +247,7 @@ class ApiClient(
         try {
             val response = client.post(apiUrl("/api/devices/register")) {
                 contentType(io.ktor.http.ContentType.Application.Json)
-                body = request
+                setBody(request)
             }
             handleResponse<String>(response).map { Unit }
         } catch (e: Exception) {
@@ -265,7 +265,7 @@ class ApiClient(
         try {
             val response = client.post(apiUrl("/api/sync/push")) {
                 contentType(io.ktor.http.ContentType.Application.Json)
-                body = request
+                setBody(request)
             }
             handleResponse<SyncPushResponse>(response)
         } catch (e: Exception) {
@@ -327,7 +327,7 @@ class ApiClient(
         try {
             val response = client.post(apiUrl("/api/business/me/profile")) {
                 contentType(io.ktor.http.ContentType.Application.Json)
-                body = request
+                setBody(request)
             }
             handleResponse<String>(response).map { Unit }
         } catch (e: Exception) {
@@ -359,7 +359,7 @@ class ApiClient(
         try {
             val response = client.post(apiUrl("/api/memberships/invite")) {
                 contentType(io.ktor.http.ContentType.Application.Json)
-                body = request
+                setBody(request)
             }
             handleResponse<InviteStaffResponse>(response)
         } catch (e: Exception) {
@@ -377,7 +377,7 @@ class ApiClient(
         try {
             val response = client.get(apiUrl("/api/devices")) {
             }
-            handleResponse<DevicesResponse>(response).map { it.devices }
+            handleResponse<DevicesResponse>(response).map { it.data?.devices ?: emptyList() }
         } catch (e: Exception) {
             Result.failure(ApiException("Network error: ${e.message}", e))
         }
@@ -417,7 +417,13 @@ class ApiClient(
 
     // ===== Generic Response Handler =====
 
-    private suspend fun <T : Any> handleResponse(response: HttpResponse): Result<T> {
+    /**
+     * Turns an HTTP response into a [Result].
+     *
+     * `inline`/`reified` are needed because the body is decoded with
+     * `Json.decodeFromString<T>`, which needs the type at runtime.
+     */
+    private suspend inline fun <reified T : Any> handleResponse(response: HttpResponse): Result<T> {
         return when (response.status) {
             HttpStatusCode.OK, HttpStatusCode.Created -> {
                 val body = response.bodyAsText()
