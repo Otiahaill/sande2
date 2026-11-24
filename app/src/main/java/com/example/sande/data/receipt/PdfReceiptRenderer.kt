@@ -213,8 +213,8 @@ class PdfReceiptRenderer(private val context: Context) {
             y += fontSize + 2
 
             drawText("${item.quantity}", colQty, y, fontSize, Paint.Align.RIGHT)
-            drawText(formatCurrency(item.unitPriceCents), colPrice, y, fontSize, Paint.Align.RIGHT)
-            drawText(formatCurrency(item.totalCents), colTotal, y, fontSize, Paint.Align.RIGHT)
+            drawText(formatCurrency(item.unitPriceCents, business.currencyCode), colPrice, y, fontSize, Paint.Align.RIGHT)
+            drawText(formatCurrency(item.totalCents, business.currencyCode), colTotal, y, fontSize, Paint.Align.RIGHT)
             y += fontSize + 6
         }
 
@@ -227,12 +227,12 @@ class PdfReceiptRenderer(private val context: Context) {
         val valueX = width - margin
 
         drawText("Subtotal:", labelX, y, fontSize, Paint.Align.RIGHT, true)
-        drawText(formatCurrency(session.subtotalCents), valueX, y, fontSize, Paint.Align.RIGHT)
+        drawText(formatCurrency(session.subtotalCents, business.currencyCode), valueX, y, fontSize, Paint.Align.RIGHT)
         y += fontSize + 4
 
         if (session.taxCents > 0) {
             drawText("Tax:", labelX, y, fontSize, Paint.Align.RIGHT, true)
-            drawText(formatCurrency(session.taxCents), valueX, y, fontSize, Paint.Align.RIGHT)
+            drawText(formatCurrency(session.taxCents, business.currencyCode), valueX, y, fontSize, Paint.Align.RIGHT)
             y += fontSize + 4
         }
 
@@ -240,7 +240,7 @@ class PdfReceiptRenderer(private val context: Context) {
         y += 8
 
         drawText("TOTAL:", labelX, y, titleSize, Paint.Align.RIGHT, true)
-        drawText(formatCurrency(session.totalCents), valueX, y, titleSize, Paint.Align.RIGHT)
+        drawText(formatCurrency(session.totalCents, business.currencyCode), valueX, y, titleSize, Paint.Align.RIGHT)
         y += titleSize + 8
 
         drawLine(y)
@@ -251,7 +251,7 @@ class PdfReceiptRenderer(private val context: Context) {
         drawText("Cash", valueX, y, fontSize, Paint.Align.RIGHT)
         y += fontSize + 4
         drawText("Change:", labelX, y, fontSize, Paint.Align.RIGHT, true)
-        drawText(formatCurrency(0), valueX, y, fontSize, Paint.Align.RIGHT)
+        drawText(formatCurrency(0, business.currencyCode), valueX, y, fontSize, Paint.Align.RIGHT)
         y += fontSize + 8
 
         drawLine(y)
@@ -268,10 +268,8 @@ class PdfReceiptRenderer(private val context: Context) {
         drawText("Powered by SANDE", width / 2, y, fontSize - 2, Paint.Align.CENTER, false, Color.DKGRAY)
     }
 
-    private fun formatCurrency(cents: Long): String {
-        val amount = cents / 100.0
-        return java.text.NumberFormat.getCurrencyInstance(java.util.Locale.getDefault()).format(amount)
-    }
+    private fun formatCurrency(cents: Long, currencyCode: String): String =
+        formatCurrency(cents, currencyCode)
 
     /**
      * PrintDocumentAdapter for Android Print framework.

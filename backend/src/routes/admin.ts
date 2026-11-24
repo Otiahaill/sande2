@@ -1,6 +1,8 @@
 import { Context } from 'hono';
 import { CloudflareBindings } from '../types';
 import { createPlatformDB } from '../db/tenant';
+import { AccountRow, BackupRow, DeviceRow, SyncBatchRow, SyncCursorRow, SyncExceptionRow } from './db/rows.ts';
+
 
 /**
  * Unwraps the rows from a D1 result.
@@ -62,8 +64,8 @@ export async function getBusiness(c: Context<{ Bindings: CloudflareBindings }>) 
   // Get memberships
   const memberships = await platformDB.getMembershipsByBusiness(businessId);
   const enrichedMemberships = await Promise.all(memberships.map(async (m) => {
-    const account = await c.env.DB.prepare('SELECT id, email, display_name FROM accounts WHERE id = ?').bind(m.account_id).first();
-    const device = m.device_code ? await c.env.DB.prepare('SELECT * FROM devices WHERE device_code = ?').bind(m.device_code).first() : null;
+    const account = await c.env.DB.prepare('SELECT id, email, display_name FROM accounts WHERE id = ?').bind(m.account_id).first<AccountRow>();
+    const device = m.device_code ? await c.env.DB.prepare('SELECT * FROM devices WHERE device_code = ?').bind(m.device_code).first<DeviceRow>() : null;
     return {
       ...m,
       account_email: account?.email,
@@ -74,22 +76,22 @@ export async function getBusiness(c: Context<{ Bindings: CloudflareBindings }>) 
   }));
 
   // Get devices
-  const devices = await rows( c.env.DB.prepare('SELECT * FROM devices WHERE business_id = ?').bind(businessId).all());
+  const devices = await rows<DeviceRow>( c.env.DB.prepare('SELECT * FROM devices WHERE business_id = ?').bind(businessId).all<DeviceRow>());
 
   // Get sync health
-  const syncBatches = await rows( c.env.DB.prepare(
+  const syncBatches = await rows<SyncBatchRow>( c.env.DB.prepare(
     `SELECT * FROM sync_batches WHERE business_id = ? ORDER BY started_at DESC LIMIT 10`
-  ).bind(businessId).all());
+  ).bind(businessId).all<SyncBatchRow>());
 
   // Get open exceptions
-  const exceptions = await rows( c.env.DB.prepare(
+  const exceptions = await rows<SyncExceptionRow>( c.env.DB.prepare(
     `SELECT * FROM sync_exceptions WHERE business_id = ? AND status = 'open' ORDER BY created_at DESC LIMIT 20`
-  ).bind(businessId).all());
+  ).bind(businessId).all<SyncExceptionRow>());
 
   // Get backup status
-  const backups = await rows( c.env.DB.prepare(
+  const backups = await rows<BackupRow>( c.env.DB.prepare(
     `SELECT * FROM backups WHERE business_id = ? ORDER BY created_at DESC LIMIT 5`
-  ).bind(businessId).all());
+  ).bind(businessId).all<BackupRow>());
 
   return c.json({
     success: true,
@@ -165,7 +167,7 @@ export async function listBusinessDevices(c: Context<{ Bindings: CloudflareBindi
 
   const devices = await platformDB.getDevicesByBusiness(businessId);
   const enriched = await Promise.all(devices.map(async (d) => {
-    const account = await c.env.DB.prepare('SELECT id, email, display_name FROM accounts WHERE id = ?').bind(d.account_id).first();
+    const account = await c.env.DB.prepare('SELECT id, email, display_name FROM accounts WHERE id = ?').bind(d.account_id).first<AccountRow>();
     const membership = await platformDB.getMembership(businessId, d.account_id);
     return {
       ...d,
@@ -243,19 +245,19 @@ export async function getSyncHealth(c: Context<{ Bindings: CloudflareBindings }>
   const dayAgo = now - 24 * 60 * 60 * 1000;
 
   // Recent sync batches
-  const batches = await rows( c.env.DB.prepare(
+  const batches = await rows<SyncBatchRow>( c.env.DB.prepare(
     `SELECT * FROM sync_batches WHERE business_id = ? AND started_at > ? ORDER BY started_at DESC`
-  ).bind(businessId, dayAgo).all());
+  ).bind(businessId, dayAgo).all<SyncBatchRow>());
 
   // Sync exceptions
-  const exceptions = await rows( c.env.DB.prepare(
+  const exceptions = await rows<SyncExceptionRow>( c.env.DB.prepare(
     `SELECT exception_type, COUNT(*) as count FROM sync_exceptions WHERE business_id = ? AND status = 'open' GROUP BY exception_type`
-  ).bind(businessId).all());
+  ).bind(businessId).all<SyncExceptionRow>());
 
   // Devices with pending push
-  const cursors = await rows( c.env.DB.prepare(
+  const cursors = await rows<SyncCursorRow>( c.env.DB.prepare(
     `SELECT device_code, cursor, last_pull_at, last_push_at, pending_push_count FROM sync_cursors WHERE business_id = ?`
-  ).bind(businessId).all());
+  ).bind(businessId).all<SyncCursorRow>());
 
   // Calculate health metrics
   const totalBatches = batches.results.length;
@@ -286,9 +288,9 @@ export async function getBusinessExceptions(c: Context<{ Bindings: CloudflareBin
   const status = c.req.query('status') || 'open';
   const limit = Math.min(parseInt(c.req.query('limit') || '100', 10), 500);
 
-  const exceptions = await rows( c.env.DB.prepare(
+  const exceptions = await rows<SyncExceptionRow>( c.env.DB.prepare(
     `SELECT * FROM sync_exceptions WHERE business_id = ? AND status = ? ORDER BY created_at DESC LIMIT ?`
-  ).bind(businessId, status, limit).all());
+  ).bind(businessId, status, limit).all<SyncExceptionRow>());
 
   return c.json({
     success: true,
@@ -338,13 +340,13 @@ export async function getPlatformMonitoring(c: Context<{ Bindings: CloudflareBin
   // D1 doesn't expose storage metrics directly via SQL
   // This would typically come from Cloudflare API or be tracked separately
 
-  const errors = await rows( c.env.DB.prepare(
+  const errors = await rows<SyncBatchRow>( c.env.DB.prepare(
     `SELECT operation, COUNT(*) as count FROM sync_batches WHERE status = 'failed' AND started_at > ? GROUP BY operation`
-  ).bind(Date.now() - 24 * 60 * 60 * 1000).all());
+  ).bind(Date.now() - 24 * 60 * 60 * 1000).all<SyncBatchRow>());
 
-  const exceptionTypes = await rows( c.env.DB.prepare(
+  const exceptionTypes = await rows<SyncExceptionRow>( c.env.DB.prepare(
     `SELECT exception_type, COUNT(*) as count FROM sync_exceptions WHERE status = 'open' AND created_at > ? GROUP BY exception_type`
-  ).bind(Date.now() - 24 * 60 * 60 * 1000).all());
+  ).bind(Date.now() - 24 * 60 * 60 * 1000).all<SyncExceptionRow>());
 
   return c.json({
     success: true,

@@ -388,10 +388,8 @@ fun CashierSalesItem(
     }
 }
 
-private fun formatCurrency(cents: Long): String {
-    val amount = cents / 100.0
-    return java.text.NumberFormat.getCurrencyInstance(java.util.Locale.getDefault()).format(amount)
-}
+private fun formatCurrency(cents: Long): String =
+    com.example.sande.data.receipt.formatCurrency(cents)
 
 /**
  * Shares an exported CSV file with other apps.

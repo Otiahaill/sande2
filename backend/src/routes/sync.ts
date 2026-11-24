@@ -2,6 +2,8 @@ import { Context } from 'hono';
 import { CloudflareBindings, OutboxEntry, SyncException } from '../types';
 import { createTenantDB, createPlatformDB } from '../db/tenant';
 import { hashToken } from '../middleware/auth';
+import { ChangeLogRow, StockMovementRow, SyncCursorRow } from './db/rows.ts';
+
 
 /**
  * Unwraps the rows from a D1 result.
@@ -328,9 +330,9 @@ async function applyCounter(db: any, businessId: string, operation: string, payl
 
 async function updateRunningBalances(db: any, businessId: string, productId: string) {
   // Recalculate running balances for all movements of this product
-  const movements = await rows( db.prepare(
+  const movements = await rows<StockMovementRow>( db.prepare(
     `SELECT id FROM stock_movements WHERE business_id = ? AND product_id = ? ORDER BY created_at ASC`
-  ).bind(businessId, productId).all());
+  ).bind(businessId, productId).all<StockMovementRow>());
 
   let runningBalance = 0;
   for (const movement of movements.results) {
@@ -358,9 +360,9 @@ export async function pull(c: Context<{ Bindings: CloudflareBindings; Variables:
   const now = Date.now();
 
   // Get changes from change_log since cursor
-  const changes = await rows( c.env.DB.prepare(
+  const changes = await rows<ChangeLogRow>( c.env.DB.prepare(
     `SELECT * FROM change_log WHERE business_id = ? AND server_seq > ? ORDER BY server_seq ASC LIMIT ?`
-  ).bind(context.businessId, cursor, limit).all());
+  ).bind(context.businessId, cursor, limit).all<ChangeLogRow>());
 
   // Update cursor
   const newCursor = changes.results.length > 0
@@ -406,7 +408,7 @@ export async function status(c: Context<{ Bindings: CloudflareBindings; Variable
       if (d.device_code === context.deviceCode) return null;
       const cursor = await c.env.DB.prepare(
         `SELECT last_pull_at, last_push_at, pending_push_count FROM sync_cursors WHERE id = ?`
-      ).bind(`${context.businessId}:${d.device_code}`).first();
+      ).bind(`${context.businessId}:${d.device_code}`).first<SyncCursorRow>();
       return {
         device_code: d.device_code,
         device_name: d.device_name,

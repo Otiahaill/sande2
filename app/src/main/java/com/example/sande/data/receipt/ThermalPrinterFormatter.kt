@@ -163,29 +163,29 @@ class ThermalPrinterFormatter {
         items.forEach { item ->
             val name = truncate(item.productName, w)
             writeLine(name)
-            val qtyPrice = "${item.quantity} x ${formatCurrency(item.unitPriceCents)}"
-            val total = formatCurrency(item.totalCents)
+            val qtyPrice = "${item.quantity} x ${formatCurrency(item.unitPriceCents, business.currencyCode)}"
+            val total = formatCurrency(item.totalCents, business.currencyCode)
             writeLine(padBoth(qtyPrice, total))
         }
         write(FONT_A)
         writeLine("-".repeat(w))
 
         // Totals
-        writeLine(padBoth("Subtotal:", formatCurrency(session.subtotalCents)))
+        writeLine(padBoth("Subtotal:", formatCurrency(session.subtotalCents, business.currencyCode)))
         if (session.taxCents > 0) {
-            writeLine(padBoth("Tax:", formatCurrency(session.taxCents)))
+            writeLine(padBoth("Tax:", formatCurrency(session.taxCents, business.currencyCode)))
         }
         writeLine("-".repeat(w))
         write(BOLD_ON)
         write(DOUBLE_HEIGHT_ON)
-        writeLine(padBoth("TOTAL:", formatCurrency(session.totalCents)))
+        writeLine(padBoth("TOTAL:", formatCurrency(session.totalCents, business.currencyCode)))
         write(DOUBLE_HEIGHT_OFF)
         write(BOLD_OFF)
         writeLine("-".repeat(w))
 
         // Payment
         writeLine(padBoth("Payment:", "Cash"))
-        writeLine(padBoth("Change:", formatCurrency(0)))
+        writeLine(padBoth("Change:", formatCurrency(0, business.currencyCode)))
         writeLine("-".repeat(w))
 
         // Footer
@@ -224,10 +224,8 @@ class ThermalPrinterFormatter {
         return if (text.length <= maxLen) text else text.substring(0, maxLen - 3) + "..."
     }
 
-    private fun formatCurrency(cents: Long): String {
-        val amount = cents / 100.0
-        return java.text.NumberFormat.getCurrencyInstance(java.util.Locale.getDefault()).format(amount)
-    }
+    private fun formatCurrency(cents: Long, currencyCode: String): String =
+        formatCurrency(cents, currencyCode)
 
     /**
      * Creates a test print (for printer verification).

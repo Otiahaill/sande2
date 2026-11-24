@@ -145,9 +145,10 @@ class ReceiptRendererTest {
         // Should start with ESC @ (init)
         assertThat(bytes[0]).isEqualTo(0x1B)
         assertThat(bytes[1]).isEqualTo(0x40)
-        // Should end with cut command
-        assertThat(bytes[bytes.size - 2]).isEqualTo(0x1D)
-        assertThat(bytes[bytes.size - 1]).isEqualTo(0x56)
+        // Should end with the ESC/POS partial-cut command: GS V 1 (1D 56 01)
+        assertThat(bytes[bytes.size - 3]).isEqualTo(0x1D)
+        assertThat(bytes[bytes.size - 2]).isEqualTo(0x56)
+        assertThat(bytes[bytes.size - 1]).isEqualTo(0x01)
     }
 
     @Test

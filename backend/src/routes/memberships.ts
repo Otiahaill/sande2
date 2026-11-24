@@ -2,6 +2,8 @@ import { Context } from 'hono';
 import { CloudflareBindings } from '../types';
 import { createPlatformDB } from '../db/tenant';
 import { hashToken, generateInvitationCode } from '../middleware/auth';
+import { AccountRow } from './db/rows.ts';
+
 
 /**
  * GET /api/memberships
@@ -15,7 +17,7 @@ export async function list(c: Context<{ Bindings: CloudflareBindings; Variables:
 
   // Enrich with account info
   const enriched = await Promise.all(memberships.map(async (m) => {
-    const account = await c.env.DB.prepare('SELECT id, email, display_name, photo_url FROM accounts WHERE id = ?').bind(m.account_id).first();
+    const account = await c.env.DB.prepare('SELECT id, email, display_name, photo_url FROM accounts WHERE id = ?').bind(m.account_id).first<AccountRow>();
     const device = m.device_code ? await platformDB.getDevice(m.device_code) : null;
 
     return {
