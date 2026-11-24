@@ -269,7 +269,7 @@ class PdfReceiptRenderer(private val context: Context) {
     }
 
     private fun formatCurrency(cents: Long, currencyCode: String): String =
-        formatCurrency(cents, currencyCode)
+        com.example.sande.data.receipt.formatCurrency(cents, currencyCode)
 
     /**
      * PrintDocumentAdapter for Android Print framework.

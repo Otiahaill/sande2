@@ -48,7 +48,6 @@ export interface AuditEventRow {
   created_at: number;
   synced: number;
   server_seq: number;
-  FOREIGN: string;
 }
 
 export interface BackupRow {
@@ -61,7 +60,6 @@ export interface BackupRow {
   status: string;
   error: string;
   created_at: number;
-  FOREIGN: string;
 }
 
 export interface BusinessRow {
@@ -125,8 +123,6 @@ export interface DeviceRow {
   push_token: string;
   created_at: number;
   updated_at: number;
-  FOREIGN: string;
-  FOREIGN: string;
 }
 
 export interface InvitationRow {
@@ -140,8 +136,6 @@ export interface InvitationRow {
   accepted_at: number;
   accepted_by: string;
   created_at: number;
-  FOREIGN: string;
-  FOREIGN: string;
 }
 
 export interface MembershipRow {
@@ -160,8 +154,6 @@ export interface MembershipRow {
   server_version: number;
   created_at: number;
   updated_at: number;
-  FOREIGN: string;
-  FOREIGN: string;
 }
 
 export interface OutboxEntryRow {
@@ -178,7 +170,6 @@ export interface OutboxEntryRow {
   updated_at: number;
   synced: number;
   synced_at: number;
-  FOREIGN: string;
 }
 
 export interface PlatformAdminRow {
@@ -188,7 +179,6 @@ export interface PlatformAdminRow {
   permissions_json: string;
   created_at: number;
   created_by: string;
-  FOREIGN: string;
 }
 
 export interface ProductCategoryRow {
@@ -199,7 +189,6 @@ export interface ProductCategoryRow {
   is_active: number;
   created_at: number;
   updated_at: number;
-  FOREIGN: string;
 }
 
 export interface ProductPriceHistoryRow {
@@ -211,8 +200,6 @@ export interface ProductPriceHistoryRow {
   changed_by: string;
   reason: string;
   created_at: number;
-  FOREIGN: string;
-  FOREIGN: string;
 }
 
 export interface ProductRow {
@@ -231,7 +218,6 @@ export interface ProductRow {
   deleted_at: number;
   created_at: number;
   updated_at: number;
-  FOREIGN: string;
 }
 
 export interface ReceiptRow {
@@ -244,8 +230,6 @@ export interface ReceiptRow {
   format: string;
   content_hash: string;
   created_at: number;
-  FOREIGN: string;
-  FOREIGN: string;
 }
 
 export interface RecoveryCodeRow {
@@ -255,8 +239,6 @@ export interface RecoveryCodeRow {
   code_hash: string;
   used_at: number;
   created_at: number;
-  FOREIGN: string;
-  FOREIGN: string;
 }
 
 export interface RefreshTokenRow {
@@ -268,8 +250,6 @@ export interface RefreshTokenRow {
   revoked_at: number;
   replaced_by: string;
   created_at: number;
-  FOREIGN: string;
-  FOREIGN: string;
 }
 
 export interface SaleItemRow {
@@ -283,9 +263,6 @@ export interface SaleItemRow {
   unit_price_cents: number;
   total_cents: number;
   created_at: number;
-  FOREIGN: string;
-  FOREIGN: string;
-  FOREIGN: string;
 }
 
 export interface SaleSessionRow {
@@ -304,7 +281,6 @@ export interface SaleSessionRow {
   updated_at: number;
   synced: number;
   server_seq: number;
-  FOREIGN: string;
 }
 
 export interface StockMovementRow {
@@ -325,8 +301,6 @@ export interface StockMovementRow {
   synced: number;
   server_seq: number;
   running_balance: number;
-  FOREIGN: string;
-  FOREIGN: string;
 }
 
 export interface SupportAccessGrantRow {
@@ -341,8 +315,6 @@ export interface SupportAccessGrantRow {
   revoked_at: number;
   revoked_by: string;
   created_at: number;
-  FOREIGN: string;
-  FOREIGN: string;
 }
 
 export interface SyncBatchRow {
@@ -357,7 +329,6 @@ export interface SyncBatchRow {
   error_summary: string;
   started_at: number;
   completed_at: number;
-  FOREIGN: string;
 }
 
 export interface SyncCursorRow {
@@ -388,5 +359,4 @@ export interface SyncExceptionRow {
   resolved_at: number;
   status: string;
   created_at: number;
-  FOREIGN: string;
 }

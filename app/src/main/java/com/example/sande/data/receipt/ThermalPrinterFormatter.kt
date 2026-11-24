@@ -225,7 +225,7 @@ class ThermalPrinterFormatter {
     }
 
     private fun formatCurrency(cents: Long, currencyCode: String): String =
-        formatCurrency(cents, currencyCode)
+        com.example.sande.data.receipt.formatCurrency(cents, currencyCode)
 
     /**
      * Creates a test print (for printer verification).

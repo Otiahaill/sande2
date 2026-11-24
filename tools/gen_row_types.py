@@ -74,6 +74,9 @@ def parse_tables():
             cols = []
             for line in body.split("\n"):
                 line = line.strip().rstrip(",")
+                # Table constraints are not columns.
+                if re.match(r"(FOREIGN KEY|PRIMARY KEY|UNIQUE|CHECK|CONSTRAINT)\b", line):
+                    continue
                 cm = re.match(
                     r"(\w+)\s+([A-Z]+)(\s+NOT NULL)?(\s+DEFAULT\s+[^\s,]+)?", line
                 )
