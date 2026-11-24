@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.Icon
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -40,7 +41,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
-import Icons.Filled.CheckCircle
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -335,7 +337,8 @@ fun BusinessCard(
                 Text(text = "${membership.role.capitalize()} • ${membership.status}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (isSelected) {
-                Icons.Filled.CheckCircle(
+                Icon(
+                    imageVector = Icons.Filled.CheckCircle,
                     contentDescription = "Selected",
                     tint = MaterialTheme.colorScheme.primary
                 )

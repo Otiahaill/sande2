@@ -43,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
@@ -103,9 +104,9 @@ fun AuditEventsScreen(
                             .padding(16.dp)
                             .width(300.dp),
                         singleLine = true,
-                        onKeyboardAction = { _ ->
+                        keyboardActions = KeyboardActions(onSearch = {
                             vm.search(searchText)
-                        }
+                        })
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

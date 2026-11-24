@@ -35,6 +35,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mail
@@ -56,6 +57,26 @@ fun InvitationAcceptScreen(
     var invitationCode by remember { mutableStateOf("") }
     var isAccepting by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+
+    fun acceptInvitation() {
+        scope.launch {
+            isAccepting = true
+            error = null
+            try {
+                val deviceCode = app.connectionResolver.deviceCode()
+                vm.acceptInvitation(AcceptInvitationRequest(
+                    code = invitationCode.replace(" ", ""),
+                    deviceCode = deviceCode,
+                    deviceName = "Android Device",
+                    deviceType = "android",
+                ))
+            } catch (e: Exception) {
+                error = "Failed to accept invitation: ${e.message}"
+            } finally {
+                isAccepting = false
+            }
+        }
+    }
 
     Column(
         modifier = modifier
@@ -115,10 +136,10 @@ fun InvitationAcceptScreen(
                         androidx.compose.ui.text.input.OffsetMapping.Identity
                     )
                 },
-                onKeyboardAction = { _ ->
+                keyboardActions = KeyboardActions(onDone = {
                     if (invitationCode.replace(" ", "").length == 6) {
                         acceptInvitation()
-                    }
+                    })
                 }
             )
         }
@@ -151,23 +172,5 @@ fun InvitationAcceptScreen(
         }
     }
 
-    fun acceptInvitation() {
-        scope.launch {
-            isAccepting = true
-            error = null
-            try {
-                val deviceCode = app.connectionResolver.deviceCode()
-                vm.acceptInvitation(AcceptInvitationRequest(
-                    code = invitationCode.replace(" ", ""),
-                    deviceCode = deviceCode,
-                    deviceName = "Android Device",
-                    deviceType = "android",
-                ))
-            } catch (e: Exception) {
-                error = "Failed to accept invitation: ${e.message}"
-            } finally {
-                isAccepting = false
-            }
-        }
-    }
+
 }

@@ -10,6 +10,8 @@ import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 /**
  * Signs the user in with Google.
@@ -60,7 +62,9 @@ class GoogleAuthManager(
                     Result.success(
                         GoogleSignInResult(
                             idToken = credential.idToken,
-                            email = credential.email ?: "",
+                            // GoogleIdTokenCredential does not expose the
+                            // email, so it is read from the ID token claims.
+                            email = emailFromIdToken(credential.idToken),
                             displayName = credential.displayName,
                             photoUrl = credential.profilePictureUri?.toString(),
                         )
@@ -76,6 +80,32 @@ class GoogleAuthManager(
                 Result.failure(e)
             }
         }
+
+    /**
+     * Reads the `email` claim out of a Google ID token.
+     *
+     * The token is a JWT, so the claims are the base64url encoded payload in
+     * the middle segment. Returns an empty string when it cannot be read —
+     * the backend verifies the token anyway and gets the email from it.
+     */
+    private fun emailFromIdToken(idToken: String): String {
+        return try {
+            val payload = idToken.split(".")[1]
+            val decoded = String(
+                android.util.Base64.decode(
+                    payload,
+                    android.util.Base64.URL_SAFE or
+                        android.util.Base64.NO_WRAP or
+                        android.util.Base64.NO_PADDING
+                )
+            )
+            val claims = kotlinx.serialization.json.Json.parseToJsonElement(decoded)
+                .jsonObject
+            claims["email"]?.jsonPrimitive?.content ?: ""
+        } catch (e: Exception) {
+            ""
+        }
+    }
 
     /**
      * Signs out.
