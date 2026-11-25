@@ -42,6 +42,19 @@ class GoogleAuthManager(
     suspend fun signInWithCredentialManager(activity: Activity): Result<GoogleSignInResult> =
         withContext(Dispatchers.IO) {
             try {
+                if (serverClientId.isBlank()) {
+                    // Without a server client id the credential provider has
+                    // nothing to match, and Google answers with the very
+                    // unhelpful "No credentials available". Say what is
+                    // actually missing instead.
+                    return@withContext Result.failure(
+                        IllegalStateException(
+                            "Google Sign-In is not configured: no OAuth client ID. " +
+                                "Set it in Settings → Connection."
+                        )
+                    )
+                }
+
                 val googleIdOption = GetGoogleIdOption.Builder()
                     .setServerClientId(serverClientId)
                     .setFilterByAuthorizedAccounts(false)

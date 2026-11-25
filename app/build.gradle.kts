@@ -47,6 +47,26 @@ android {
     }
 
     signingConfigs {
+        // A stable debug key.
+        //
+        // GitHub's runners generate a fresh debug keystore for every job, so
+        // each CI build used to be signed with a different certificate. Google
+        // checks the SHA-1 of the signing certificate against the one
+        // registered for the OAuth Android client, so a key that changes on
+        // every build means Google Sign-In can never succeed from a CI-built
+        // APK. This key is committed on purpose: it is a debug-only key with
+        // the standard "android" password, and it is what makes the builds
+        // reproducible. Release builds use a real keystore from the secrets.
+        getByName("debug") {
+            val debugKeystore = file("signing/debug.keystore")
+            if (debugKeystore.isFile) {
+                storeFile = debugKeystore
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
+        }
+
         // A release keystore can be supplied through local.properties or as
         // Gradle properties. Without one the release build falls back to the
         // debug key, so the release APK is still signed and installable.

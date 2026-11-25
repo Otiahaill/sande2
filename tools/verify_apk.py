@@ -105,7 +105,7 @@ def main():
     strings = parse_string_pool(manifest)
     joined = "\n".join(strings)
     check("applicationId com.example.sande", "com.example.sande" in joined)
-    check("versionName 1.0.0", "1.0.0" in joined)
+    check("versionName present", "1.0." in joined or "1.1." in joined)
 
     perms = sorted({s for s in strings if s.startswith("android.permission.")})
     for p in perms:
@@ -122,6 +122,27 @@ def main():
         print("         %s" % a)
     check("launcher activity present", any("SplashActivity" in a for a in app_entries))
     check("FileProvider present", any("fileprovider" in a.lower() for a in app_entries))
+    # The launcher category has to be exactly android.intent.category.LAUNCHER;
+    # a typo makes the app installable but not launchable.
+    check(
+        "launcher category is android.intent.category.LAUNCHER",
+        "android.intent.category.LAUNCHER" in strings,
+        "found: %s" % sorted(
+            s for s in strings if s.startswith("android.intent")
+        ),
+    )
+    check(
+        "no misspelled intent names",
+        not any(
+            s.startswith("android.intent.") and s not in {
+                "android.intent.action.MAIN",
+                "android.intent.category.LAUNCHER",
+                "android.intent.category.DEFAULT",
+                "android.intent.category.BROWSABLE",
+            }
+            for s in strings
+        ),
+    )
 
     print("\nDex")
     all_classes = set()

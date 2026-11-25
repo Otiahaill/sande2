@@ -4,9 +4,16 @@ export interface CloudflareBindings {
   R2_BACKUPS: R2Bucket;
   SESSION_KV: KVNamespace;
   RATE_LIMIT_KV: KVNamespace;
-  SYNC_COORDINATOR: DurableObjectNamespace;
+  /**
+   * The OAuth client id used to verify Google ID tokens. It is a public
+   * identifier and is configured through `vars` in wrangler.toml.
+   */
   GOOGLE_CLIENT_ID: string;
-  GOOGLE_CLIENT_SECRET: string;
+  /**
+   * The OAuth client secret. The current sign-in flow verifies tokens against
+   * Google's public JWKS and does not need it, so it is optional.
+   */
+  GOOGLE_CLIENT_SECRET?: string;
   JWT_SECRET: string;
   ADMIN_API_KEY: string;
   ENCRYPTION_KEY: string;

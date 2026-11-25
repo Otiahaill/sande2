@@ -5,6 +5,10 @@ compatibility_flags = ["nodejs_compat"]
 
 [vars]
 ENVIRONMENT = "development"
+# The OAuth client id is a public identifier: the backend verifies Google ID
+# tokens against Google's public JWKS with it as the audience, so it does not
+# need the client secret. It is safe to keep in source control.
+GOOGLE_CLIENT_ID = "30937762168-1q32ltfb5co7t0l5763fjn23dv2rtsbq.apps.googleusercontent.com"
 
 [dev]
 port = 8787
@@ -27,10 +31,13 @@ id = "32df0f0153674c059656882dd8eeb9c2"
 binding = "RATE_LIMIT_KV"
 id = "c7bf7ad612d64de5aafc09269023fd1b"
 
-[durable_objects]
-bindings = [
-  { name = "SYNC_COORDINATOR", class_name = "SyncCoordinator" }
-]
+# NOTE: there is no durable object or workflow binding. The scheduled work
+# (backups, clean-ups, lease expiry) runs through the cron triggers below
+# and `handleScheduled` in src/scheduled.ts. The previous configuration
+# declared a `SYNC_COORDINATOR` durable object and a `backup-workflow`
+# workflow whose classes do not exist in the Worker source, which made
+# `wrangler deploy` fail with
+#   The field "workflows" should be an array but got {...}
 
 [observability]
 enabled = true
@@ -42,15 +49,10 @@ crons = [
   { name = "lease-expiry-check", schedule = "0 */6 * * *" }
 ]
 
-[workflows]
-[[workflows.bindings]]
-name = "backup-workflow"
-class_name = "BackupWorkflow"
-
 # Staging environment
 [env.staging]
 name = "sande-backend-staging"
-vars = { ENVIRONMENT = "staging" }
+vars = { ENVIRONMENT = "staging", GOOGLE_CLIENT_ID = "30937762168-1q32ltfb5co7t0l5763fjn23dv2rtsbq.apps.googleusercontent.com" }
 
 [[env.staging.d1_databases]]
 binding = "DB"
@@ -72,7 +74,7 @@ id = "PLACEHOLDER_STAGING_RATE_LIMIT_KV_ID"
 # Production environment
 [env.production]
 name = "sande-backend-prod"
-vars = { ENVIRONMENT = "production" }
+vars = { ENVIRONMENT = "production", GOOGLE_CLIENT_ID = "30937762168-1q32ltfb5co7t0l5763fjn23dv2rtsbq.apps.googleusercontent.com" }
 
 [[env.production.d1_databases]]
 binding = "DB"
