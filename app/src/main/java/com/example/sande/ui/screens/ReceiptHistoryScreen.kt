@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,12 +42,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.input.VisualTransformationKt
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.sande.data.receipt.PdfReceiptRenderer
 import com.example.sande.data.receipt.ReceiptData
@@ -57,6 +57,8 @@ import com.example.sande.ui.viewModelFactoryOf
 import com.example.sande.ui.viewmodel.ReceiptHistoryViewModel
 import kotlinx.coroutines.launch
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,12 +69,13 @@ fun ReceiptHistoryScreen(
     val context = LocalContext.current
     val app = context.applicationContext as SandeApplication
     val vm: ReceiptHistoryViewModel = viewModel(
-        factory = viewModelFactoryOf { ReceiptHistoryViewModel(app.receiptRepository) }
+        factory = viewModelFactoryOf { ReceiptHistoryViewModel(app.receiptRepository, app.checkoutRepository, app.settings) }
     )
 
     val receipts by vm.receipts.collectAsState()
     val isLoading by vm.isLoading.collectAsState()
-    val searchQuery by vm.searchQuery
+    val notice by vm.notice.collectAsState()
+    val searchQuery by vm.searchQuery.collectAsState()
     var searchText by remember { mutableStateOf("") }
 
     val scope = rememberCoroutineScope()
@@ -93,15 +96,15 @@ fun ReceiptHistoryScreen(
                         label = { Text("Search receipts...") },
                         leadingIcon = { Icon(Icons.Filled.Search, contentDescription = "Search") },
                         keyboardOptions = KeyboardOptions.Default,
-                        visualTransformation = VisualTransformationKt.None,
+                        visualTransformation = VisualTransformation.None,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(16.dp)
                             .width(300.dp),
                         singleLine = true,
-                        onKeyboardAction = { _ ->
+                        keyboardActions = KeyboardActions(onSearch = {
                             vm.search(searchText)
-                        }
+                        })
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -116,6 +119,16 @@ fun ReceiptHistoryScreen(
                 .padding(innerPadding)
                 .padding(16.dp)
         ) {
+            // Result of the last void action.
+            notice?.let { message ->
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(8.dp))
+            }
+
             if (isLoading) {
                 androidx.compose.material3.CircularProgressIndicator(
                     modifier = Modifier
@@ -139,7 +152,7 @@ fun ReceiptHistoryScreen(
                     items(receipts) { receiptData ->
                         ReceiptHistoryItem(
                             receiptData = receiptData,
-                            onReprint = { scope.launch { vm.reprint(receiptData) } },
+                            onReprint = { scope.launch { vm.reprint(receiptData, context) } },
                             onShare = { scope.launch { vm.share(receiptData, context) } },
                             onDelete = { vm.delete(receiptData) }
                         )
@@ -227,12 +240,18 @@ fun ReceiptHistoryItem(
                 horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)
             ) {
                 Button(onClick = onReprint) {
-                    androidx.compose.material.icons.filled.Print
+                    androidx.compose.material3.Icon(
+                        imageVector = Icons.Filled.Print,
+                        contentDescription = "Reprint"
+                    )
                     androidx.compose.foundation.layout.Spacer(modifier = Modifier.width(8.dp))
                     Text("Reprint")
                 }
                 Button(onClick = onShare) {
-                    androidx.compose.material.icons.filled.Share
+                    androidx.compose.material3.Icon(
+                        imageVector = Icons.Filled.Share,
+                        contentDescription = "Share"
+                    )
                     androidx.compose.foundation.layout.Spacer(modifier = Modifier.width(8.dp))
                     Text("Share")
                 }
@@ -250,7 +269,5 @@ fun ReceiptHistoryItem(
     }
 }
 
-private fun formatCurrency(cents: Long): String {
-    val amount = cents / 100.0
-    return java.text.NumberFormat.getCurrencyInstance(java.util.Locale.getDefault()).format(amount)
-}
+private fun formatCurrency(cents: Long): String =
+    com.example.sande.data.receipt.formatCurrency(cents)

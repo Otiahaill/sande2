@@ -371,6 +371,16 @@ private fun AppNavHost(navController: NavHostController, onOpenDrawer: () -> Uni
                     navController.navigate(Routes.SIGN_IN) {
                         popUpTo(Routes.BUSINESS_RESOLUTION) { inclusive = true }
                     }
+                },
+                onRegisterComplete = {
+                    navController.navigate(Routes.RECOVERY_CODES) {
+                        popUpTo(Routes.BUSINESS_RESOLUTION) { inclusive = true }
+                    }
+                },
+                onSkip = {
+                    navController.navigate(Routes.DASHBOARD) {
+                        popUpTo(Routes.BUSINESS_RESOLUTION) { inclusive = true }
+                    }
                 }
             )
         }

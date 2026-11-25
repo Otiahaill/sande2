@@ -25,7 +25,7 @@ import com.example.sande.data.repository.OutboxEntryRepository
 import com.example.sande.data.repository.OutboxRepository
 import com.example.sande.data.repository.ProductPriceHistoryRepository
 import com.example.sande.data.repository.ProductRepository
-import com.example.sande.data.repository.ReceiptRepository
+import com.example.sande.data.receipt.ReceiptRepository
 import com.example.sande.data.repository.SaleHeaderRepository
 import com.example.sande.data.repository.SaleItemRepository
 import com.example.sande.data.repository.SaleSessionRepository
@@ -34,6 +34,14 @@ import com.example.sande.data.repository.SyncCursorRepository
 import com.example.sande.data.repository.SyncExceptionRepository
 
 class SandeApplication : Application() {
+
+    override fun onCreate() {
+        super.onCreate()
+        // Records any unhandled exception so a startup crash is visible
+        // instead of the app disappearing without a trace.
+        com.example.sande.ui.StartupCrashHandler.install(this)
+    }
+
     val settings: AppSettings by lazy {
         AppSettings(this)
     }

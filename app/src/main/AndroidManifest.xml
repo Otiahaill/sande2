@@ -4,6 +4,16 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <!-- Thermal receipt printers. BLUETOOTH_CONNECT is required from API 31
+         onwards; the legacy permissions cover API 26-30 (the app's minSdk). -->
+    <uses-permission
+        android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_ADMIN"
+        android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+
     <application
         android:name=".di.SandeApplication"
         android:allowBackup="false"
@@ -19,7 +29,12 @@
             android:theme="@style/Theme.Sande.Splash">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.LAUNCHER" />
+                <!-- The category must be android.intent.category.LAUNCHER.
+                     Without the "category." part Android does not treat this
+                     activity as a launcher entry: the app installs, but it
+                     never appears in the app drawer and Settings offers no
+                     way to open it. -->
+                <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 

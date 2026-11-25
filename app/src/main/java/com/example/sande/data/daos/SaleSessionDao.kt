@@ -26,6 +26,10 @@ interface SaleSessionDao {
     @Query("SELECT * FROM sale_sessions WHERE id = :id")
     suspend fun getById(id: String): SaleSession?
 
+    /** Observes a single sale session; used where the UI follows changes. */
+    @Query("SELECT * FROM sale_sessions WHERE id = :id")
+    fun observeById(id: String): Flow<SaleSession?>
+
     @Query("SELECT * FROM sale_sessions WHERE businessId = :businessId ORDER BY createdAt DESC")
     fun getByBusiness(businessId: String): Flow<List<SaleSession>>
 

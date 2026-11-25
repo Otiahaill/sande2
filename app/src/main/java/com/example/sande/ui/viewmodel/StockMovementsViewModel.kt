@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.asStateFlow
 
 class StockMovementsViewModel(
     private val stockMovementRepository: StockMovementRepository
@@ -47,9 +48,9 @@ class StockMovementsViewModel(
                 val lowerQuery = query.lowercase()
                 filtered = filtered.filter { movement ->
                     movement.productId.lowercase().contains(lowerQuery) ||
-                    movement.referenceId?.lowercase().contains(lowerQuery) == true ||
-                    movement.reason?.lowercase().contains(lowerQuery) == true ||
-                    movement.actorId.lowercase().contains(lowerQuery)
+                    movement.referenceId?.lowercase()?.contains(lowerQuery) == true ||
+                    movement.reason?.lowercase()?.contains(lowerQuery) == true ||
+                    movement.actorId?.lowercase()?.contains(lowerQuery) == true
                 }
             }
 

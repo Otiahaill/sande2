@@ -1,6 +1,10 @@
 import { Context } from 'hono';
 import { CloudflareBindings } from '../types';
-import { createPlatformDB } from '../db/tenant';
+import { createPlatformDB, rows } from '../db/tenant';
+import { AccountRow, BackupRow, DeviceRow, SyncBatchRow, SyncCursorRow, SyncExceptionRow } from '../db/rows';
+
+
+
 
 /**
  * GET /admin/businesses
@@ -15,7 +19,7 @@ export async function listBusinesses(c: Context<{ Bindings: CloudflareBindings }
   const businesses = await platformDB.listBusinesses(status);
 
   // Apply pagination manually (D1 doesn't support OFFSET in all cases)
-  const paginated = businesses.results.slice(offset, offset + limit);
+  const paginated = businesses.slice(offset, offset + limit);
 
   return c.json({
     success: true,
@@ -23,8 +27,8 @@ export async function listBusinesses(c: Context<{ Bindings: CloudflareBindings }
     pagination: {
       limit,
       offset,
-      total: businesses.results.length,
-      hasMore: offset + limit < businesses.results.length,
+      total: businesses.length,
+      hasMore: offset + limit < businesses.length,
     }
   });
 }
@@ -35,6 +39,9 @@ export async function listBusinesses(c: Context<{ Bindings: CloudflareBindings }
  */
 export async function getBusiness(c: Context<{ Bindings: CloudflareBindings }>) {
   const businessId = c.req.param('businessId');
+  if (!businessId) {
+    return c.json({ success: false, error: { code: '400', message: 'businessId is required' } }, 400);
+  }
   const platformDB = createPlatformDB(c.env.DB);
 
   const business = await platformDB.getBusiness(businessId);
@@ -48,8 +55,8 @@ export async function getBusiness(c: Context<{ Bindings: CloudflareBindings }>) 
   // Get memberships
   const memberships = await platformDB.getMembershipsByBusiness(businessId);
   const enrichedMemberships = await Promise.all(memberships.map(async (m) => {
-    const account = await c.env.DB.prepare('SELECT id, email, display_name FROM accounts WHERE id = ?').bind(m.account_id).first();
-    const device = m.device_code ? await c.env.DB.prepare('SELECT * FROM devices WHERE device_code = ?').bind(m.device_code).first() : null;
+    const account = await c.env.DB.prepare('SELECT id, email, display_name FROM accounts WHERE id = ?').bind(m.account_id).first<AccountRow>();
+    const device = m.device_code ? await c.env.DB.prepare('SELECT * FROM devices WHERE device_code = ?').bind(m.device_code).first<DeviceRow>() : null;
     return {
       ...m,
       account_email: account?.email,
@@ -60,32 +67,32 @@ export async function getBusiness(c: Context<{ Bindings: CloudflareBindings }>) 
   }));
 
   // Get devices
-  const devices = await c.env.DB.prepare('SELECT * FROM devices WHERE business_id = ?').bind(businessId).all();
+  const devices = await rows<DeviceRow>( c.env.DB.prepare('SELECT * FROM devices WHERE business_id = ?').bind(businessId).all<DeviceRow>());
 
   // Get sync health
-  const syncBatches = await c.env.DB.prepare(
+  const syncBatches = await rows<SyncBatchRow>( c.env.DB.prepare(
     `SELECT * FROM sync_batches WHERE business_id = ? ORDER BY started_at DESC LIMIT 10`
-  ).bind(businessId).all();
+  ).bind(businessId).all<SyncBatchRow>());
 
   // Get open exceptions
-  const exceptions = await c.env.DB.prepare(
+  const exceptions = await rows<SyncExceptionRow>( c.env.DB.prepare(
     `SELECT * FROM sync_exceptions WHERE business_id = ? AND status = 'open' ORDER BY created_at DESC LIMIT 20`
-  ).bind(businessId).all();
+  ).bind(businessId).all<SyncExceptionRow>());
 
   // Get backup status
-  const backups = await c.env.DB.prepare(
+  const backups = await rows<BackupRow>( c.env.DB.prepare(
     `SELECT * FROM backups WHERE business_id = ? ORDER BY created_at DESC LIMIT 5`
-  ).bind(businessId).all();
+  ).bind(businessId).all<BackupRow>());
 
   return c.json({
     success: true,
     data: {
       business,
       memberships: enrichedMemberships,
-      devices: devices.results,
-      recent_sync_batches: syncBatches.results,
-      open_exceptions: exceptions.results,
-      recent_backups: backups.results,
+      devices: devices,
+      recent_sync_batches: syncBatches,
+      open_exceptions: exceptions,
+      recent_backups: backups,
     }
   });
 }
@@ -96,6 +103,9 @@ export async function getBusiness(c: Context<{ Bindings: CloudflareBindings }>) 
  */
 export async function updateBusinessStatus(c: Context<{ Bindings: CloudflareBindings }>) {
   const businessId = c.req.param('businessId');
+  if (!businessId) {
+    return c.json({ success: false, error: { code: '400', message: 'businessId is required' } }, 400);
+  }
   const body = await c.req.json<{ status: 'active' | 'suspended' | 'deleted'; reason?: string }>();
   const platformDB = createPlatformDB(c.env.DB);
 
@@ -147,11 +157,14 @@ export async function updateBusinessStatus(c: Context<{ Bindings: CloudflareBind
  */
 export async function listBusinessDevices(c: Context<{ Bindings: CloudflareBindings }>) {
   const businessId = c.req.param('businessId');
+  if (!businessId) {
+    return c.json({ success: false, error: { code: '400', message: 'businessId is required' } }, 400);
+  }
   const platformDB = createPlatformDB(c.env.DB);
 
   const devices = await platformDB.getDevicesByBusiness(businessId);
   const enriched = await Promise.all(devices.map(async (d) => {
-    const account = await c.env.DB.prepare('SELECT id, email, display_name FROM accounts WHERE id = ?').bind(d.account_id).first();
+    const account = await c.env.DB.prepare('SELECT id, email, display_name FROM accounts WHERE id = ?').bind(d.account_id).first<AccountRow>();
     const membership = await platformDB.getMembership(businessId, d.account_id);
     return {
       ...d,
@@ -173,7 +186,13 @@ export async function listBusinessDevices(c: Context<{ Bindings: CloudflareBindi
  */
 export async function adminDeviceAction(c: Context<{ Bindings: CloudflareBindings }>) {
   const businessId = c.req.param('businessId');
+  if (!businessId) {
+    return c.json({ success: false, error: { code: '400', message: 'businessId is required' } }, 400);
+  }
   const deviceCode = c.req.param('deviceCode');
+  if (!deviceCode) {
+    return c.json({ success: false, error: { code: '400', message: 'deviceCode is required' } }, 400);
+  }
   const body = await c.req.json<{ action: 'revoke' | 'force_approve' | 'replace'; reason?: string }>();
 
   const platformDB = createPlatformDB(c.env.DB);
@@ -225,27 +244,30 @@ export async function adminDeviceAction(c: Context<{ Bindings: CloudflareBinding
  */
 export async function getSyncHealth(c: Context<{ Bindings: CloudflareBindings }>) {
   const businessId = c.req.param('businessId');
+  if (!businessId) {
+    return c.json({ success: false, error: { code: '400', message: 'businessId is required' } }, 400);
+  }
   const now = Date.now();
   const dayAgo = now - 24 * 60 * 60 * 1000;
 
   // Recent sync batches
-  const batches = await c.env.DB.prepare(
+  const batches = await rows<SyncBatchRow>( c.env.DB.prepare(
     `SELECT * FROM sync_batches WHERE business_id = ? AND started_at > ? ORDER BY started_at DESC`
-  ).bind(businessId, dayAgo).all();
+  ).bind(businessId, dayAgo).all<SyncBatchRow>());
 
   // Sync exceptions
-  const exceptions = await c.env.DB.prepare(
+  const exceptions = await rows<SyncExceptionRow>( c.env.DB.prepare(
     `SELECT exception_type, COUNT(*) as count FROM sync_exceptions WHERE business_id = ? AND status = 'open' GROUP BY exception_type`
-  ).bind(businessId).all();
+  ).bind(businessId).all<SyncExceptionRow>());
 
   // Devices with pending push
-  const cursors = await c.env.DB.prepare(
+  const cursors = await rows<SyncCursorRow>( c.env.DB.prepare(
     `SELECT device_code, cursor, last_pull_at, last_push_at, pending_push_count FROM sync_cursors WHERE business_id = ?`
-  ).bind(businessId).all();
+  ).bind(businessId).all<SyncCursorRow>());
 
   // Calculate health metrics
-  const totalBatches = batches.results.length;
-  const failedBatches = batches.results.filter((b: any) => b.status === 'failed').length;
+  const totalBatches = batches.length;
+  const failedBatches = batches.filter((b: any) => b.status === 'failed').length;
   const successRate = totalBatches > 0 ? ((totalBatches - failedBatches) / totalBatches * 100).toFixed(1) : '100';
 
   return c.json({
@@ -256,8 +278,8 @@ export async function getSyncHealth(c: Context<{ Bindings: CloudflareBindings }>
         total_batches_24h: totalBatches,
         failed_batches_24h: failedBatches,
         success_rate: `${successRate}%`,
-        open_exceptions: exceptions.results,
-        device_cursors: cursors.results,
+        open_exceptions: exceptions,
+        device_cursors: cursors,
       }
     }
   });
@@ -269,16 +291,19 @@ export async function getSyncHealth(c: Context<{ Bindings: CloudflareBindings }>
  */
 export async function getBusinessExceptions(c: Context<{ Bindings: CloudflareBindings }>) {
   const businessId = c.req.param('businessId');
+  if (!businessId) {
+    return c.json({ success: false, error: { code: '400', message: 'businessId is required' } }, 400);
+  }
   const status = c.req.query('status') || 'open';
   const limit = Math.min(parseInt(c.req.query('limit') || '100', 10), 500);
 
-  const exceptions = await c.env.DB.prepare(
+  const exceptions = await rows<SyncExceptionRow>( c.env.DB.prepare(
     `SELECT * FROM sync_exceptions WHERE business_id = ? AND status = ? ORDER BY created_at DESC LIMIT ?`
-  ).bind(businessId, status, limit).all();
+  ).bind(businessId, status, limit).all<SyncExceptionRow>());
 
   return c.json({
     success: true,
-    data: exceptions.results
+    data: exceptions
   });
 }
 
@@ -324,19 +349,19 @@ export async function getPlatformMonitoring(c: Context<{ Bindings: CloudflareBin
   // D1 doesn't expose storage metrics directly via SQL
   // This would typically come from Cloudflare API or be tracked separately
 
-  const errors = await c.env.DB.prepare(
+  const errors = await rows<SyncBatchRow>( c.env.DB.prepare(
     `SELECT operation, COUNT(*) as count FROM sync_batches WHERE status = 'failed' AND started_at > ? GROUP BY operation`
-  ).bind(Date.now() - 24 * 60 * 60 * 1000).all();
+  ).bind(Date.now() - 24 * 60 * 60 * 1000).all<SyncBatchRow>());
 
-  const exceptionTypes = await c.env.DB.prepare(
+  const exceptionTypes = await rows<SyncExceptionRow>( c.env.DB.prepare(
     `SELECT exception_type, COUNT(*) as count FROM sync_exceptions WHERE status = 'open' AND created_at > ? GROUP BY exception_type`
-  ).bind(Date.now() - 24 * 60 * 60 * 1000).all();
+  ).bind(Date.now() - 24 * 60 * 60 * 1000).all<SyncExceptionRow>());
 
   return c.json({
     success: true,
     data: {
-      sync_errors_24h: errors.results,
-      exception_types_24h: exceptionTypes.results,
+      sync_errors_24h: errors,
+      exception_types_24h: exceptionTypes,
       // These would come from Cloudflare Analytics API in production
       d1_storage_mb: 'N/A (via Cloudflare API)',
       d1_rows_read_24h: 'N/A (via Cloudflare API)',
@@ -368,11 +393,11 @@ export async function getAuditLog(c: Context<{ Bindings: CloudflareBindings }>) 
   query += ' ORDER BY server_seq DESC LIMIT ? OFFSET ?';
   params.push(limit, offset);
 
-  const audit = await c.env.DB.prepare(query).bind(...params).all();
+  const audit = await rows( c.env.DB.prepare(query).bind(...params).all());
 
   return c.json({
     success: true,
-    data: audit.results,
+    data: audit,
     pagination: { limit, offset }
   });
 }

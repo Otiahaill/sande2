@@ -2,10 +2,13 @@ package com.example.sande.data.repository
 
 import com.example.sande.data.db.AppDatabase
 import com.example.sande.data.daos.AuditEventDao
+import com.example.sande.data.daos.OutboxEntryDao
 import com.example.sande.data.daos.ProductDao
 import com.example.sande.data.entities.AuditEvent
+import com.example.sande.data.entities.OutboxEntry
 import com.example.sande.data.entities.Product
 import com.example.sande.data.entities.ProductPriceHistory
+import com.example.sande.data.sync.OutboxPayloadSerializer
 import kotlinx.coroutines.flow.Flow
 import java.util.UUID
 
@@ -15,6 +18,7 @@ class ProductRepository constructor(
     private val dao: ProductDao = database.productDao()
     private val priceHistoryDao = database.productPriceHistoryDao()
     private val auditEventDao: AuditEventDao = database.auditEventDao()
+    private val outboxEntryDao: OutboxEntryDao = database.outboxEntryDao()
 
     val getAllActive: Flow<List<Product>> = dao.getAllActive()
 
@@ -22,15 +26,59 @@ class ProductRepository constructor(
         dao.getAllActiveByBusiness(businessId)
     }
 
-    suspend fun insert(product: Product) = dao.insert(product)
+    /**
+     * Inserts a product and queues it for sync.
+     *
+     * The operation is `create` for a brand-new product and `update` when the
+     * product already existed — the form screen uses this one method for both.
+     */
+    suspend fun insert(product: Product) {
+        val isNew = dao.getById(product.id) == null
+        dao.insert(product)
+        enqueueProductSync(product, if (isNew) "create" else "update")
+    }
 
     suspend fun insertAll(products: List<Product>) = dao.insertAll(products)
+
+    /**
+     * Queues a product change for the sync outbox.
+     *
+     * Without this the backend never learns about product edits made on this
+     * device: the outbox is the only channel the sync worker uses.
+     */
+    private suspend fun enqueueProductSync(
+        product: Product,
+        operation: String,
+        businessId: String = product.businessId
+    ) {
+        val now = System.currentTimeMillis()
+        outboxEntryDao.insert(
+            OutboxEntry(
+                id = "ob_${UUID.randomUUID()}",
+                businessId = businessId,
+                entityType = "product",
+                entityId = product.id,
+                operation = operation,
+                payloadJson = OutboxPayloadSerializer.serialize(product),
+                batchId = null,
+                attemptCount = 0,
+                lastError = null,
+                createdAt = now,
+                updatedAt = now,
+                synced = false,
+                syncedAt = 0
+            )
+        )
+    }
 
     suspend fun getById(id: String): Product? = dao.getById(id)
 
     suspend fun getByIdNotDeleted(id: String): Product? = dao.getByIdNotDeleted(id)
 
-    suspend fun update(product: Product) = dao.update(product)
+    suspend fun update(product: Product) {
+        dao.update(product)
+        enqueueProductSync(product, "update")
+    }
 
     /**
      * Updates product price and records the change in price history and audit log.
@@ -83,6 +131,8 @@ class ProductRepository constructor(
             synced = false
         ))
 
+        enqueueProductSync(updated, "update", businessId)
+
         return updated
     }
 
@@ -100,12 +150,13 @@ class ProductRepository constructor(
             actorRole = actorRole,
             deviceCode = deviceCode,
             severity = "info",
-            beforeJson = existing.toString(),
+            beforeJson = OutboxPayloadSerializer.serialize(existing),
             afterJson = "archived",
             metadataJson = null,
             createdAt = now,
             synced = false
         ))
+        enqueueProductSync(existing.copy(archivedAt = now, updatedAt = now), "update", businessId)
     }
 
     suspend fun softDelete(id: String, actorId: String, actorRole: String, deviceCode: String, businessId: String) {
@@ -122,12 +173,14 @@ class ProductRepository constructor(
             actorRole = actorRole,
             deviceCode = deviceCode,
             severity = "warning",
-            beforeJson = existing.toString(),
+            beforeJson = OutboxPayloadSerializer.serialize(existing),
             afterJson = "deleted",
             metadataJson = null,
             createdAt = now,
             synced = false
         ))
+        // The backend maps a "delete" operation onto a soft delete as well.
+        enqueueProductSync(existing.copy(deletedAt = now, updatedAt = now), "delete", businessId)
     }
 
     suspend fun setActive(id: String, isActive: Boolean, actorId: String, actorRole: String, deviceCode: String, businessId: String) {
@@ -144,12 +197,13 @@ class ProductRepository constructor(
             actorRole = actorRole,
             deviceCode = deviceCode,
             severity = "info",
-            beforeJson = existing.toString(),
+            beforeJson = OutboxPayloadSerializer.serialize(existing),
             afterJson = "isActive=$isActive",
             metadataJson = null,
             createdAt = now,
             synced = false
         ))
+        enqueueProductSync(existing.copy(isActive = isActive, updatedAt = now), "update", businessId)
     }
 
     fun getByCategory(category: String): Flow<List<Product>> = dao.getByCategory(category)

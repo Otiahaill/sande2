@@ -13,6 +13,7 @@ import com.example.sande.data.remote.DeviceRegistrationRequest
 import com.example.sande.data.remote.GoogleAuthRequest
 import com.example.sande.data.remote.RefreshTokenRequest
 import com.example.sande.data.remote.Result
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -93,41 +94,53 @@ class SessionManager(
 
     /**
      * Checks for existing valid session on app start.
+     *
+     * Any failure here is reported through [AuthState.UNAUTHENTICATED] instead
+     * of being thrown: this runs from the constructor, so an exception would
+     * escape into the composition and kill the app before it draws anything.
      */
     fun checkSession() {
         scope.launch {
             _authState.value = AuthState.AUTHENTICATING
 
-            val tokens = tokenManager.getTokens()
+            try {
+                val tokens = tokenManager.getTokens()
 
-            if (tokens != null && tokens.isRefreshTokenValid()) {
-                if (tokens.isAccessTokenValid()) {
-                    // Session is fully valid
-                    _authState.value = AuthState.AUTHENTICATED(tokens)
-                    startTokenRefreshLoop(tokens)
-                    startLeaseMonitoring()
-                    updateLeaseState(tokens.refreshTokenExpiry)
-                } else {
-                    // Access token expired, try refresh
-                    when (val refreshed = refreshAccessToken(tokens.refreshToken)) {
-                        is Result.Success -> {
-                            _authState.value = AuthState.AUTHENTICATED(refreshed.value)
-                            startTokenRefreshLoop(refreshed.value)
-                            startLeaseMonitoring()
-                            updateLeaseState(refreshed.value.refreshTokenExpiry)
-                        }
-                        is Result.Failure -> {
-                            // Refresh failed, need full re-auth
-                            _authState.value = AuthState.UNAUTHENTICATED
+                if (tokens != null && tokens.isRefreshTokenValid()) {
+                    if (tokens.isAccessTokenValid()) {
+                        // Session is fully valid
+                        _authState.value = AuthState.AUTHENTICATED(tokens)
+                        startTokenRefreshLoop(tokens)
+                        startLeaseMonitoring()
+                        updateLeaseState(tokens.refreshTokenExpiry)
+                    } else {
+                        // Access token expired, try refresh
+                        when (val refreshed = refreshAccessToken(tokens.refreshToken)) {
+                            is Result.Success -> {
+                                _authState.value = AuthState.AUTHENTICATED(refreshed.value)
+                                startTokenRefreshLoop(refreshed.value)
+                                startLeaseMonitoring()
+                                updateLeaseState(refreshed.value.refreshTokenExpiry)
+                            }
+                            is Result.Failure -> {
+                                // Refresh failed, need full re-auth
+                                _authState.value = AuthState.UNAUTHENTICATED
+                            }
                         }
                     }
+                } else if (tokens != null && !tokens.isRefreshTokenValid()) {
+                    // Lease expired
+                    _authState.value = AuthState.UNAUTHENTICATED
+                    _leaseState.value = LeaseState.EXPIRED
+                } else {
+                    // No tokens
+                    _authState.value = AuthState.UNAUTHENTICATED
+                    _leaseState.value = LeaseState.UNKNOWN
                 }
-            } else if (tokens != null && !tokens.isRefreshTokenValid()) {
-                // Lease expired
-                _authState.value = AuthState.UNAUTHENTICATED
-                _leaseState.value = LeaseState.EXPIRED
-            } else {
-                // No tokens
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                android.util.Log.e("SessionManager", "Could not restore the session", e)
                 _authState.value = AuthState.UNAUTHENTICATED
                 _leaseState.value = LeaseState.UNKNOWN
             }

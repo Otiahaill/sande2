@@ -1,6 +1,8 @@
 import { Context } from 'hono';
 import { CloudflareBindings } from '../types';
 import { createTenantDB } from '../db/tenant';
+import { BusinessProfileRow } from '../db/rows';
+
 
 /**
  * GET /api/business/me
@@ -115,7 +117,7 @@ export async function getProfile(c: Context<{ Bindings: CloudflareBindings; Vari
   // Get business profile from tenant DB
   const profile = await c.env.DB.prepare(
     `SELECT * FROM business_profiles WHERE business_id = ?`
-  ).bind(context.businessId).first();
+  ).bind(context.businessId).first<BusinessProfileRow>();
 
   if (!profile) {
     return c.json({

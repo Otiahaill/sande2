@@ -1,5 +1,22 @@
 import { D1Database, D1PreparedStatement } from '@cloudflare/workers-types';
 import { BusinessContext, OutboxEntry, SyncCursor, SyncException, ChangeLogEntry } from '../types';
+import { AccountRow, AppVersionRow, BusinessRow, DeviceRow, InvitationRow, MembershipRow, PlatformAdminRow, RecoveryCodeRow, RefreshTokenRow, SaleItemRow, SaleSessionRow, SupportAccessGrantRow } from './rows';
+
+
+
+/**
+ * Unwraps the rows from a D1 result.
+ *
+ * `D1PreparedStatement.all()` resolves to a `D1Result`; the rows themselves
+ * are in `.results`. Code that wants the rows uses this helper so the
+ * distinction is explicit.
+ */
+export async function rows<T = Record<string, unknown>>(
+  result: Promise<D1Result<T>>
+): Promise<T[]> {
+  return (await result).results;
+}
+
 
 /**
  * Tenant-scoped database access layer.
@@ -75,7 +92,7 @@ export class TenantDB {
     if (activeOnly) {
       query = query.bind('is_active = 1 AND deleted_at = 0');
     }
-    return query.all();
+    return rows( query.all());
   }
 
   async createProduct(data: {
@@ -222,7 +239,7 @@ export class TenantDB {
       query = query.bind(`OFFSET ${filters.offset}`);
     }
 
-    return query.all();
+    return rows( query.all());
   }
 
   // Sale Sessions
@@ -296,7 +313,7 @@ export class TenantDB {
       query = query.bind(`OFFSET ${filters.offset}`);
     }
 
-    return query.all();
+    return rows( query.all());
   }
 
   // Sale Items
@@ -324,7 +341,7 @@ export class TenantDB {
   }
 
   async getSaleItems(sessionId: string) {
-    return this.select('*', 'sale_items').bind('session_id = ?', sessionId).all();
+    return rows( this.select('*', 'sale_items').bind('session_id = ?', sessionId).all());
   }
 
   // Receipts
@@ -455,7 +472,7 @@ export class TenantDB {
       query = query.bind(`OFFSET ${filters.offset}`);
     }
 
-    return query.all();
+    return rows( query.all());
   }
 
   // Outbox Entries
@@ -471,17 +488,17 @@ export class TenantDB {
   }
 
   async getUnsyncedOutboxEntries(limit = 100) {
-    return this.select('*', 'outbox_entries')
+    return rows( this.select('*', 'outbox_entries')
       .bind('synced = 0')
       .bind('ORDER BY created_at ASC')
       .bind(`LIMIT ${limit}`)
-      .all();
+      .all());
   }
 
   async getOutboxEntriesByBatch(batchId: string) {
-    return this.select('*', 'outbox_entries')
+    return rows( this.select('*', 'outbox_entries')
       .bind('batch_id = ?', batchId)
-      .all();
+      .all());
   }
 
   async markOutboxSynced(ids: string[]) {
@@ -570,7 +587,7 @@ export class TenantDB {
       query = query.bind(`OFFSET ${filters.offset}`);
     }
 
-    return query.all();
+    return rows( query.all());
   }
 
   async resolveSyncException(id: string, resolution: 'local_wins' | 'server_wins' | 'manual' | 'pending', resolvedBy: string) {
@@ -639,7 +656,7 @@ export class TenantDB {
       query = query.bind(`LIMIT ${filters.limit}`);
     }
 
-    return query.all();
+    return rows( query.all());
   }
 
   // Reports
@@ -654,7 +671,7 @@ export class TenantDB {
   }
 
   async getTopProducts(startDate: number, endDate: number, limit = 10) {
-    return this.db.prepare(`
+    return rows<SaleItemRow>( this.db.prepare(`
       SELECT si.product_id, si.product_name, SUM(si.quantity) as quantity_sold, SUM(si.total_cents) as revenue
       FROM sale_items si
       JOIN sale_sessions ss ON si.session_id = ss.id
@@ -662,11 +679,11 @@ export class TenantDB {
       GROUP BY si.product_id, si.product_name
       ORDER BY revenue DESC
       LIMIT ?
-    `).bind(this.context.businessId, startDate, endDate, limit).all();
+    `).bind(this.context.businessId, startDate, endDate, limit).all<SaleItemRow>());
   }
 
   async getSalesByHour(startDate: number, endDate: number) {
-    return this.db.prepare(`
+    return rows<SaleSessionRow>( this.db.prepare(`
       SELECT
         CAST(strftime('%H', datetime(created_at / 1000, 'unixepoch', '${this.getTimezone()}')) AS INTEGER) as hour,
         COUNT(*) as count,
@@ -675,17 +692,17 @@ export class TenantDB {
       WHERE business_id = ? AND status = 'completed' AND created_at BETWEEN ? AND ?
       GROUP BY hour
       ORDER BY hour
-    `).bind(this.context.businessId, startDate, endDate).all();
+    `).bind(this.context.businessId, startDate, endDate).all<SaleSessionRow>());
   }
 
   async getSalesByCashier(startDate: number, endDate: number) {
-    return this.db.prepare(`
+    return rows<SaleSessionRow>( this.db.prepare(`
       SELECT salesperson_id, salesperson_role, COUNT(*) as count, COALESCE(SUM(total_cents), 0) as total
       FROM sale_sessions
       WHERE business_id = ? AND status = 'completed' AND created_at BETWEEN ? AND ?
       GROUP BY salesperson_id, salesperson_role
       ORDER BY total DESC
-    `).bind(this.context.businessId, startDate, endDate).all();
+    `).bind(this.context.businessId, startDate, endDate).all<SaleSessionRow>());
   }
 
   private getTimezone(): string {
@@ -730,7 +747,7 @@ export class PlatformDB {
   }
 
   async getBusiness(id: string) {
-    return this.db.prepare('SELECT * FROM businesses WHERE id = ?').bind(id).first();
+    return this.db.prepare('SELECT * FROM businesses WHERE id = ?').bind(id).first<BusinessRow>();
   }
 
   async listBusinesses(status?: string) {
@@ -738,7 +755,7 @@ export class PlatformDB {
     if (status) {
       query = query.bind('WHERE status = ?', status);
     }
-    return query.bind('ORDER BY created_at DESC').all();
+    return rows( query.bind('ORDER BY created_at DESC').all());
   }
 
   async updateBusinessStatus(id: string, status: string) {
@@ -748,11 +765,11 @@ export class PlatformDB {
 
   // Account management
   async getAccountByEmail(email: string) {
-    return this.db.prepare('SELECT * FROM accounts WHERE email = ?').bind(email).first();
+    return this.db.prepare('SELECT * FROM accounts WHERE email = ?').bind(email).first<AccountRow>();
   }
 
   async getAccountByGoogleSub(sub: string) {
-    return this.db.prepare('SELECT * FROM accounts WHERE google_sub = ?').bind(sub).first();
+    return this.db.prepare('SELECT * FROM accounts WHERE google_sub = ?').bind(sub).first<AccountRow>();
   }
 
   async createAccount(data: { id: string; email: string; display_name?: string; photo_url?: string; google_sub: string }) {
@@ -780,15 +797,15 @@ export class PlatformDB {
   }
 
   async getMembership(businessId: string, accountId: string) {
-    return this.db.prepare('SELECT * FROM memberships WHERE business_id = ? AND account_id = ?').bind(businessId, accountId).first();
+    return this.db.prepare('SELECT * FROM memberships WHERE business_id = ? AND account_id = ?').bind(businessId, accountId).first<MembershipRow>();
   }
 
   async getMembershipsByBusiness(businessId: string) {
-    return this.db.prepare('SELECT * FROM memberships WHERE business_id = ?').bind(businessId).all();
+    return rows<MembershipRow>( this.db.prepare('SELECT * FROM memberships WHERE business_id = ?').bind(businessId).all<MembershipRow>());
   }
 
   async getMembershipsByAccount(accountId: string) {
-    return this.db.prepare('SELECT * FROM memberships WHERE account_id = ?').bind(accountId).all();
+    return rows<MembershipRow>( this.db.prepare('SELECT * FROM memberships WHERE account_id = ?').bind(accountId).all<MembershipRow>());
   }
 
   async updateMembershipStatus(businessId: string, accountId: string, status: string) {
@@ -814,11 +831,11 @@ export class PlatformDB {
   }
 
   async getDevice(deviceCode: string) {
-    return this.db.prepare('SELECT * FROM devices WHERE device_code = ?').bind(deviceCode).first();
+    return this.db.prepare('SELECT * FROM devices WHERE device_code = ?').bind(deviceCode).first<DeviceRow>();
   }
 
   async getDevicesByBusiness(businessId: string) {
-    return this.db.prepare('SELECT * FROM devices WHERE business_id = ?').bind(businessId).all();
+    return rows<DeviceRow>( this.db.prepare('SELECT * FROM devices WHERE business_id = ?').bind(businessId).all<DeviceRow>());
   }
 
   async getActiveDeviceCount(businessId: string) {
@@ -860,7 +877,7 @@ export class PlatformDB {
   }
 
   async getInvitationByCodeHash(codeHash: string) {
-    return this.db.prepare('SELECT * FROM invitations WHERE code_hash = ? AND expires_at > ?').bind(codeHash, Date.now()).first();
+    return this.db.prepare('SELECT * FROM invitations WHERE code_hash = ? AND expires_at > ?').bind(codeHash, Date.now()).first<InvitationRow>();
   }
 
   async acceptInvitation(id: string, acceptedBy: string) {
@@ -884,7 +901,7 @@ export class PlatformDB {
   }
 
   async getRefreshToken(tokenHash: string) {
-    return this.db.prepare('SELECT * FROM refresh_tokens WHERE token_hash = ? AND expires_at > ? AND revoked_at IS NULL').bind(tokenHash, Date.now()).first();
+    return this.db.prepare('SELECT * FROM refresh_tokens WHERE token_hash = ? AND expires_at > ? AND revoked_at IS NULL').bind(tokenHash, Date.now()).first<RefreshTokenRow>();
   }
 
   async revokeRefreshToken(tokenHash: string, replacedBy?: string) {
@@ -907,7 +924,7 @@ export class PlatformDB {
   async verifyRecoveryCode(businessId: string, accountId: string, codeHash: string) {
     return this.db.prepare(
       `SELECT * FROM recovery_codes WHERE business_id = ? AND account_id = ? AND code_hash = ? AND used_at IS NULL`
-    ).bind(businessId, accountId, codeHash).first();
+    ).bind(businessId, accountId, codeHash).first<RecoveryCodeRow>();
   }
 
   async useRecoveryCode(id: string) {
@@ -952,7 +969,7 @@ export class PlatformDB {
 
   // Platform admins
   async getPlatformAdmin(accountId: string) {
-    return this.db.prepare('SELECT * FROM platform_admins WHERE account_id = ?').bind(accountId).first();
+    return this.db.prepare('SELECT * FROM platform_admins WHERE account_id = ?').bind(accountId).first<PlatformAdminRow>();
   }
 
   async isPlatformAdmin(accountId: string): Promise<boolean> {
@@ -979,7 +996,7 @@ export class PlatformDB {
   }
 
   async getSupportAccessGrants(businessId: string) {
-    return this.db.prepare('SELECT * FROM support_access_grants WHERE business_id = ? AND revoked_at IS NULL AND expires_at > ?').bind(businessId, Date.now()).all();
+    return rows<SupportAccessGrantRow>( this.db.prepare('SELECT * FROM support_access_grants WHERE business_id = ? AND revoked_at IS NULL AND expires_at > ?').bind(businessId, Date.now()).all<SupportAccessGrantRow>());
   }
 
   async revokeSupportAccessGrant(id: string, revokedBy: string) {
@@ -989,7 +1006,7 @@ export class PlatformDB {
 
   // App versions
   async getAppVersions(platform: string) {
-    return this.db.prepare('SELECT * FROM app_versions WHERE platform = ? ORDER BY version_code DESC').bind(platform).all();
+    return rows<AppVersionRow>( this.db.prepare('SELECT * FROM app_versions WHERE platform = ? ORDER BY version_code DESC').bind(platform).all<AppVersionRow>());
   }
 
   async getMinSupportedVersion(platform: string) {

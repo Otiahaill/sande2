@@ -1,7 +1,8 @@
 import { Context } from 'hono';
 import { CloudflareBindings } from '../types';
-import { createPlatformDB } from '../db/tenant';
 import { hashToken, generateInvitationCode } from '../middleware/auth';
+import { AccountRow, MembershipRow } from '../db/rows';
+
 
 /**
  * GET /api/memberships
@@ -14,8 +15,8 @@ export async function list(c: Context<{ Bindings: CloudflareBindings; Variables:
   const memberships = await platformDB.getMembershipsByBusiness(context.businessId);
 
   // Enrich with account info
-  const enriched = await Promise.all(memberships.map(async (m) => {
-    const account = await c.env.DB.prepare('SELECT id, email, display_name, photo_url FROM accounts WHERE id = ?').bind(m.account_id).first();
+  const enriched = await Promise.all(memberships.map(async (m: MembershipRow) => {
+    const account = await c.env.DB.prepare('SELECT id, email, display_name, photo_url FROM accounts WHERE id = ?').bind(m.account_id).first<AccountRow>();
     const device = m.device_code ? await platformDB.getDevice(m.device_code) : null;
 
     return {
@@ -70,7 +71,7 @@ export async function invite(c: Context<{ Bindings: CloudflareBindings; Variable
 
   // Check staff limit
   const memberships = await platformDB.getMembershipsByBusiness(context.businessId);
-  const staffCount = memberships.filter(m => m.role === 'staff' && m.status === 'active').length;
+  const staffCount = memberships.filter((m: MembershipRow) => m.role === 'staff' && m.status === 'active').length;
   if (staffCount >= 4) {
     return c.json({
       success: false,
@@ -117,12 +118,15 @@ export async function invite(c: Context<{ Bindings: CloudflareBindings; Variable
  */
 export async function update(c: Context<{ Bindings: CloudflareBindings; Variables: { businessContext: any; platformDB: any } }>) {
   const membershipId = c.req.param('membershipId');
+  if (!membershipId) {
+    return c.json({ success: false, error: { code: '400', message: 'membershipId is required' } }, 400);
+  }
   const body = await c.req.json<{ status: 'active' | 'suspended' | 'revoked' }>();
   const context = c.get('businessContext');
   const platformDB = c.get('platformDB');
 
   // Parse membershipId (format: business_id:account_id)
-  const [businessId, accountId] = membershipId.split(':');
+  const [businessId = '', accountId = ''] = membershipId.split(':');
   if (businessId !== context.businessId) {
     return c.json({
       success: false,

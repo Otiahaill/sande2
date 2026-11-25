@@ -31,6 +31,14 @@ import com.example.sande.ui.viewModelFactoryOf
 import com.example.sande.ui.viewmodel.OnboardingViewModel
 import kotlinx.coroutines.launch
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Mail
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,6 +58,26 @@ fun InvitationAcceptScreen(
     var isAccepting by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
+    fun acceptInvitation() {
+        scope.launch {
+            isAccepting = true
+            error = null
+            try {
+                val deviceCode = app.connectionResolver.deviceCode()
+                vm.acceptInvitation(AcceptInvitationRequest(
+                    code = invitationCode.replace(" ", ""),
+                    deviceCode = deviceCode,
+                    deviceName = "Android Device",
+                    deviceType = "android",
+                ))
+            } catch (e: Exception) {
+                error = "Failed to accept invitation: ${e.message}"
+            } finally {
+                isAccepting = false
+            }
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -58,7 +86,8 @@ fun InvitationAcceptScreen(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Icon
-        androidx.compose.material.icons.filled.Mail(
+        Icon(
+            imageVector = Icons.Filled.Mail,
             contentDescription = "Invitation",
             modifier = Modifier.size(64.dp),
             tint = MaterialTheme.colorScheme.primary
@@ -94,20 +123,24 @@ fun InvitationAcceptScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                keyboardOptions = androidx.compose.ui.text.input.KeyboardOptions(
+                keyboardOptions = KeyboardOptions(
                     keyboardType = androidx.compose.ui.text.input.KeyboardType.Number,
                     imeAction = androidx.compose.ui.text.input.ImeAction.Done
                 ),
                 visualTransformation = androidx.compose.ui.text.input.VisualTransformation { text ->
-                    // Auto-format as groups of 3
+                    // Auto-format as groups of 3.
+                    // Compose UI 1.6.8 still uses the TransformedText shape.
                     val formatted = text.text.replace(" ", "").chunked(3).joinToString(" ")
-                    androidx.compose.ui.text.AnnotatedString(formatted)
+                    androidx.compose.ui.text.input.TransformedText(
+                        androidx.compose.ui.text.AnnotatedString(formatted),
+                        androidx.compose.ui.text.input.OffsetMapping.Identity
+                    )
                 },
-                onKeyboardAction = { _ ->
+                keyboardActions = KeyboardActions(onDone = {
                     if (invitationCode.replace(" ", "").length == 6) {
                         acceptInvitation()
                     }
-                }
+                })
             )
         }
 
@@ -139,23 +172,5 @@ fun InvitationAcceptScreen(
         }
     }
 
-    fun acceptInvitation() {
-        scope.launch {
-            isAccepting = true
-            error = null
-            try {
-                val deviceCode = app.connectionResolver.deviceCode()
-                vm.acceptInvitation(AcceptInvitationRequest(
-                    code = invitationCode.replace(" ", ""),
-                    deviceCode = deviceCode,
-                    deviceName = "Android Device",
-                    deviceType = "android",
-                ))
-            } catch (e: Exception) {
-                error = "Failed to accept invitation: ${e.message}"
-            } finally {
-                isAccepting = false
-            }
-        }
-    }
+
 }

@@ -4,6 +4,7 @@ import com.example.sande.data.db.AppDatabase
 import com.example.sande.data.daos.SaleSessionDao
 import com.example.sande.data.entities.SaleSession
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 class SaleSessionRepository constructor(
     private val database: AppDatabase
@@ -16,7 +17,7 @@ class SaleSessionRepository constructor(
 
     suspend fun update(saleSession: SaleSession) = dao.update(saleSession)
 
-    fun getById(id: String): Flow<SaleSession?> = dao.getById(id).distinctUntilChanged()
+    fun getById(id: String): Flow<SaleSession?> = dao.observeById(id).distinctUntilChanged()
 
     fun getByBusiness(businessId: String): Flow<List<SaleSession>> = dao.getByBusiness(businessId)
 

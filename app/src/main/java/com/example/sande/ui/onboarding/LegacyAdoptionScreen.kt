@@ -43,6 +43,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.layout.size
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -179,7 +180,7 @@ fun LegacyAdoptionScreen(
             Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
                     onClick = {
-                        vm.adoptLegacyData()
+                        scope.launch { vm.adoptLegacyData() }
                     },
                     enabled = adoptionProgress.value == 0f || adoptionProgress.value == 1f,
                     modifier = Modifier.fillMaxWidth(),
@@ -226,24 +227,25 @@ fun LegacyAdoptionScreen(
             Text(text = "Back", fontSize = 16.sp)
         }
     }
+}
 
-    @Composable
-    fun DataRow(label: String, count: Int, isTotal: Boolean = false) {
-        androidx.compose.foundation.layout.Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = label,
-                fontSize = if (isTotal) 16.sp else 14.sp,
-                fontWeight = if (isTotal) FontWeight.Bold else FontWeight.Normal
-            )
-            Text(
-                text = count.toString(),
-                fontSize = if (isTotal) 16.sp else 14.sp,
-                fontWeight = if (isTotal) FontWeight.Bold else FontWeight.Normal,
-                color = if (isTotal) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+/** One "label / count" line in the data-to-migrate summary. */
+@Composable
+private fun DataRow(label: String, count: Int, isTotal: Boolean = false) {
+    androidx.compose.foundation.layout.Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            fontSize = if (isTotal) 16.sp else 14.sp,
+            fontWeight = if (isTotal) FontWeight.Bold else FontWeight.Normal
+        )
+        Text(
+            text = count.toString(),
+            fontSize = if (isTotal) 16.sp else 14.sp,
+            fontWeight = if (isTotal) FontWeight.Bold else FontWeight.Normal,
+            color = if (isTotal) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }

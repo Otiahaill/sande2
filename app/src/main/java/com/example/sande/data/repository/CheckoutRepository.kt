@@ -18,6 +18,7 @@ import com.example.sande.data.entities.Receipt
 import com.example.sande.data.entities.SaleItem
 import com.example.sande.data.entities.SaleSession
 import com.example.sande.data.entities.StockMovement
+import com.example.sande.data.sync.OutboxPayloadSerializer
 import kotlinx.coroutines.flow.first
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
@@ -174,6 +175,28 @@ class CheckoutRepository constructor(
         )
         receiptDao.insert(receipt)
 
+        // 4b. Queue the new counter value so the backend keeps the same
+        // receipt-number sequence as this device.
+        counterDao.getByBusinessDeviceAndType(businessId, deviceCode, "receipt")?.let { counter ->
+            outboxEntryDao.insert(
+                OutboxEntry(
+                    id = "ob_${UUID.randomUUID()}",
+                    businessId = businessId,
+                    entityType = "counter",
+                    entityId = counter.id,
+                    operation = "update",
+                    payloadJson = OutboxPayloadSerializer.serialize(counter),
+                    batchId = null,
+                    attemptCount = 0,
+                    lastError = null,
+                    createdAt = now,
+                    updatedAt = now,
+                    synced = false,
+                    syncedAt = 0
+                )
+            )
+        }
+
         // 5. Create AuditEvent
         val auditEvent = AuditEvent(
             id = "audit_${UUID.randomUUID()}",
@@ -186,7 +209,7 @@ class CheckoutRepository constructor(
             deviceCode = deviceCode,
             severity = "info",
             beforeJson = null,
-            afterJson = saleSession.toString(),
+            afterJson = OutboxPayloadSerializer.serialize(saleSession),
             metadataJson = "{\"receiptNumber\":\"$receiptNumber\",\"itemCount\":${items.size}}",
             createdAt = now,
             synced = false
@@ -200,7 +223,7 @@ class CheckoutRepository constructor(
             entityType = "sale_session",
             entityId = sessionId,
             operation = "create",
-            payloadJson = saleSession.toString(), // TODO: proper JSON serialization
+            payloadJson = OutboxPayloadSerializer.serialize(saleSession),
             batchId = null,
             attemptCount = 0,
             lastError = null,
@@ -297,7 +320,7 @@ class CheckoutRepository constructor(
             deviceCode = deviceCode,
             severity = "info",
             beforeJson = null,
-            afterJson = stockMovement.toString(),
+            afterJson = OutboxPayloadSerializer.serialize(stockMovement),
             metadataJson = "{\"movementType\":\"RECEIVE\",\"quantity\":$quantity}",
             createdAt = now,
             synced = false
@@ -310,7 +333,7 @@ class CheckoutRepository constructor(
             entityType = "stock_movement",
             entityId = movementId,
             operation = "create",
-            payloadJson = stockMovement.toString(),
+            payloadJson = OutboxPayloadSerializer.serialize(stockMovement),
             batchId = null,
             attemptCount = 0,
             lastError = null,
@@ -371,7 +394,7 @@ class CheckoutRepository constructor(
             deviceCode = deviceCode,
             severity = "info",
             beforeJson = null,
-            afterJson = stockMovement.toString(),
+            afterJson = OutboxPayloadSerializer.serialize(stockMovement),
             metadataJson = "{\"movementType\":\"$movementType\",\"quantityDelta\":$quantityDelta}",
             createdAt = now,
             synced = false
@@ -384,7 +407,7 @@ class CheckoutRepository constructor(
             entityType = "stock_movement",
             entityId = movementId,
             operation = "create",
-            payloadJson = stockMovement.toString(),
+            payloadJson = OutboxPayloadSerializer.serialize(stockMovement),
             batchId = null,
             attemptCount = 0,
             lastError = null,
@@ -451,8 +474,8 @@ class CheckoutRepository constructor(
             actorRole = actorRole,
             deviceCode = deviceCode,
             severity = "warning",
-            beforeJson = session.toString(),
-            afterJson = session.copy(status = "voided").toString(),
+            beforeJson = OutboxPayloadSerializer.serialize(session),
+            afterJson = OutboxPayloadSerializer.serialize(session.copy(status = "voided", updatedAt = now)),
             metadataJson = "{\"reason\":\"$reason\"}",
             createdAt = now,
             synced = false
@@ -466,7 +489,9 @@ class CheckoutRepository constructor(
             entityType = "sale_session",
             entityId = sessionId,
             operation = "update",
-            payloadJson = "voided",
+            payloadJson = OutboxPayloadSerializer.serialize(
+                session.copy(status = "voided", updatedAt = now)
+            ),
             batchId = null,
             attemptCount = 0,
             lastError = null,

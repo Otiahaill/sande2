@@ -454,6 +454,9 @@ abstract class AppDatabase : RoomDatabase() {
                         m.id,
                         m.productId,
                         m.businessId,
+                        -- `movements.type` holds the MovementType name as TEXT
+                        -- (see Converters). Casting it to an integer would turn
+                        -- 'SALE' into 0, so it is copied through unchanged.
                         m.type as movementType,
                         CASE m.type
                             WHEN 'RECEIVE' THEN m.quantity
@@ -556,7 +559,44 @@ abstract class AppDatabase : RoomDatabase() {
                     FROM outbox
                 """)
 
-                // 5. Initialize counters for each business/device from existing data
+                // 5. Migrate sale_headers -> receipts
+                // Every legacy sale had a receipt, but the `receipts` table only
+                // exists from v5 onwards. Without this copy the receipt history
+                // would come up empty after the upgrade.
+                //
+                // The per-device counter is the position of the sale within its
+                // (business, device) group, ordered by creation time. A
+                // correlated subquery is used instead of ROW_NUMBER() because
+                // window functions need SQLite 3.25 (API 28) and the app
+                // supports API 26.
+                // The content hash is a placeholder: the original rendered
+                // receipt is not recoverable, but the column is NOT NULL.
+                database.execSQL("""
+                    INSERT OR REPLACE INTO receipts (id, sessionId, businessId, deviceCode, counter, receiptNumber, format, contentHash, createdAt)
+                    SELECT
+                        'rcpt_legacy_' || sh.id,
+                        sh.id,
+                        sh.businessId,
+                        COALESCE(sh.deviceId, 'legacy'),
+                        (
+                            SELECT COUNT(*)
+                            FROM sale_headers prev
+                            WHERE prev.businessId = sh.businessId
+                              AND COALESCE(prev.deviceId, 'legacy') = COALESCE(sh.deviceId, 'legacy')
+                              AND (
+                                    prev.createdAt < sh.createdAt
+                                    OR (prev.createdAt = sh.createdAt AND prev.id <= sh.id)
+                              )
+                        ),
+                        sh.receiptNumber,
+                        'thermal_58mm',
+                        'legacy-' || sh.id,
+                        sh.createdAt
+                    FROM sale_headers sh
+                    WHERE sh.receiptNumber IS NOT NULL AND sh.receiptNumber != ''
+                """)
+
+                // 6. Initialize counters for each business/device from existing data
                 // Receipt counters
                 database.execSQL("""
                     INSERT OR IGNORE INTO counters (id, businessId, deviceCode, counterType, currentValue, updatedAt)
@@ -572,7 +612,7 @@ abstract class AppDatabase : RoomDatabase() {
                     GROUP BY businessId, deviceId
                 """)
 
-                // 6. Create default business_profile from existing business
+                // 7. Create default business_profile from existing business
                 database.execSQL("""
                     INSERT OR IGNORE INTO business_profiles (id, name, category, countryCode, currencyCode, timezone, createdAt, updatedAt)
                     SELECT
@@ -598,18 +638,68 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Opens the database, recreating it when the file on disk cannot be
+         * used.
+         *
+         * Room refuses to open a database whose schema does not match the
+         * entities, and it throws while the app is starting. The app is
+         * offline-first, so the server holds the source of truth and the local
+         * database is a cache: when the cache is unusable the app moves it
+         * aside and starts with a fresh one, instead of being unable to open
+         * at all. The old file is kept so nothing is silently destroyed.
+         */
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
-                val instance = Room.databaseBuilder(
-                    context.applicationContext,
-                    AppDatabase::class.java,
-                    "sande_database"
-                )
-                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
-                    .build()
+                val instance = try {
+                    openDatabase(context)
+                } catch (e: IllegalStateException) {
+                    android.util.Log.e(
+                        "AppDatabase",
+                        "The local database could not be opened; recreating it",
+                        e
+                    )
+                    moveAsideBrokenDatabase(context)
+                    openDatabase(context)
+                }
                 INSTANCE = instance
                 instance
             }
         }
+
+        /** Builds the Room database and forces it open so errors surface here. */
+        private fun openDatabase(context: Context): AppDatabase {
+            val instance = Room.databaseBuilder(
+                context.applicationContext,
+                AppDatabase::class.java,
+                DATABASE_NAME
+            )
+                .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                .build()
+            // Touching the writable database runs Room's schema validation.
+            instance.openHelper.writableDatabase
+            return instance
+        }
+
+        /**
+         * Renames the unusable database (and its side files) so a new one can
+         * be created. The old files stay on disk for support.
+         */
+        private fun moveAsideBrokenDatabase(context: Context) {
+            val dbFile = context.getDatabasePath(DATABASE_NAME)
+            if (!dbFile.exists()) return
+            val stamp = System.currentTimeMillis()
+            listOf("", "-wal", "-shm", "-journal").forEach { suffix ->
+                val file = java.io.File(dbFile.path + suffix)
+                if (file.exists()) {
+                    val target = java.io.File(file.parentFile, "${file.name}.broken-$stamp")
+                    if (!file.renameTo(target)) {
+                        file.delete()
+                    }
+                }
+            }
+        }
+
+        private const val DATABASE_NAME = "sande_database"
     }
 }

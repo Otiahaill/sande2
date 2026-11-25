@@ -1,5 +1,6 @@
 import { Context } from 'hono';
 import { CloudflareBindings, BusinessContext, GoogleAuthInput, RefreshTokenInput } from '../types';
+import { MembershipRow } from '../db/rows';
 import { createPlatformDB } from '../db/tenant';
 import {
   verifyGoogleIdToken,
@@ -84,12 +85,18 @@ export async function googleAuth(c: Context<{ Bindings: CloudflareBindings }>) {
   }
 
   // If device_code provided, check if device is registered
-  let selectedMembership = memberships[0];
+  let selectedMembership: MembershipRow | undefined = memberships[0];
   if (body.deviceCode) {
     const deviceMembership = memberships.find(m => m.device_code === body.deviceCode);
     if (deviceMembership) {
       selectedMembership = deviceMembership;
     }
+  }
+  if (!selectedMembership) {
+    return c.json({
+      success: false,
+      error: { code: '403', message: 'No membership for this account' }
+    }, 403);
   }
 
   // If only one membership, use it; otherwise frontend should let user choose
@@ -171,14 +178,14 @@ export async function googleAuth(c: Context<{ Bindings: CloudflareBindings }>) {
   const accessToken = await generateAccessToken(c.env, {
     sub: account!.id,
     business_id: selectedMembership.business_id,
-    role: selectedMembership.role,
+    role: selectedMembership.role as 'owner' | 'staff',
     device_code: body.deviceCode,
   });
 
   const refreshToken = await generateRefreshToken(c.env, {
     sub: account!.id,
     business_id: selectedMembership.business_id,
-    role: selectedMembership.role,
+    role: selectedMembership.role as 'owner' | 'staff',
     device_code: body.deviceCode,
   });
 
@@ -209,7 +216,7 @@ export async function googleAuth(c: Context<{ Bindings: CloudflareBindings }>) {
         id: selectedMembership.id,
         business_id: selectedMembership.business_id,
         business_name: business.name,
-        role: selectedMembership.role,
+        role: selectedMembership.role as 'owner' | 'staff',
         device_code: body.deviceCode,
         device_status: device!.status,
       },
@@ -421,7 +428,7 @@ export async function acceptInvitation(c: Context<{ Bindings: CloudflareBindings
     id: membershipId,
     business_id: invitation.business_id,
     account_id: accountId,
-    role: invitation.role,
+    role: invitation.role as 'owner' | 'staff',
     status: 'active',
     invited_by: invitation.invited_by,
   });
@@ -451,14 +458,14 @@ export async function acceptInvitation(c: Context<{ Bindings: CloudflareBindings
   const accessToken = await generateAccessToken(c.env, {
     sub: accountId,
     business_id: invitation.business_id,
-    role: invitation.role,
+    role: invitation.role as 'owner' | 'staff',
     device_code: body.deviceCode,
   });
 
   const refreshToken = await generateRefreshToken(c.env, {
     sub: accountId,
     business_id: invitation.business_id,
-    role: invitation.role,
+    role: invitation.role as 'owner' | 'staff',
     device_code: body.deviceCode,
   });
 
@@ -482,7 +489,7 @@ export async function acceptInvitation(c: Context<{ Bindings: CloudflareBindings
         id: membershipId,
         business_id: invitation.business_id,
         business_name: business?.name,
-        role: invitation.role,
+        role: invitation.role as 'owner' | 'staff',
         device_code: body.deviceCode,
         device_status: 'pending_approval',
       }
@@ -629,7 +636,7 @@ export async function refreshToken(c: Context<{ Bindings: CloudflareBindings }>)
   const newRefreshToken = await generateRefreshToken(c.env, {
     sub: storedToken.account_id,
     business_id: device.business_id,
-    role: membership.role,
+    role: membership.role as 'owner' | 'staff',
     device_code: device.device_code,
   });
 
@@ -651,7 +658,7 @@ export async function refreshToken(c: Context<{ Bindings: CloudflareBindings }>)
   const accessToken = await generateAccessToken(c.env, {
     sub: storedToken.account_id,
     business_id: device.business_id,
-    role: membership.role,
+    role: membership.role as 'owner' | 'staff',
     device_code: device.device_code,
   });
 

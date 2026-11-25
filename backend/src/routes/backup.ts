@@ -1,6 +1,11 @@
 import { Context } from 'hono';
 import { CloudflareBindings } from '../types';
-import { createTenantDB, createPlatformDB } from '../db/tenant';
+import { createTenantDB, createPlatformDB, rows } from '../db/tenant';
+import { BackupRow } from '../db/rows';
+import { D1Database } from '@cloudflare/workers-types';
+
+
+
 
 /**
  * POST /api/backup/create
@@ -36,13 +41,13 @@ export async function create(c: Context<{ Bindings: CloudflareBindings; Variable
   const rowCounts: Record<string, number> = {};
 
   for (const table of tables) {
-    const result = await c.env.DB.prepare(
+    const result = await rows( c.env.DB.prepare(
       `SELECT * FROM ${table} WHERE business_id = ?`
-    ).bind(context.businessId).all();
+    ).bind(context.businessId).all());
 
-    backupData[table] = result.results;
-    rowCounts[table] = result.results.length;
-    totalRows += result.results.length;
+    backupData[table] = result;
+    rowCounts[table] = result.length;
+    totalRows += result.length;
   }
 
   // Create NDJSON content
@@ -108,10 +113,10 @@ export async function create(c: Context<{ Bindings: CloudflareBindings; Variable
 /**
  * Enforces backup retention policy
  */
-async function enforceRetentionPolicy(r2: R2Bucket, db: any, businessId: string) {
-  const backups = await db.prepare(
+async function enforceRetentionPolicy(r2: R2Bucket, db: D1Database, businessId: string) {
+  const backups = await rows<BackupRow>( db.prepare(
     `SELECT id, r2_key, created_at FROM backups WHERE business_id = ? ORDER BY created_at DESC`
-  ).bind(businessId).all();
+  ).bind(businessId).all<BackupRow>());
 
   const now = Date.now();
   const dailyCutoff = now - 30 * 24 * 60 * 60 * 1000; // 30 days
@@ -123,7 +128,7 @@ async function enforceRetentionPolicy(r2: R2Bucket, db: any, businessId: string)
 
   const toDelete: string[] = [];
 
-  for (const backup of backups.results) {
+  for (const backup of backups) {
     const createdAt = backup.created_at;
     const date = new Date(createdAt);
     const isFirstOfMonth = date.getDate() === 1;
@@ -159,14 +164,14 @@ async function enforceRetentionPolicy(r2: R2Bucket, db: any, businessId: string)
 export async function list(c: Context<{ Bindings: CloudflareBindings; Variables: { businessContext: any } }>) {
   const context = c.get('businessContext');
 
-  const backups = await c.env.DB.prepare(
+  const backups = await rows<BackupRow>( c.env.DB.prepare(
     `SELECT id, r2_key, size_bytes, row_counts_json, schema_version, status, error, created_at
      FROM backups WHERE business_id = ? ORDER BY created_at DESC LIMIT 100`
-  ).bind(context.businessId).all();
+  ).bind(context.businessId).all<BackupRow>());
 
   return c.json({
     success: true,
-    data: backups.results.map((b: any) => ({
+    data: backups.map((b: any) => ({
       ...b,
       row_counts: JSON.parse(b.row_counts_json),
     }))
@@ -186,7 +191,7 @@ export async function restore(c: Context<{ Bindings: CloudflareBindings; Variabl
   // Get backup metadata
   const backup = await c.env.DB.prepare(
     `SELECT * FROM backups WHERE id = ? AND business_id = ?`
-  ).bind(body.backup_id, context.businessId).first();
+  ).bind(body.backup_id, context.businessId).first<BackupRow>();
 
   if (!backup) {
     return c.json({
@@ -293,7 +298,7 @@ export async function status(c: Context<{ Bindings: CloudflareBindings; Variable
 
   const latestBackup = await c.env.DB.prepare(
     `SELECT * FROM backups WHERE business_id = ? ORDER BY created_at DESC LIMIT 1`
-  ).bind(context.businessId).first();
+  ).bind(context.businessId).first<BackupRow>();
 
   const pendingCount = await c.env.DB.prepare(
     `SELECT COUNT(*) as count FROM backups WHERE business_id = ? AND status = 'pending'`

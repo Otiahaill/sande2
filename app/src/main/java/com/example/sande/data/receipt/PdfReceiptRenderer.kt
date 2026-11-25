@@ -7,6 +7,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.pdf.PdfDocument
 import android.os.CancellationSignal
+import android.print.PageRange
 import android.print.PrintAttributes
 import android.print.PrintDocumentAdapter
 import android.print.PrintDocumentInfo
@@ -17,7 +18,6 @@ import com.example.sande.data.entities.BusinessProfile
 import com.example.sande.data.entities.Receipt
 import com.example.sande.data.entities.SaleItem
 import com.example.sande.data.entities.SaleSession
-import kotlinx.coroutines.tasks.await
 
 /**
  * PDF receipt renderer using Android's PdfDocument API.
@@ -213,8 +213,8 @@ class PdfReceiptRenderer(private val context: Context) {
             y += fontSize + 2
 
             drawText("${item.quantity}", colQty, y, fontSize, Paint.Align.RIGHT)
-            drawText(formatCurrency(item.unitPriceCents), colPrice, y, fontSize, Paint.Align.RIGHT)
-            drawText(formatCurrency(item.totalCents), colTotal, y, fontSize, Paint.Align.RIGHT)
+            drawText(formatCurrency(item.unitPriceCents, business.currencyCode), colPrice, y, fontSize, Paint.Align.RIGHT)
+            drawText(formatCurrency(item.totalCents, business.currencyCode), colTotal, y, fontSize, Paint.Align.RIGHT)
             y += fontSize + 6
         }
 
@@ -227,12 +227,12 @@ class PdfReceiptRenderer(private val context: Context) {
         val valueX = width - margin
 
         drawText("Subtotal:", labelX, y, fontSize, Paint.Align.RIGHT, true)
-        drawText(formatCurrency(session.subtotalCents), valueX, y, fontSize, Paint.Align.RIGHT)
+        drawText(formatCurrency(session.subtotalCents, business.currencyCode), valueX, y, fontSize, Paint.Align.RIGHT)
         y += fontSize + 4
 
         if (session.taxCents > 0) {
             drawText("Tax:", labelX, y, fontSize, Paint.Align.RIGHT, true)
-            drawText(formatCurrency(session.taxCents), valueX, y, fontSize, Paint.Align.RIGHT)
+            drawText(formatCurrency(session.taxCents, business.currencyCode), valueX, y, fontSize, Paint.Align.RIGHT)
             y += fontSize + 4
         }
 
@@ -240,7 +240,7 @@ class PdfReceiptRenderer(private val context: Context) {
         y += 8
 
         drawText("TOTAL:", labelX, y, titleSize, Paint.Align.RIGHT, true)
-        drawText(formatCurrency(session.totalCents), valueX, y, titleSize, Paint.Align.RIGHT)
+        drawText(formatCurrency(session.totalCents, business.currencyCode), valueX, y, titleSize, Paint.Align.RIGHT)
         y += titleSize + 8
 
         drawLine(y)
@@ -251,7 +251,7 @@ class PdfReceiptRenderer(private val context: Context) {
         drawText("Cash", valueX, y, fontSize, Paint.Align.RIGHT)
         y += fontSize + 4
         drawText("Change:", labelX, y, fontSize, Paint.Align.RIGHT, true)
-        drawText(formatCurrency(0), valueX, y, fontSize, Paint.Align.RIGHT)
+        drawText(formatCurrency(0, business.currencyCode), valueX, y, fontSize, Paint.Align.RIGHT)
         y += fontSize + 8
 
         drawLine(y)
@@ -268,10 +268,8 @@ class PdfReceiptRenderer(private val context: Context) {
         drawText("Powered by SANDE", width / 2, y, fontSize - 2, Paint.Align.CENTER, false, Color.DKGRAY)
     }
 
-    private fun formatCurrency(cents: Long): String {
-        val amount = cents / 100.0
-        return java.text.NumberFormat.getCurrencyInstance(java.util.Locale.getDefault()).format(amount)
-    }
+    private fun formatCurrency(cents: Long, currencyCode: String): String =
+        com.example.sande.data.receipt.formatCurrency(cents, currencyCode)
 
     /**
      * PrintDocumentAdapter for Android Print framework.
@@ -305,7 +303,7 @@ class PdfReceiptRenderer(private val context: Context) {
         }
 
         override fun onWrite(
-            pageRanges: Array<PrintAttributes.PageRange>,
+            pageRanges: Array<PageRange>,
             destination: android.os.ParcelFileDescriptor,
             cancellationSignal: CancellationSignal,
             callback: WriteResultCallback
@@ -317,11 +315,11 @@ class PdfReceiptRenderer(private val context: Context) {
                 drawReceipt(page.canvas, pageInfo, session, items, business, receipt, paperSize)
                 document.finishPage(page)
 
-                document.writeTo(destination.fileDescriptor)
+                document.writeTo(java.io.FileOutputStream(destination.fileDescriptor))
                 document.close()
                 pdfDocument = null
 
-                callback.onWriteFinished(arrayOf(PrintAttributes.PageRange.ALL_PAGES))
+                callback.onWriteFinished(arrayOf(PageRange.ALL_PAGES))
             } catch (e: Exception) {
                 callback.onWriteFailed(e.message)
             }

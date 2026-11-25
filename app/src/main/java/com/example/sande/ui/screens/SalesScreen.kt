@@ -66,6 +66,7 @@ fun SalesScreen(
                 app.productRepository,
                 app.draftSaleRepository,
                 app.saleHeaderRepository,
+                app.stockMovementRepository,
                 app.settings
             )
         }

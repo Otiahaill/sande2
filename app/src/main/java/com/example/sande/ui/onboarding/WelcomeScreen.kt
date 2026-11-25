@@ -27,6 +27,7 @@ import com.example.sande.ui.viewModelFactoryOf
 import com.example.sande.ui.viewmodel.OnboardingViewModel
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.foundation.layout.fillMaxWidth
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

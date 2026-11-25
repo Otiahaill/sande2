@@ -44,6 +44,8 @@ import com.example.sande.ui.viewmodel.OnboardingViewModel
 import kotlinx.coroutines.launch
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,6 +64,7 @@ fun RecoveryCodesScreen(
 
     var codesConfirmed by remember { mutableStateOf(false) }
     var isConfirming by remember { mutableStateOf(false) }
+    var copiedMessage by remember { mutableStateOf<String?>(null) }
 
     // Get recovery codes from token manager
     val recoveryCodes = remember { mutableStateOf<List<String>>(emptyList()) }
@@ -182,6 +185,16 @@ fun RecoveryCodesScreen(
             }
         }
 
+        // Result of the last copy action.
+        copiedMessage?.let { message ->
+            Text(
+                text = message,
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+        }
+
         // Copy button
         Button(
             onClick = {
@@ -189,11 +202,9 @@ fun RecoveryCodesScreen(
                 val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                 val clip = android.content.ClipData.newPlainText("Recovery Codes", text)
                 clipboard.setPrimaryClip(clip)
-                androidx.compose.material3.Snackbar(
-                    modifier = Modifier.fillMaxWidth(),
-                    action = { Text("Copied!") },
-                    dismissAction = { }
-                )
+                // A plain message is used instead of a Snackbar: the onClick
+                // lambda is not a composable scope.
+                copiedMessage = "Copied ${recoveryCodes.value.size} codes to the clipboard"
             },
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             colors = ButtonDefaults.buttonColors(
@@ -211,30 +222,22 @@ fun RecoveryCodesScreen(
         }
 
         // Confirmation checkbox
-        Checkbox(
-            checked = codesConfirmed,
-            onCheckedChange = { codesConfirmed = it },
+        androidx.compose.foundation.layout.Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
-                .fillMaxWidth(),
-            onClick = { codesConfirmed = !codesConfirmed }
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
         ) {
-            androidx.compose.foundation.layout.Row(
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Check,
-                    contentDescription = "",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = "I have saved these codes securely",
-                    fontSize = 16.sp,
-                    modifier = Modifier.weight(1f)
-                )
-            }
+            Checkbox(
+                checked = codesConfirmed,
+                onCheckedChange = { codesConfirmed = it }
+            )
+            Text(
+                text = "I have saved these codes securely",
+                fontSize = 16.sp,
+                modifier = Modifier.weight(1f)
+            )
         }
 
         // Continue button

@@ -11,6 +11,7 @@ import com.example.sande.data.entities.StockMovement
 import com.example.sande.data.prefs.TokenManager
 import com.example.sande.data.remote.ApiClient
 import com.example.sande.data.remote.BusinessRegistrationRequest
+import com.example.sande.data.remote.Result
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -247,19 +248,4 @@ class LegacyAdoptionManager(
         val businessId: String,
         val accountId: String,
     )
-
-    sealed class Result<out T> {
-        data class Success<out T>(val value: T) : Result<T>()
-        data class Failure(val error: Throwable) : Result<Nothing>()
-
-        companion object {
-            fun <T> success(value: T): Result<T> = Success(value)
-            fun <T> failure(error: Throwable): Result<T> = Failure(error)
-        }
-
-        fun getOrThrow(): T = when (this) {
-            is Success -> value
-            is Failure -> throw error
-        }
-    }
 }

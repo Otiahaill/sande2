@@ -1,6 +1,8 @@
 import { Context } from 'hono';
 import { CloudflareBindings } from '../types';
 import { createPlatformDB } from '../db/tenant';
+import { AccountRow, DeviceRow } from '../db/rows';
+
 
 /**
  * GET /api/devices
@@ -13,8 +15,8 @@ export async function list(c: Context<{ Bindings: CloudflareBindings; Variables:
   const devices = await platformDB.getDevicesByBusiness(context.businessId);
 
   // Enrich with account info
-  const enriched = await Promise.all(devices.map(async (d) => {
-    const account = await c.env.DB.prepare('SELECT id, email, display_name FROM accounts WHERE id = ?').bind(d.account_id).first();
+  const enriched = await Promise.all(devices.map(async (d: DeviceRow) => {
+    const account = await c.env.DB.prepare('SELECT id, email, display_name FROM accounts WHERE id = ?').bind(d.account_id).first<AccountRow>();
     const membership = await platformDB.getMembership(context.businessId, d.account_id);
 
     return {
@@ -127,6 +129,9 @@ export async function register(c: Context<{ Bindings: CloudflareBindings; Variab
  */
 export async function update(c: Context<{ Bindings: CloudflareBindings; Variables: { businessContext: any; platformDB: any } }>) {
   const deviceCode = c.req.param('deviceCode');
+  if (!deviceCode) {
+    return c.json({ success: false, error: { code: '400', message: 'deviceCode is required' } }, 400);
+  }
   const body = await c.req.json<{ deviceName?: string; pushToken?: string }>();
   const context = c.get('businessContext');
   const platformDB = c.get('platformDB');
@@ -176,6 +181,9 @@ export async function update(c: Context<{ Bindings: CloudflareBindings; Variable
  */
 export async function approve(c: Context<{ Bindings: CloudflareBindings; Variables: { businessContext: any; platformDB: any } }>) {
   const deviceCode = c.req.param('deviceCode');
+  if (!deviceCode) {
+    return c.json({ success: false, error: { code: '400', message: 'deviceCode is required' } }, 400);
+  }
   const context = c.get('businessContext');
   const platformDB = c.get('platformDB');
   const now = Date.now();
@@ -229,6 +237,9 @@ export async function approve(c: Context<{ Bindings: CloudflareBindings; Variabl
  */
 export async function revoke(c: Context<{ Bindings: CloudflareBindings; Variables: { businessContext: any; platformDB: any } }>) {
   const deviceCode = c.req.param('deviceCode');
+  if (!deviceCode) {
+    return c.json({ success: false, error: { code: '400', message: 'deviceCode is required' } }, 400);
+  }
   const context = c.get('businessContext');
   const platformDB = c.get('platformDB');
   const now = Date.now();

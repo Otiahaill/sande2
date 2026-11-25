@@ -34,7 +34,6 @@ import com.example.sande.ui.theme.SandeTheme
 import com.example.sande.ui.viewModelFactoryOf
 import com.example.sande.ui.viewmodel.StockViewModel
 import kotlinx.coroutines.launch
-import androidx.compose.material3.ExposedDropdownMenu
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,7 +45,7 @@ fun ReceiveStockScreen(
     val context = LocalContext.current
     val app = context.applicationContext as SandeApplication
     val vm: StockViewModel = viewModel(
-        factory = viewModelFactoryOf { StockViewModel(app.movementRepository, app.productRepository) }
+        factory = viewModelFactoryOf { StockViewModel(app.stockMovementRepository, app.productRepository) }
     )
     val rows by vm.rows.collectAsState()
     val session by app.authRepository.session.collectAsState()

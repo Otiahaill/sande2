@@ -20,11 +20,21 @@ data class ReceiptData(
 )
 
 /**
- * Formats currency according to business locale.
+ * Formats currency according to the business' currency and locale.
+ *
+ * The currency comes from the business profile (`KES`, `USD`, …), not from the
+ * locale: the default English locale would otherwise render every amount as
+ * "$", which is wrong for a Kenyan shilling business.
  */
 fun formatCurrency(cents: Long, currencyCode: String = "KES", locale: String = "en"): String {
     val amount = cents / 100.0
-    return java.text.NumberFormat.getCurrencyInstance(java.util.Locale(locale)).format(amount)
+    val formatter = java.text.NumberFormat.getCurrencyInstance(java.util.Locale(locale))
+    try {
+        formatter.currency = java.util.Currency.getInstance(currencyCode)
+    } catch (e: IllegalArgumentException) {
+        // Unknown currency code - keep the locale's default currency.
+    }
+    return formatter.format(amount)
 }
 
 /**
@@ -116,6 +126,7 @@ fun renderReceiptHtml(data: ReceiptData): String {
     val business = data.business
     val session = data.session
     val items = data.items
+    val receipt = data.receipt
 
     val itemsHtml = items.map { item ->
         """

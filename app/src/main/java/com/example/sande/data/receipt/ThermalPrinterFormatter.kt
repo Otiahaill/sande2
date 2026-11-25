@@ -1,10 +1,22 @@
 package com.example.sande.data.receipt
 
+import android.Manifest
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothSocket
+import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.core.content.ContextCompat
 import com.example.sande.data.entities.BusinessProfile
 import com.example.sande.data.entities.Receipt
 import com.example.sande.data.entities.SaleItem
 import com.example.sande.data.entities.SaleSession
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
+import java.io.IOException
+import java.util.UUID
 
 /**
  * ESC/POS commands for thermal printers.
@@ -100,7 +112,7 @@ class ThermalPrinterFormatter {
         fun writeText(text: String) = out.write(text.toByteArray())
         fun writeLine(text: String = "") {
             out.write(text.toByteArray())
-            out.write(LF)
+            out.write(LF.toInt())
         }
 
         // Initialize
@@ -151,29 +163,29 @@ class ThermalPrinterFormatter {
         items.forEach { item ->
             val name = truncate(item.productName, w)
             writeLine(name)
-            val qtyPrice = "${item.quantity} x ${formatCurrency(item.unitPriceCents)}"
-            val total = formatCurrency(item.totalCents)
+            val qtyPrice = "${item.quantity} x ${formatCurrency(item.unitPriceCents, business.currencyCode)}"
+            val total = formatCurrency(item.totalCents, business.currencyCode)
             writeLine(padBoth(qtyPrice, total))
         }
         write(FONT_A)
         writeLine("-".repeat(w))
 
         // Totals
-        writeLine(padBoth("Subtotal:", formatCurrency(session.subtotalCents)))
+        writeLine(padBoth("Subtotal:", formatCurrency(session.subtotalCents, business.currencyCode)))
         if (session.taxCents > 0) {
-            writeLine(padBoth("Tax:", formatCurrency(session.taxCents)))
+            writeLine(padBoth("Tax:", formatCurrency(session.taxCents, business.currencyCode)))
         }
         writeLine("-".repeat(w))
         write(BOLD_ON)
         write(DOUBLE_HEIGHT_ON)
-        writeLine(padBoth("TOTAL:", formatCurrency(session.totalCents)))
+        writeLine(padBoth("TOTAL:", formatCurrency(session.totalCents, business.currencyCode)))
         write(DOUBLE_HEIGHT_OFF)
         write(BOLD_OFF)
         writeLine("-".repeat(w))
 
         // Payment
         writeLine(padBoth("Payment:", "Cash"))
-        writeLine(padBoth("Change:", formatCurrency(0)))
+        writeLine(padBoth("Change:", formatCurrency(0, business.currencyCode)))
         writeLine("-".repeat(w))
 
         // Footer
@@ -212,10 +224,8 @@ class ThermalPrinterFormatter {
         return if (text.length <= maxLen) text else text.substring(0, maxLen - 3) + "..."
     }
 
-    private fun formatCurrency(cents: Long): String {
-        val amount = cents / 100.0
-        return java.text.NumberFormat.getCurrencyInstance(java.util.Locale.getDefault()).format(amount)
-    }
+    private fun formatCurrency(cents: Long, currencyCode: String): String =
+        com.example.sande.data.receipt.formatCurrency(cents, currencyCode)
 
     /**
      * Creates a test print (for printer verification).
@@ -227,7 +237,7 @@ class ThermalPrinterFormatter {
         fun write(bytes: ByteArray) = out.write(bytes)
         fun writeLine(text: String = "") {
             out.write(text.toByteArray())
-            out.write(LF)
+            out.write(LF.toInt())
         }
 
         write(INIT)
@@ -271,27 +281,116 @@ class ThermalPrinterFormatter {
 
 /**
  * Bluetooth printer helper for Android.
- * Handles connection and sending bytes to paired Bluetooth printer.
+ *
+ * Connects to a paired Bluetooth Classic printer and writes the receipt bytes
+ * to it. The device has to be bonded already — this class deliberately does
+ * not drive the pairing UI, so it never blocks on a system dialog.
+ *
+ * The caller must hold `BLUETOOTH_CONNECT` (API 31+) or
+ * `BLUETOOTH`/`BLUETOOTH_ADMIN` (API 26-30) and the Bluetooth adapter must be
+ * enabled.
  */
-class BluetoothPrinterHelper {
+class BluetoothPrinterHelper(private val context: Context) {
+
+    /**
+     * Result of a print attempt, so the UI can explain what went wrong.
+     */
+    sealed class PrintResult {
+        data class Success(val bytesWritten: Int) : PrintResult()
+        data class Failure(val reason: String) : PrintResult()
+    }
 
     /**
      * Sends bytes to a bonded Bluetooth device.
-     * Returns true if sent successfully.
+     *
+     * Runs on the IO dispatcher; the socket read/write calls block.
      */
     suspend fun printToBluetooth(
         deviceAddress: String,
         data: ByteArray,
-        onStatus: (String) -> Unit
-    ): Boolean = try {
+        onStatus: (String) -> Unit = {}
+    ): PrintResult = withContext(Dispatchers.IO) {
+        val adapter = BluetoothAdapter.getDefaultAdapter()
+        if (adapter == null) {
+            return@withContext PrintResult.Failure("This device has no Bluetooth adapter")
+        }
+        if (!adapter.isEnabled) {
+            return@withContext PrintResult.Failure("Bluetooth is turned off")
+        }
+
+        // From API 31 the BLUETOOTH_CONNECT permission is required to even
+        // look up a bonded device.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val granted = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.BLUETOOTH_CONNECT
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!granted) {
+                return@withContext PrintResult.Failure(
+                    "Bluetooth permission is not granted"
+                )
+            }
+        }
+
+        val device: BluetoothDevice = try {
+            adapter.getRemoteDevice(deviceAddress)
+        } catch (e: IllegalArgumentException) {
+            return@withContext PrintResult.Failure(
+                "Unknown printer address. Pair the printer in Android settings first."
+            )
+        }
+
         onStatus("Connecting to printer...")
-        // Implementation would use Android BluetoothSocket
-        // This is a placeholder - actual implementation needs Bluetooth permissions
-        // and runs on IO dispatcher
-        onStatus("Printer not implemented yet")
-        false
-    } catch (e: Exception) {
-        onStatus("Print failed: ${e.message}")
-        false
+        var socket: BluetoothSocket? = null
+        try {
+            socket = device.createRfcommSocketToServiceRecord(
+                SPP_UUID
+            )
+            socket.connect()
+
+            val output = socket.outputStream
+            output.write(data)
+            output.flush()
+
+            onStatus("Sent ${data.size} bytes")
+            PrintResult.Success(data.size)
+        } catch (e: IOException) {
+            PrintResult.Failure("Could not reach the printer: ${e.message}")
+        } catch (e: SecurityException) {
+            PrintResult.Failure("Bluetooth permission is not granted")
+        } finally {
+            try {
+                socket?.close()
+            } catch (e: IOException) {
+                // Closing a broken socket is not worth reporting.
+            }
+        }
+    }
+
+    /**
+     * Lists the MAC addresses of the bonded printers, so the settings screen
+     * can offer them for selection.
+     */
+    fun bondedPrinterAddresses(): List<String> {
+        val adapter = BluetoothAdapter.getDefaultAdapter() ?: return emptyList()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val granted = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.BLUETOOTH_CONNECT
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!granted) return emptyList()
+        }
+        return try {
+            adapter.bondedDevices
+                .map { it.address }
+                .sorted()
+        } catch (e: SecurityException) {
+            emptyList()
+        }
+    }
+
+    companion object {
+        /** The standard Serial Port Profile UUID used by thermal printers. */
+        private val SPP_UUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
     }
 }

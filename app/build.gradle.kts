@@ -32,8 +32,8 @@ android {
         applicationId = "com.example.sande"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.0.1"
 
         // Injected build config — see local.properties / gradle properties
         buildConfigField("String", "GOOGLE_CLIENT_ID", "\"${configValue("SANDE_GOOGLE_CLIENT_ID")}\"")
@@ -46,9 +46,51 @@ android {
         buildConfig = true
     }
 
+    signingConfigs {
+        // A stable debug key.
+        //
+        // GitHub's runners generate a fresh debug keystore for every job, so
+        // each CI build used to be signed with a different certificate. Google
+        // checks the SHA-1 of the signing certificate against the one
+        // registered for the OAuth Android client, so a key that changes on
+        // every build means Google Sign-In can never succeed from a CI-built
+        // APK. This key is committed on purpose: it is a debug-only key with
+        // the standard "android" password, and it is what makes the builds
+        // reproducible. Release builds use a real keystore from the secrets.
+        getByName("debug") {
+            val debugKeystore = file("signing/debug.keystore")
+            if (debugKeystore.isFile) {
+                storeFile = debugKeystore
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
+        }
+
+        // A release keystore can be supplied through local.properties or as
+        // Gradle properties. Without one the release build falls back to the
+        // debug key, so the release APK is still signed and installable.
+        create("release") {
+            val storePath = configValue("SANDE_RELEASE_STORE_FILE")
+            if (storePath.isNotBlank()) {
+                storeFile = file(storePath)
+                storePassword = configValue("SANDE_RELEASE_STORE_PASSWORD")
+                keyAlias = configValue("SANDE_RELEASE_KEY_ALIAS")
+                keyPassword = configValue("SANDE_RELEASE_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = if (configValue("SANDE_RELEASE_STORE_FILE").isNotBlank()) {
+                signingConfigs.getByName("release")
+            } else {
+                // No release keystore available: sign with the debug key so
+                // the APK is installable.
+                signingConfigs.getByName("debug")
+            }
         }
     }
 
@@ -78,6 +120,136 @@ ksp {
     arg("room.incremental", "true")
 }
 
+// Static checks that the Kotlin compiler cannot do.
+//
+// This project is developed on a phone without a local Gradle build, so the
+// CI build is the only compiler. These checks catch the mistakes that are
+// invisible to the compiler — unresolved project symbols, DAO calls that do
+// not exist, and Room migration SQL that would abort on a real device.
+//
+// They run before every build, so a mistake fails fast and loudly.
+val staticChecks by tasks.registering {
+    group = "verification"
+    description = "Runs the static analysis scripts in tools/."
+    doLast {
+        val tools = rootProject.file("tools")
+        val scripts = listOf(
+            "check_imports.py",
+            "check_missing_imports.py",
+            "check_dao_calls.py",
+            "check_room_queries.py",
+            "check_await.py",
+            "check_migration_schema.py",
+            "check_migration_sql.py",
+            "check_launcher.py"
+        )
+        scripts.forEach { script ->
+            val file = tools.resolve(script)
+            if (!file.exists()) {
+                logger.warn("Skipping $script — not found")
+                return@forEach
+            }
+            val result = providers.exec {
+                workingDir = rootProject.projectDir
+                commandLine("python3", file.absolutePath)
+                isIgnoreExitValue = true
+            }.result.get()
+            if (result.exitValue != 0) {
+                throw GradleException("$script failed with exit code ${result.exitValue}")
+            }
+        }
+    }
+}
+
+tasks.matching { it.name == "preBuild" }.configureEach {
+    dependsOn(staticChecks)
+}
+
+/**
+ * Finds a build tool (aapt, aapt2) in the installed Android SDK.
+ */
+fun findBuildTool(name: String): File? {
+    val sdk = System.getenv("ANDROID_HOME") ?: System.getenv("ANDROID_SDK_ROOT")
+    if (sdk == null) return null
+    val dir = File(sdk, "build-tools")
+    if (!dir.isDirectory) return null
+    return dir.listFiles()
+        ?.filter { File(it, name).canExecute() }
+        ?.sortedByDescending { it.name }
+        ?.firstOrNull()
+        ?.let { File(it, name) }
+}
+
+/**
+ * Verifies that a built APK is launchable.
+ *
+ * A package with no MAIN/LAUNCHER activity installs but never appears in the
+ * app drawer and offers no way to open it from Settings, so this is checked
+ * on every build instead of being found by a user.
+ *
+ * `aapt dump badging` reports the launchable activity.
+ */
+fun verifyLaunchable(apk: File, label: String) {
+    if (!apk.isFile) {
+        logger.lifecycle("$label APK not found at ${apk.absolutePath}; nothing to verify")
+        return
+    }
+    val aapt = findBuildTool("aapt")
+    if (aapt == null) {
+        logger.lifecycle("aapt is not available; skipping the $label launchable-activity check")
+        return
+    }
+    val badging = providers.exec {
+        workingDir = rootProject.projectDir
+        commandLine(aapt.absolutePath, "dump", "badging", apk.absolutePath)
+        isIgnoreExitValue = true
+    }.standardOutput.asText.get()
+
+    val launchable = badging.lines().firstOrNull { it.startsWith("launchable-activity:") }
+    if (launchable == null) {
+        throw GradleException(
+            "The $label APK has no launchable activity, so it would not appear in the " +
+                "app drawer and could not be opened. aapt output:\n$badging"
+        )
+    }
+    val packageLine = badging.lines().firstOrNull { it.startsWith("package:") }
+    logger.lifecycle("$label APK is launchable -> $launchable")
+    logger.lifecycle("$label APK package -> $packageLine")
+}
+
+val verifyDebugApkLaunchable by tasks.registering {
+    group = "verification"
+    description = "Checks that the debug APK declares a launchable activity."
+    doLast {
+        verifyLaunchable(
+            layout.buildDirectory.file("outputs/apk/debug/app-debug.apk").get().asFile,
+            "Debug"
+        )
+    }
+}
+
+val verifyReleaseApkLaunchable by tasks.registering {
+    group = "verification"
+    description = "Checks that the release APK declares a launchable activity."
+    doLast {
+        verifyLaunchable(
+            layout.buildDirectory.file("outputs/apk/release/app-release.apk").get().asFile,
+            "Release"
+        )
+    }
+}
+
+// The variant tasks are created by the Android plugin after this file is
+// evaluated, so they are wired lazily rather than with tasks.named(...).
+tasks.matching { it.name == "assembleDebug" }.configureEach {
+    // The release APK is built as well so it can be delivered and verified.
+    finalizedBy(verifyDebugApkLaunchable, "assembleRelease")
+}
+
+tasks.matching { it.name == "assembleRelease" }.configureEach {
+    finalizedBy(verifyReleaseApkLaunchable)
+}
+
 dependencies {
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.material3)
@@ -101,7 +273,6 @@ dependencies {
     implementation(libs.androidx.credential.manager.play.services)
     // GetGoogleIdOption / GoogleIdTokenCredential live here, not in androidx.credentials.
     implementation(libs.google.identity.signin)
-    implementation(libs.google.play.services.auth)
 
     // WorkManager
     implementation(libs.androidx.work.runtime)

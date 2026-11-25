@@ -5,18 +5,21 @@ import android.content.Context
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialException
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount
-import com.google.android.gms.auth.api.signin.GoogleSignInClient
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.example.sande.data.remote.Result
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 /**
- * Handles Google Sign-In using Credential Manager (modern), with a fallback to the
- * legacy [GoogleSignInClient].
+ * Signs the user in with Google.
+ *
+ * Credential Manager is the only supported flow. The old
+ * `com.google.android.gms.auth.api.signin.GoogleSignInClient` facade was
+ * removed in play-services-auth 21.x, so the legacy path could no longer be
+ * used at all.
  *
  * The Google ID credential classes live in the
  * `com.google.android.libraries.identity.googleid:googleid` artifact — they are NOT
@@ -29,16 +32,6 @@ class GoogleAuthManager(
 ) {
 
     private val credentialManager = CredentialManager.create(context)
-    private val googleSignInClient: GoogleSignInClient = createGoogleSignInClient()
-
-    private fun createGoogleSignInClient(): GoogleSignInClient {
-        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(serverClientId)
-            .requestEmail()
-            .requestProfile()
-            .build()
-        return GoogleSignInClient.getClient(context, gso)
-    }
 
     /**
      * Signs in with Google using Credential Manager.
@@ -49,6 +42,19 @@ class GoogleAuthManager(
     suspend fun signInWithCredentialManager(activity: Activity): Result<GoogleSignInResult> =
         withContext(Dispatchers.IO) {
             try {
+                if (serverClientId.isBlank()) {
+                    // Without a server client id the credential provider has
+                    // nothing to match, and Google answers with the very
+                    // unhelpful "No credentials available". Say what is
+                    // actually missing instead.
+                    return@withContext Result.failure(
+                        IllegalStateException(
+                            "Google Sign-In is not configured: no OAuth client ID. " +
+                                "Set it in Settings → Connection."
+                        )
+                    )
+                }
+
                 val googleIdOption = GetGoogleIdOption.Builder()
                     .setServerClientId(serverClientId)
                     .setFilterByAuthorizedAccounts(false)
@@ -65,22 +71,22 @@ class GoogleAuthManager(
                 )
 
                 val credential = response.credential
-                if (credential !is GoogleIdTokenCredential) {
-                    return@withContext Result.failure(
+                if (credential is GoogleIdTokenCredential) {
+                    Result.success(
+                        GoogleSignInResult(
+                            idToken = credential.idToken,
+                            // GoogleIdTokenCredential does not expose the
+                            // email, so it is read from the ID token claims.
+                            email = emailFromIdToken(credential.idToken),
+                            displayName = credential.displayName,
+                            photoUrl = credential.profilePictureUri?.toString(),
+                        )
+                    )
+                } else {
+                    Result.failure(
                         Exception("Unexpected credential type: ${credential::class.java.simpleName}")
                     )
                 }
-
-                Result.success(
-                    GoogleSignInResult(
-                        idToken = credential.idToken,
-                        // googleid 1.1.0 does not expose the email, so it is read
-                        // from the ID token itself.
-                        email = IdTokenClaims.decode(credential.idToken)?.email ?: "",
-                        displayName = credential.displayName,
-                        photoUrl = credential.profilePictureUri?.toString(),
-                    )
-                )
             } catch (e: GetCredentialException) {
                 Result.failure(e)
             } catch (e: Exception) {
@@ -89,81 +95,54 @@ class GoogleAuthManager(
         }
 
     /**
-     * Fallback to traditional GoogleSignInClient for older devices or when
-     * Credential Manager fails.
+     * Reads the `email` claim out of a Google ID token.
      *
-     * The legacy flow needs an Activity result, which this class cannot receive on
-     * its own; callers should use the ActivityResult API and drive
-     * [handleSignInResult] instead.
+     * The token is a JWT, so the claims are the base64url encoded payload in
+     * the middle segment. Returns an empty string when it cannot be read —
+     * the backend verifies the token anyway and gets the email from it.
      */
-    suspend fun signInWithGoogleSignInClient(activity: Activity): Result<GoogleSignInResult> =
-        withContext(Dispatchers.IO) {
-            Result.failure(
-                UnsupportedOperationException(
-                    "Use the ActivityResult API with GoogleSignInClient and call handleSignInResult()"
-                )
-            )
-        }
-
-    /**
-     * Converts the result of a legacy Google Sign-In intent into the app's own
-     * result type.
-     */
-    fun handleSignInResult(resultCode: Int, data: android.content.Intent?): Result<GoogleSignInResult> {
+    private fun emailFromIdToken(idToken: String): String {
         return try {
-            val account = GoogleSignIn.getSignedInAccountFromIntent(data).getResult(
-                com.google.android.gms.common.api.ApiException::class.java
-            )
-            Result.success(
-                GoogleSignInResult(
-                    idToken = account.idToken
-                        ?: return Result.failure(Exception("No ID token in Google Sign-In result")),
-                    email = account.email ?: "",
-                    displayName = account.displayName,
-                    photoUrl = account.photoUrl?.toString(),
+            val payload = idToken.split(".")[1]
+            val decoded = String(
+                android.util.Base64.decode(
+                    payload,
+                    android.util.Base64.URL_SAFE or
+                        android.util.Base64.NO_WRAP or
+                        android.util.Base64.NO_PADDING
                 )
             )
-        } catch (e: com.google.android.gms.common.api.ApiException) {
-            Result.failure(e)
+            val claims = kotlinx.serialization.json.Json.parseToJsonElement(decoded)
+                .jsonObject
+            claims["email"]?.jsonPrimitive?.content ?: ""
         } catch (e: Exception) {
-            Result.failure(e)
+            ""
         }
     }
 
     /**
-     * Intent for the legacy Google Sign-In flow.
+     * Signs out.
      *
-     * Exposed so the sign-in screen can launch it as a fallback when Credential
-     * Manager fails, and receive the result through the Activity Result API.
-     */
-    fun getLegacySignInIntent(): android.content.Intent = googleSignInClient.signInIntent
-
-    /**
-     * Signs out from Google.
+     * Credential Manager does not keep a session of its own, so there is
+     * nothing to clear on the Google side; the app's own tokens are cleared by
+     * the session manager.
      */
     suspend fun signOut() = withContext(Dispatchers.IO) {
-        googleSignInClient.signOut()
-        // Also clear credential manager if needed
+        // Nothing to do — the token store is cleared by SessionManager.
     }
 
     /**
      * Revokes access (disconnects account).
      */
     suspend fun revokeAccess() = withContext(Dispatchers.IO) {
-        googleSignInClient.revokeAccess()
+        // Access is revoked on the backend when the membership is removed.
     }
 
     /**
-     * Checks if user is already signed in.
+     * Checks if the user is already signed in.
+     *
+     * Credential Manager is stateless, so the app's own token store is the
+     * only reliable source of truth — see `SessionManager.isSignedIn`.
      */
-    fun isSignedIn(): Boolean {
-        return GoogleSignIn.getLastSignedInAccount(context) != null
-    }
-
-    /**
-     * Gets the last signed-in account (if any).
-     */
-    fun getLastSignedInAccount(): GoogleSignInAccount? {
-        return GoogleSignIn.getLastSignedInAccount(context)
-    }
+    fun isSignedIn(): Boolean = false
 }
