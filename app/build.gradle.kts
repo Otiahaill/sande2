@@ -120,7 +120,8 @@ val staticChecks by tasks.registering {
             "check_room_queries.py",
             "check_await.py",
             "check_migration_schema.py",
-            "check_migration_sql.py"
+            "check_migration_sql.py",
+            "check_launcher.py"
         )
         scripts.forEach { script ->
             val file = tools.resolve(script)

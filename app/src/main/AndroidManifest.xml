@@ -29,7 +29,12 @@
             android:theme="@style/Theme.Sande.Splash">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.LAUNCHER" />
+                <!-- The category must be android.intent.category.LAUNCHER.
+                     Without the "category." part Android does not treat this
+                     activity as a launcher entry: the app installs, but it
+                     never appears in the app drawer and Settings offers no
+                     way to open it. -->
+                <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
