@@ -1,6 +1,7 @@
 package com.example.sande.data.prefs
 
 import android.content.Context
+import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKeys
 import kotlinx.coroutines.Dispatchers
@@ -20,7 +21,17 @@ class TokenManager(private val context: Context) {
     private val prefs = createEncryptedPrefs()
     private val json = Json { ignoreUnknownKeys = true }
 
-    private fun createEncryptedPrefs() = try {
+    /**
+     * Creates the encrypted preferences, falling back to plain preferences.
+     *
+     * The keystore is not always available: it fails on devices whose secure
+     * lock screen has been removed or reset, and on some vendor ROMs. The
+     * previous version threw in that case, which killed the app on startup
+     * because the token store is touched while the first screen is composed.
+     * Falling back keeps the app usable offline; the tokens are still
+     * sandboxed by the app's own permissions.
+     */
+    private fun createEncryptedPrefs(): SharedPreferences = try {
         val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
         EncryptedSharedPreferences.create(
             "sande_auth_tokens",
@@ -30,9 +41,11 @@ class TokenManager(private val context: Context) {
             EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
         )
     } catch (e: GeneralSecurityException) {
-        throw RuntimeException("Failed to create encrypted preferences", e)
+        android.util.Log.w("TokenManager", "Keystore unavailable, using plain preferences", e)
+        context.getSharedPreferences("sande_auth_tokens_fallback", Context.MODE_PRIVATE)
     } catch (e: Exception) {
-        throw RuntimeException("Failed to create encrypted preferences", e)
+        android.util.Log.w("TokenManager", "Encrypted preferences unavailable, using plain preferences", e)
+        context.getSharedPreferences("sande_auth_tokens_fallback", Context.MODE_PRIVATE)
     }
 
     companion object {
@@ -66,9 +79,20 @@ class TokenManager(private val context: Context) {
         prefs.edit().putString(KEY_BUSINESS_ID, tokens.membership.businessId).apply()
     }
 
+    /**
+     * Reads the stored tokens.
+     *
+     * Returns null when there are no tokens or when the stored value cannot be
+     * decoded - a corrupted entry must not take the app down at startup.
+     */
     suspend fun getTokens(): StoredTokens? = withContext(Dispatchers.IO) {
-        val jsonString = prefs.getString(KEY_TOKENS, null)
-        jsonString?.let { json.decodeFromString<StoredTokens>(it) }
+        val jsonString = prefs.getString(KEY_TOKENS, null) ?: return@withContext null
+        try {
+            json.decodeFromString<StoredTokens>(jsonString)
+        } catch (e: Exception) {
+            android.util.Log.w("TokenManager", "Stored tokens could not be decoded", e)
+            null
+        }
     }
 
     suspend fun clearTokens() = withContext(Dispatchers.IO) {

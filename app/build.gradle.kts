@@ -32,8 +32,8 @@ android {
         applicationId = "com.example.sande"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.0.1"
 
         // Injected build config — see local.properties / gradle properties
         buildConfigField("String", "GOOGLE_CLIENT_ID", "\"${configValue("SANDE_GOOGLE_CLIENT_ID")}\"")
@@ -46,9 +46,31 @@ android {
         buildConfig = true
     }
 
+    signingConfigs {
+        // A release keystore can be supplied through local.properties or as
+        // Gradle properties. Without one the release build falls back to the
+        // debug key, so the release APK is still signed and installable.
+        create("release") {
+            val storePath = configValue("SANDE_RELEASE_STORE_FILE")
+            if (storePath.isNotBlank()) {
+                storeFile = file(storePath)
+                storePassword = configValue("SANDE_RELEASE_STORE_PASSWORD")
+                keyAlias = configValue("SANDE_RELEASE_KEY_ALIAS")
+                keyPassword = configValue("SANDE_RELEASE_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = if (configValue("SANDE_RELEASE_STORE_FILE").isNotBlank()) {
+                signingConfigs.getByName("release")
+            } else {
+                // No release keystore available: sign with the debug key so
+                // the APK is installable.
+                signingConfigs.getByName("debug")
+            }
         }
     }
 
@@ -120,6 +142,89 @@ val staticChecks by tasks.registering {
 
 tasks.named("preBuild") {
     dependsOn(staticChecks)
+}
+
+/**
+ * Finds a build tool (aapt, aapt2) in the installed Android SDK.
+ */
+fun findBuildTool(name: String): File? {
+    val sdk = System.getenv("ANDROID_HOME") ?: System.getenv("ANDROID_SDK_ROOT")
+    if (sdk == null) return null
+    val dir = File(sdk, "build-tools")
+    if (!dir.isDirectory) return null
+    return dir.listFiles()
+        ?.filter { File(it, name).canExecute() }
+        ?.sortedByDescending { it.name }
+        ?.firstOrNull()
+        ?.let { File(it, name) }
+}
+
+/**
+ * Verifies that a built APK is launchable.
+ *
+ * A package with no MAIN/LAUNCHER activity installs but never appears in the
+ * app drawer and offers no way to open it from Settings, so this is checked
+ * on every build instead of being found by a user.
+ *
+ * `aapt dump badging` reports the launchable activity.
+ */
+fun verifyLaunchable(apk: File, label: String) {
+    if (!apk.isFile) {
+        logger.lifecycle("$label APK not found at ${apk.absolutePath}; nothing to verify")
+        return
+    }
+    val aapt = findBuildTool("aapt")
+    if (aapt == null) {
+        logger.lifecycle("aapt is not available; skipping the $label launchable-activity check")
+        return
+    }
+    val badging = providers.exec {
+        workingDir = rootProject.projectDir
+        commandLine(aapt.absolutePath, "dump", "badging", apk.absolutePath)
+        isIgnoreExitValue = true
+    }.standardOutput.asText.get()
+
+    val launchable = badging.lines().firstOrNull { it.startsWith("launchable-activity:") }
+    if (launchable == null) {
+        throw GradleException(
+            "The $label APK has no launchable activity, so it would not appear in the " +
+                "app drawer and could not be opened. aapt output:\n$badging"
+        )
+    }
+    val packageLine = badging.lines().firstOrNull { it.startsWith("package:") }
+    logger.lifecycle("$label APK is launchable -> $launchable")
+    logger.lifecycle("$label APK package -> $packageLine")
+}
+
+val verifyDebugApkLaunchable by tasks.registering {
+    group = "verification"
+    description = "Checks that the debug APK declares a launchable activity."
+    doLast {
+        verifyLaunchable(
+            layout.buildDirectory.file("outputs/apk/debug/app-debug.apk").get().asFile,
+            "Debug"
+        )
+    }
+}
+
+val verifyReleaseApkLaunchable by tasks.registering {
+    group = "verification"
+    description = "Checks that the release APK declares a launchable activity."
+    doLast {
+        verifyLaunchable(
+            layout.buildDirectory.file("outputs/apk/release/app-release.apk").get().asFile,
+            "Release"
+        )
+    }
+}
+
+tasks.named("assembleDebug") {
+    // The release APK is built as well so it can be delivered and verified.
+    finalizedBy(verifyDebugApkLaunchable, "assembleRelease")
+}
+
+tasks.named("assembleRelease") {
+    finalizedBy(verifyReleaseApkLaunchable)
 }
 
 dependencies {

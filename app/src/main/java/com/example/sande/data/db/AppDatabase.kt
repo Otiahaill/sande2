@@ -638,18 +638,68 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Opens the database, recreating it when the file on disk cannot be
+         * used.
+         *
+         * Room refuses to open a database whose schema does not match the
+         * entities, and it throws while the app is starting. The app is
+         * offline-first, so the server holds the source of truth and the local
+         * database is a cache: when the cache is unusable the app moves it
+         * aside and starts with a fresh one, instead of being unable to open
+         * at all. The old file is kept so nothing is silently destroyed.
+         */
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
-                val instance = Room.databaseBuilder(
-                    context.applicationContext,
-                    AppDatabase::class.java,
-                    "sande_database"
-                )
-                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
-                    .build()
+                val instance = try {
+                    openDatabase(context)
+                } catch (e: IllegalStateException) {
+                    android.util.Log.e(
+                        "AppDatabase",
+                        "The local database could not be opened; recreating it",
+                        e
+                    )
+                    moveAsideBrokenDatabase(context)
+                    openDatabase(context)
+                }
                 INSTANCE = instance
                 instance
             }
         }
+
+        /** Builds the Room database and forces it open so errors surface here. */
+        private fun openDatabase(context: Context): AppDatabase {
+            val instance = Room.databaseBuilder(
+                context.applicationContext,
+                AppDatabase::class.java,
+                DATABASE_NAME
+            )
+                .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                .build()
+            // Touching the writable database runs Room's schema validation.
+            instance.openHelper.writableDatabase
+            return instance
+        }
+
+        /**
+         * Renames the unusable database (and its side files) so a new one can
+         * be created. The old files stay on disk for support.
+         */
+        private fun moveAsideBrokenDatabase(context: Context) {
+            val dbFile = context.getDatabasePath(DATABASE_NAME)
+            if (!dbFile.exists()) return
+            val stamp = System.currentTimeMillis()
+            listOf("", "-wal", "-shm", "-journal").forEach { suffix ->
+                val file = java.io.File(dbFile.path + suffix)
+                if (file.exists()) {
+                    val target = java.io.File(file.parentFile, "${file.name}.broken-$stamp")
+                    if (!file.renameTo(target)) {
+                        file.delete()
+                    }
+                }
+            }
+        }
+
+        private const val DATABASE_NAME = "sande_database"
     }
 }

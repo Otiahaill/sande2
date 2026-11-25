@@ -34,6 +34,14 @@ import com.example.sande.data.repository.SyncCursorRepository
 import com.example.sande.data.repository.SyncExceptionRepository
 
 class SandeApplication : Application() {
+
+    override fun onCreate() {
+        super.onCreate()
+        // Records any unhandled exception so a startup crash is visible
+        // instead of the app disappearing without a trace.
+        com.example.sande.ui.StartupCrashHandler.install(this)
+    }
+
     val settings: AppSettings by lazy {
         AppSettings(this)
     }
