@@ -26,7 +26,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src --ext .ts",
-    "cf-typegen": "wrangler types --env-interface CloudflareBindings"
+    "cf-typegen": "wrangler types --env-interface CloudflareBindings",
+    "postinstall": "node scripts/install-wrangler-shim.mjs"
   },
   "dependencies": {
     "hono": "^4.5.0",
