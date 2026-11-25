@@ -1,5 +1,5 @@
 import { Context, Next } from 'hono';
-import { verify, decode } from 'hono/jwt';
+import { verify } from 'hono/jwt';
 import { CloudflareBindings, BusinessContext, JWTPayload } from '../types';
 import { createPlatformDB } from '../db/tenant';
 
@@ -24,7 +24,7 @@ export async function authMiddleware(c: Context<{ Bindings: CloudflareBindings; 
 
   try {
     // Verify JWT signature
-    const payload = await verify(token, c.env.JWT_SECRET) as JWTPayload;
+    const payload = await verify(token, c.env.JWT_SECRET, 'HS256') as unknown as JWTPayload;
 
     // Check token type
     if (payload.type !== 'access') {
@@ -126,7 +126,7 @@ export async function requireAdmin(c: Context<{ Bindings: CloudflareBindings; Va
 
   try {
     // Verify admin JWT (different secret or same with admin claim)
-    const payload = await verify(token, c.env.JWT_SECRET) as JWTPayload & { admin?: boolean };
+    const payload = await verify(token, c.env.JWT_SECRET, 'HS256') as unknown as JWTPayload & { admin?: boolean };
 
     const platformDB = createPlatformDB(c.env.DB);
     const isAdmin = await platformDB.isPlatformAdmin(payload.sub);
@@ -165,7 +165,7 @@ export async function generateAccessToken(
 
   // Use hono/jwt sign
   const { sign } = await import('hono/jwt');
-  return sign(tokenPayload, env.JWT_SECRET);
+  return sign(tokenPayload as unknown as Record<string, unknown>, env.JWT_SECRET);
 }
 
 /**
@@ -185,7 +185,7 @@ export async function generateRefreshToken(
   };
 
   const { sign } = await import('hono/jwt');
-  return sign(tokenPayload, env.JWT_SECRET);
+  return sign(tokenPayload as unknown as Record<string, unknown>, env.JWT_SECRET);
 }
 
 /**
@@ -200,12 +200,15 @@ export async function verifyGoogleIdToken(idToken: string, clientId: string) {
     audience: clientId,
   });
 
+  // jose's payload type has an index signature, so the claims are read
+  // explicitly.
+  const claims = payload as unknown as Record<string, unknown>;
   return {
-    sub: payload.sub as string,
-    email: payload.email as string,
-    email_verified: payload.email_verified as boolean,
-    name: payload.name as string,
-    picture: payload.picture as string,
+    sub: claims['sub'] as string,
+    email: claims['email'] as string,
+    email_verified: claims['email_verified'] as boolean,
+    name: claims['name'] as string,
+    picture: claims['picture'] as string,
   };
 }
 

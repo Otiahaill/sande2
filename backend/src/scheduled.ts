@@ -1,4 +1,5 @@
-import { Context, ScheduledEvent } from '@cloudflare/workers-types';
+import { ScheduledEvent } from '@cloudflare/workers-types';
+
 
 /**
  * Unwraps the rows from a D1 result.
@@ -52,9 +53,9 @@ async function runNightlyBackups(env: CloudflareBindings): Promise<void> {
     `SELECT id, name FROM businesses WHERE status = 'active' AND deleted_at = 0`
   ).all<{ id: string; name: string }>();
 
-  console.log(`[backup] creating backups for ${businesses.length} business(es)`);
+  console.log(`[backup] creating backups for ${businesses.results.length} business(es)`);
 
-  for (const business of businesses) {
+  for (const business of businesses.results) {
     try {
       const result = await createBusinessBackup(env, business.id);
       console.log(`[backup] ${business.id}: ${result.rowCount} rows → ${result.r2Key}`);
@@ -94,14 +95,14 @@ async function createBusinessBackup(
   let ndjson = '';
 
   for (const table of BACKUP_TABLES) {
-    const rows = await rows( env.DB.prepare(
+    const tableRows = await rows( env.DB.prepare(
       `SELECT * FROM ${table} WHERE business_id = ?`
     ).bind(businessId).all());
 
-    rowCounts[table] = rows.length;
-    totalRows += rows.length;
+    rowCounts[table] = tableRows.length;
+    totalRows += tableRows.length;
 
-    for (const row of rows) {
+    for (const row of tableRows) {
       ndjson += JSON.stringify({ table, ...row }) + '\n';
     }
   }
@@ -160,7 +161,7 @@ async function enforceRetention(env: CloudflareBindings, businessId: string): Pr
 
   const toDelete: string[] = [];
 
-  for (const backup of backups) {
+  for (const backup of backups.results) {
     const date = new Date(backup.created_at);
     const isFirstOfMonth = date.getUTCDate() === 1;
 

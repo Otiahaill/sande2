@@ -1,21 +1,9 @@
 import { Context } from 'hono';
 import { CloudflareBindings } from '../types';
-import { createPlatformDB } from '../db/tenant';
+import { createPlatformDB, rows } from '../db/tenant';
 import { AccountRow, BackupRow, DeviceRow, SyncBatchRow, SyncCursorRow, SyncExceptionRow } from '../db/rows';
 
 
-/**
- * Unwraps the rows from a D1 result.
- *
- * `D1PreparedStatement.all()` resolves to a `D1Result`; the rows themselves
- * are in `.results`. Code that wants the rows uses this helper so the
- * distinction is explicit.
- */
-export async function rows<T = Record<string, unknown>>(
-  result: Promise<D1Result<T>>
-): Promise<T[]> {
-  return (await result).results;
-}
 
 
 /**

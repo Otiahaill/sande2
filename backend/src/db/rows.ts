@@ -62,6 +62,25 @@ export interface BackupRow {
   created_at: number;
 }
 
+export interface BusinessProfileRow {
+  id: string;
+  business_id: string;
+  name: string;
+  category: string;
+  phone: string;
+  country_code: string;
+  currency_code: string;
+  timezone: string;
+  address: string;
+  logo_r2_key: string;
+  negative_stock_policy: string;
+  receipt_footer: string;
+  created_at: number;
+  updated_at: number;
+  deleted_at: number;
+  schema_version: number;
+}
+
 export interface BusinessRow {
   id: string;
   name: string;
@@ -106,6 +125,25 @@ export interface CounterRow {
   updated_at: number;
 }
 
+export interface DeviceRegistrationRow {
+  id: string;
+  business_id: string;
+  account_id: string;
+  device_code: string;
+  device_name: string;
+  device_type: string;
+  status: string;
+  approved_by: string;
+  approved_at: number;
+  revoked_at: number;
+  revoked_by: string;
+  last_seen_at: number;
+  last_sync_at: number;
+  push_token: string;
+  created_at: number;
+  updated_at: number;
+}
+
 export interface DeviceRow {
   id: string;
   business_id: string;
@@ -136,6 +174,23 @@ export interface InvitationRow {
   accepted_at: number;
   accepted_by: string;
   created_at: number;
+}
+
+export interface MembershipMirrorRow {
+  id: string;
+  business_id: string;
+  account_id: string;
+  email: string;
+  role: string;
+  status: string;
+  invited_by: string;
+  invited_at: number;
+  accepted_at: number;
+  device_code: string;
+  last_synced_at: number;
+  server_version: number;
+  created_at: number;
+  updated_at: number;
 }
 
 export interface MembershipRow {

@@ -1,22 +1,11 @@
 import { Context } from 'hono';
 import { CloudflareBindings, OutboxEntry, SyncException } from '../types';
-import { createTenantDB, createPlatformDB } from '../db/tenant';
+import { createTenantDB, createPlatformDB, rows } from '../db/tenant';
 import { hashToken } from '../middleware/auth';
-import { ChangeLogRow, StockMovementRow, SyncCursorRow } from '../db/rows';
+import { D1Database } from '@cloudflare/workers-types';
+import { ChangeLogRow, DeviceRow, StockMovementRow, SyncCursorRow } from '../db/rows';
 
 
-/**
- * Unwraps the rows from a D1 result.
- *
- * `D1PreparedStatement.all()` resolves to a `D1Result`; the rows themselves
- * are in `.results`. Code that wants the rows uses this helper so the
- * distinction is explicit.
- */
-export async function rows<T = Record<string, unknown>>(
-  result: Promise<D1Result<T>>
-): Promise<T[]> {
-  return (await result).results;
-}
 
 
 /**
@@ -77,7 +66,8 @@ export async function push(c: Context<{ Bindings: CloudflareBindings; Variables:
           serverVersion: 0,
           description: `Failed after ${entry.attemptCount} attempts: ${errorMsg}`,
           localDataJson: entry.payloadJson,
-          serverDataJson: null,
+          serverDataJson: undefined,
+          status: 'open',
         });
       }
     }
@@ -118,7 +108,7 @@ export async function push(c: Context<{ Bindings: CloudflareBindings; Variables:
 /**
  * Applies a single outbox entry to the database
  */
-async function applyOutboxEntry(db: any, businessId: string, entry: OutboxEntry, context: any) {
+async function applyOutboxEntry(db: D1Database, businessId: string, entry: OutboxEntry, context: any) {
   const payload = JSON.parse(entry.payloadJson);
 
   switch (entry.entityType) {
@@ -168,7 +158,7 @@ async function applyOutboxEntry(db: any, businessId: string, entry: OutboxEntry,
   ).run();
 }
 
-async function applyProduct(db: any, businessId: string, operation: string, payload: any, context: any) {
+async function applyProduct(db: D1Database, businessId: string, operation: string, payload: any, context: any) {
   if (operation === 'create' || operation === 'update') {
     await db.prepare(
       `INSERT INTO products (id, business_id, name, sku, category_id, category, price_cents, unit_of_measure, conversion_ratio, original_price_cents, is_active, archived_at, deleted_at, created_at, updated_at)
@@ -195,7 +185,7 @@ async function applyProduct(db: any, businessId: string, operation: string, payl
   }
 }
 
-async function applySaleSession(db: any, businessId: string, operation: string, payload: any, context: any) {
+async function applySaleSession(db: D1Database, businessId: string, operation: string, payload: any, context: any) {
   if (operation === 'create' || operation === 'update') {
     await db.prepare(
       `INSERT INTO sale_sessions (id, business_id, receipt_number, device_id, device_code, salesperson_id, salesperson_role, subtotal_cents, tax_cents, total_cents, status, created_at, updated_at, synced)
@@ -212,7 +202,7 @@ async function applySaleSession(db: any, businessId: string, operation: string, 
   }
 }
 
-async function applyStockMovement(db: any, businessId: string, operation: string, payload: any, context: any) {
+async function applyStockMovement(db: D1Database, businessId: string, operation: string, payload: any, context: any) {
   if (operation === 'create') {
     await db.prepare(
       `INSERT INTO stock_movements (id, business_id, product_id, movement_type, quantity_delta, unit_price_cents, actor_id, actor_role, device_code, reason, reference_id, reversal_of, metadata_json, created_at, synced, server_seq, running_balance)
@@ -229,7 +219,7 @@ async function applyStockMovement(db: any, businessId: string, operation: string
   }
 }
 
-async function applyMembershipMirror(db: any, businessId: string, operation: string, payload: any, context: any) {
+async function applyMembershipMirror(db: D1Database, businessId: string, operation: string, payload: any, context: any) {
   const id = `${businessId}:${payload.account_id}`;
   if (operation === 'create' || operation === 'update') {
     await db.prepare(
@@ -258,7 +248,7 @@ async function applyMembershipMirror(db: any, businessId: string, operation: str
   }
 }
 
-async function applyDeviceRegistration(db: any, businessId: string, operation: string, payload: any, context: any) {
+async function applyDeviceRegistration(db: D1Database, businessId: string, operation: string, payload: any, context: any) {
   if (operation === 'create' || operation === 'update') {
     await db.prepare(
       `INSERT INTO device_registrations (id, business_id, account_id, device_code, device_name, device_type, status, approved_by, approved_at, revoked_at, revoked_by, last_seen_at, last_sync_at, push_token, created_at, updated_at)
@@ -288,7 +278,7 @@ async function applyDeviceRegistration(db: any, businessId: string, operation: s
   }
 }
 
-async function applyBusinessProfile(db: any, businessId: string, operation: string, payload: any, context: any) {
+async function applyBusinessProfile(db: D1Database, businessId: string, operation: string, payload: any, context: any) {
   if (operation === 'create' || operation === 'update') {
     await db.prepare(
       `INSERT INTO business_profiles (id, business_id, name, category, phone, country_code, currency_code, timezone, address, logo_r2_key, negative_stock_policy, receipt_footer, created_at, updated_at, deleted_at, schema_version)
@@ -315,7 +305,7 @@ async function applyBusinessProfile(db: any, businessId: string, operation: stri
   }
 }
 
-async function applyCounter(db: any, businessId: string, operation: string, payload: any, context: any) {
+async function applyCounter(db: D1Database, businessId: string, operation: string, payload: any, context: any) {
   const id = `${businessId}:${payload.device_code}:${payload.counter_type}`;
   if (operation === 'create' || operation === 'update') {
     await db.prepare(
@@ -328,7 +318,7 @@ async function applyCounter(db: any, businessId: string, operation: string, payl
   }
 }
 
-async function updateRunningBalances(db: any, businessId: string, productId: string) {
+async function updateRunningBalances(db: D1Database, businessId: string, productId: string) {
   // Recalculate running balances for all movements of this product
   const movements = await rows<StockMovementRow>( db.prepare(
     `SELECT id FROM stock_movements WHERE business_id = ? AND product_id = ? ORDER BY created_at ASC`
@@ -369,13 +359,17 @@ export async function pull(c: Context<{ Bindings: CloudflareBindings; Variables:
     ? Math.max(...changes.map((c: any) => c.server_seq))
     : cursor;
 
+  // Update cursor.
+  // `cursor` here is the numeric position the client asked for; the stored
+  // cursor row keeps the push bookkeeping, so it is read separately.
+  const existingCursor = await tenantDB.getSyncCursor(context.deviceCode);
   await tenantDB.upsertSyncCursor({
     id: `${context.businessId}:${context.deviceCode}`,
     deviceCode: context.deviceCode,
     cursor: newCursor,
     lastPullAt: now,
-    lastPushAt: cursor.pendingPushCount > 0 ? Date.now() : new Date(cursor.lastPushAt).getTime(), // preserve last push
-    pendingPushCount: cursor.pendingPushCount,
+    lastPushAt: existingCursor?.lastPushAt ?? now,
+    pendingPushCount: existingCursor?.pendingPushCount ?? 0,
   });
 
   return c.json({
@@ -398,26 +392,27 @@ export async function status(c: Context<{ Bindings: CloudflareBindings; Variable
   const platformDB = createPlatformDB(c.env.DB);
 
   const cursor = await tenantDB.getSyncCursor(context.deviceCode);
-  const unsyncedCount = (await tenantDB.getUnsyncedOutboxEntries(1000)).results.length;
+  const unsyncedCount = (await tenantDB.getUnsyncedOutboxEntries(1000)).length;
 
   // Get other devices' last sync times (owner only)
   let otherDevices: any[] = [];
   if (context.role === 'owner') {
     const devices = await platformDB.getDevicesByBusiness(context.businessId);
-    otherDevices = await Promise.all(devices.map(async (d) => {
+    const enriched = await Promise.all(devices.map(async (d: DeviceRow) => {
       if (d.device_code === context.deviceCode) return null;
-      const cursor = await c.env.DB.prepare(
+      const deviceCursor = await c.env.DB.prepare(
         `SELECT last_pull_at, last_push_at, pending_push_count FROM sync_cursors WHERE id = ?`
       ).bind(`${context.businessId}:${d.device_code}`).first<SyncCursorRow>();
       return {
         device_code: d.device_code,
         device_name: d.device_name,
         status: d.status,
-        last_pull_at: cursor?.last_pull_at,
-        last_push_at: cursor?.last_push_at,
-        pending_push_count: cursor?.pending_push_count ?? 0,
+        last_pull_at: deviceCursor?.last_pull_at,
+        last_push_at: deviceCursor?.last_push_at,
+        pending_push_count: deviceCursor?.pending_push_count ?? 0,
       };
-    }).then(r => r.filter(Boolean)));
+    }));
+    otherDevices = enriched.filter((d): d is NonNullable<typeof d> => d !== null);
   }
 
   return c.json({
@@ -455,7 +450,7 @@ export async function exceptions(c: Context<{ Bindings: CloudflareBindings; Vari
 
   return c.json({
     success: true,
-    data: exc.results
+    data: exc
   });
 }
 
@@ -483,7 +478,7 @@ export async function resolveException(c: Context<{ Bindings: CloudflareBindings
 /**
  * Creates a sync exception
  */
-async function createSyncException(db: any, businessId: string, deviceCode: string, exception: Omit<SyncException, 'businessId' | 'deviceCode' | 'createdAt'>) {
+async function createSyncException(db: D1Database, businessId: string, deviceCode: string, exception: Omit<SyncException, 'businessId' | 'deviceCode' | 'createdAt'>) {
   const now = Date.now();
   await db.prepare(
     `INSERT INTO sync_exceptions (id, business_id, device_code, exception_type, entity_type, entity_id, local_version, server_version, description, local_data_json, server_data_json, resolution, status, created_at)

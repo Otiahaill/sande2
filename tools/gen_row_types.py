@@ -47,6 +47,9 @@ NAMES = {
     "outbox": "OutboxRow",
     "outbox_entries": "OutboxEntryRow",
     "sync_cursors": "SyncCursorRow",
+    "business_profiles": "BusinessProfileRow",
+    "device_registrations": "DeviceRegistrationRow",
+    "membership_mirrors": "MembershipMirrorRow",
 }
 
 

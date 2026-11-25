@@ -1,21 +1,10 @@
 import { Context } from 'hono';
 import { CloudflareBindings } from '../types';
-import { createTenantDB, createPlatformDB } from '../db/tenant';
+import { createTenantDB, createPlatformDB, rows } from '../db/tenant';
 import { BackupRow } from '../db/rows';
+import { D1Database } from '@cloudflare/workers-types';
 
 
-/**
- * Unwraps the rows from a D1 result.
- *
- * `D1PreparedStatement.all()` resolves to a `D1Result`; the rows themselves
- * are in `.results`. Code that wants the rows uses this helper so the
- * distinction is explicit.
- */
-export async function rows<T = Record<string, unknown>>(
-  result: Promise<D1Result<T>>
-): Promise<T[]> {
-  return (await result).results;
-}
 
 
 /**
@@ -124,7 +113,7 @@ export async function create(c: Context<{ Bindings: CloudflareBindings; Variable
 /**
  * Enforces backup retention policy
  */
-async function enforceRetentionPolicy(r2: R2Bucket, db: any, businessId: string) {
+async function enforceRetentionPolicy(r2: R2Bucket, db: D1Database, businessId: string) {
   const backups = await rows<BackupRow>( db.prepare(
     `SELECT id, r2_key, created_at FROM backups WHERE business_id = ? ORDER BY created_at DESC`
   ).bind(businessId).all<BackupRow>());

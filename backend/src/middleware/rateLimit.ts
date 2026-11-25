@@ -119,7 +119,10 @@ export async function strictRateLimit(c: Context<{ Bindings: CloudflareBindings 
 /**
  * Per-business rate limit for sync operations
  */
-export async function businessRateLimit(c: Context<{ Bindings: CloudflareBindings }>, next: Next) {
+export async function businessRateLimit(
+  c: Context<{ Bindings: CloudflareBindings; Variables: { businessContext?: { businessId?: string } } }>,
+  next: Next
+) {
   const businessId = c.req.header('X-Business-Id') || c.get('businessContext')?.businessId;
   if (!businessId) {
     await next();

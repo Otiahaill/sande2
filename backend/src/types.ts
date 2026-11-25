@@ -157,6 +157,7 @@ export interface GoogleAuthInput {
   deviceCode: string;
   deviceName: string;
   deviceType: 'android' | 'ios' | 'web';
+  pushToken?: string;
 }
 
 export interface RefreshTokenInput {

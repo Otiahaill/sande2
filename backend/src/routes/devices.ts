@@ -1,7 +1,7 @@
 import { Context } from 'hono';
 import { CloudflareBindings } from '../types';
 import { createPlatformDB } from '../db/tenant';
-import { AccountRow } from '../db/rows';
+import { AccountRow, DeviceRow } from '../db/rows';
 
 
 /**
@@ -15,7 +15,7 @@ export async function list(c: Context<{ Bindings: CloudflareBindings; Variables:
   const devices = await platformDB.getDevicesByBusiness(context.businessId);
 
   // Enrich with account info
-  const enriched = await Promise.all(devices.map(async (d) => {
+  const enriched = await Promise.all(devices.map(async (d: DeviceRow) => {
     const account = await c.env.DB.prepare('SELECT id, email, display_name FROM accounts WHERE id = ?').bind(d.account_id).first<AccountRow>();
     const membership = await platformDB.getMembership(context.businessId, d.account_id);
 

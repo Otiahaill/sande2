@@ -15,7 +15,6 @@
     "db:migrate:local": "wrangler d1 migrations apply sande-platform --local",
     "db:execute": "wrangler d1 execute sande-platform --command",
     "db:execute:local": "wrangler d1 execute sande-platform --local --command",
-
     "cf:setup": "node scripts/cloudflare-setup.mjs",
     "cf:migrate": "node scripts/d1-migrate.mjs",
     "cf:secrets": "node scripts/set-secrets.mjs",
@@ -23,7 +22,6 @@
     "cf:manifest": "node scripts/store-config.mjs",
     "cf:verify": "node scripts/verify-connection.mjs",
     "cf:connect": "node scripts/connect-all.mjs",
-
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
@@ -33,8 +31,8 @@
   "dependencies": {
     "hono": "^4.5.0",
     "jose": "^5.6.0",
-    "zod": "^3.23.0",
-    "uuid": "^10.0.0"
+    "uuid": "^10.0.0",
+    "zod": "^3.23.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240903.0",
@@ -43,6 +41,7 @@
     "esbuild": "^0.23.0",
     "eslint": "^9.0.0",
     "typescript": "^5.5.0",
+    "typescript-eslint": "^8.74.0",
     "vitest": "^2.0.0",
     "wrangler": "^3.78.0"
   }

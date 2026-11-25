@@ -3,6 +3,7 @@ import { BusinessContext, OutboxEntry, SyncCursor, SyncException, ChangeLogEntry
 import { AccountRow, AppVersionRow, BusinessRow, DeviceRow, InvitationRow, MembershipRow, PlatformAdminRow, RecoveryCodeRow, RefreshTokenRow, SaleItemRow, SaleSessionRow, SupportAccessGrantRow } from './rows';
 
 
+
 /**
  * Unwraps the rows from a D1 result.
  *

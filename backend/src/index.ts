@@ -6,8 +6,6 @@ import { HTTPException } from 'hono/http-exception';
 import { authMiddleware, requireOwner, requireAdmin } from './middleware/auth';
 import { rateLimitMiddleware } from './middleware/rateLimit';
 import { minVersionMiddleware, securityHeadersMiddleware, tenantIsolationMiddleware } from './middleware/security';
-import { businessDb } from './db/tenant';
-import { createPlatformDB } from './db/tenant';
 import { googleAuth, registerBusiness, acceptInvitation, registerDevice, refreshToken, logout } from './routes/auth';
 import { businessRoutes } from './routes/business';
 import { membershipRoutes } from './routes/memberships';

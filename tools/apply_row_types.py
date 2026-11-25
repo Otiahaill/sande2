@@ -57,6 +57,9 @@ TABLE_TO_IFACE = {
     "outbox": "OutboxRow",
     "outbox_entries": "OutboxEntryRow",
     "sync_cursors": "SyncCursorRow",
+    "business_profiles": "BusinessProfileRow",
+    "device_registrations": "DeviceRegistrationRow",
+    "membership_mirrors": "MembershipMirrorRow",
 }
 
 SELECT_RE = re.compile(r"SELECT\s+[\s\S]*?\s+FROM\s+(\w+)", re.IGNORECASE)
