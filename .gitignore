@@ -34,7 +34,7 @@ proguard/
 *.iws
 
 # Keystore files
-*.keystore
+# *.keystore
 *.key
 *.jks
 
