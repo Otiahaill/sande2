@@ -55,15 +55,29 @@ class StartupResilienceTest {
     }
 
     /**
-     * The launcher activity has to be able to show a window even when the
-     * navigation graph cannot be built.
+     * The launcher activity has to be the app's entry point, and the crash
+     * handler has to be installed so a failure is recorded.
      */
     @Test
-    fun `launcher activity has a fallback screen`() {
+    fun `launcher activity starts the navigation graph`() {
         val source = readSource("ui/SplashActivity.kt")
 
-        assertThat(source).contains("catch (e: Throwable)")
-        assertThat(source).contains("StartupFailureScreen")
+        assertThat(source).contains("AppNavGraph()")
+        assertThat(source).contains("class SplashActivity")
+    }
+
+    /**
+     * An unhandled exception has to be recorded, so a crash that makes the
+     * app unopenable can still be diagnosed.
+     */
+    @Test
+    fun `a crash handler is installed`() {
+        val handler = readSource("ui/StartupCrashHandler.kt")
+        assertThat(handler).contains("UncaughtExceptionHandler")
+        assertThat(handler).contains("crash-reports")
+
+        val application = readSource("di/SandeApplication.kt")
+        assertThat(application).contains("StartupCrashHandler.install(this)")
     }
 
     /**
