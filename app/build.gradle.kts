@@ -140,7 +140,7 @@ val staticChecks by tasks.registering {
     }
 }
 
-tasks.named("preBuild") {
+tasks.matching { it.name == "preBuild" }.configureEach {
     dependsOn(staticChecks)
 }
 
@@ -218,12 +218,14 @@ val verifyReleaseApkLaunchable by tasks.registering {
     }
 }
 
-tasks.named("assembleDebug") {
+// The variant tasks are created by the Android plugin after this file is
+// evaluated, so they are wired lazily rather than with tasks.named(...).
+tasks.matching { it.name == "assembleDebug" }.configureEach {
     // The release APK is built as well so it can be delivered and verified.
     finalizedBy(verifyDebugApkLaunchable, "assembleRelease")
 }
 
-tasks.named("assembleRelease") {
+tasks.matching { it.name == "assembleRelease" }.configureEach {
     finalizedBy(verifyReleaseApkLaunchable)
 }
 
